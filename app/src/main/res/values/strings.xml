@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Fuck AD</string>
+    <string name="menu_global">全局设置</string>
+    <string name="not_active">插件未激活</string>
+    <string name="is_active">插件已激活</string>
+    <string name="main_version">模块版本：%1</string>
+    <string name="menu_show_sys_app">系统应用</string>
+    <string name="menu_hook_success">Hook提示</string>
+</resources>

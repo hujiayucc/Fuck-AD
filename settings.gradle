@@ -1,0 +1,20 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // ❗若你的 Plugin 版本过低，作为 Xposed 模块使用务必添加，其它情况可选
+        maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
+        // ❗作为 Xposed 模块使用务必添加，其它情况可选
+        maven { url "https://api.xposed.info/" }
+    }
+}
+rootProject.name = "Fuck AD"
+include ':app'

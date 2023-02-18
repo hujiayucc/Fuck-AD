@@ -1,0 +1,23 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:context="com.hujiayucc.hook.ui.MainActivity">
+
+    <item android:id="@+id/menu_show_sys_app"
+          android:title="@string/menu_show_sys_app"
+          android:orderInCategory="100"
+          android:checkable="true"
+          app:showAsAction="never"/>
+
+    <item android:id="@+id/menu_global"
+          android:title="@string/menu_global"
+          android:orderInCategory="100"
+          android:checkable="true"
+          app:showAsAction="never"/>
+
+    <item android:id="@+id/menu_show_hook_success"
+          android:title="@string/menu_hook_success"
+          android:orderInCategory="100"
+          android:checkable="true"
+          app:showAsAction="never"/>
+</menu>
