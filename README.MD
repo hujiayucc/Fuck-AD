@@ -1,5 +1,6 @@
 # Fuck AD
 **顾名思义，这是一个去广告的Xposed插件**
+**有任何问题请加QQ群：752331215**
 
 ### 开发组件
 - [YukiHookAPI](https://github.com/fankes/YukiHookAPI)
