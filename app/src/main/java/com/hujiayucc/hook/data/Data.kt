@@ -15,5 +15,5 @@ object Data {
     val showSystemApp: PrefsData<Boolean> = PrefsData("showSystemApp", false)
     val global: PrefsData<Boolean> = PrefsData("global", true)
     val hookTip: PrefsData<Boolean> = PrefsData("hookTip", true)
-    val localeId: PrefsData<Int> = PrefsData("locale", 1)
+    val localeId: PrefsData<Int> = PrefsData("locale", 0)
 }

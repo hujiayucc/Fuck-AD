@@ -101,19 +101,16 @@ class MainActivity : AppCompatActivity() {
         binding.progress.visibility = View.VISIBLE
         Thread {
             try {
-                val packageManager: PackageManager = packageManager
-                val apps =
-                    packageManager.getInstalledPackages(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
+                val
+                apps = packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
                 var i = 0
                 progressBar.max = apps.size
                 for (info in apps) {
-                    if (!info.packageName.equals(BuildConfig.APPLICATION_ID)) {
-                        val appinfo = AppInfo(
-                            info.applicationInfo.loadIcon(packageManager),
-                            packageManager.getApplicationLabel(info.applicationInfo).toString(),
-                            info.packageName
-                        )
-                        val flag = info.applicationInfo.flags
+                    if (!info.packageName.equals(BuildConfig.APPLICATION_ID) && !info.sourceDir.equals("/system/app/HybridPlatform/HybridPlatform.apk")) {
+                        val icon = info.loadIcon(packageManager)
+                        val label = packageManager.getApplicationLabel(info)
+                        val appinfo = AppInfo(icon, label, info.packageName)
+                        val flag = info.flags
                         if (!showSysApp) {
                             if ((flag and ApplicationInfo.FLAG_SYSTEM) == 0) list.add(appinfo)
                         } else {
@@ -238,6 +235,7 @@ class MainActivity : AppCompatActivity() {
         val configuration = resources.configuration
         configuration.setLocale(language)
         resources.updateConfiguration(configuration, resources.displayMetrics)
-        recreate()
+        val locale = resources.configuration.locale
+        if (Language.fromId(localeID) != locale) recreate()
     }
 }

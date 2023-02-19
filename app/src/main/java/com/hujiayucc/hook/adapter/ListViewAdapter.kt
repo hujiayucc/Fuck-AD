@@ -43,7 +43,7 @@ class ListViewAdapter(
         check.setOnCheckedChangeListener { buttonView, isChecked ->
             modulePrefs.put(PrefsData(info.app_package!!, false), isChecked)
         }
-        icon.setImageDrawable(info.app_icon)
+        if (info.app_icon != null) icon.setImageDrawable(info.app_icon)
         name.text = info.app_name
         appPackage.text = info.app_package
         check.isChecked = modulePrefs.get(PrefsData(info.app_package!!, true))
