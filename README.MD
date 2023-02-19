@@ -11,8 +11,12 @@
 - **快手广告 测试应用**：NP管理器 (成功去除)
 
 ### 软件截图
-![Screenshot_2023-02-18-10-47-19-130_org.lsposed.manager.png](https://imgs.hujiayucc.cn/2023/02/18/63f03c48d1b2e.png)
 
-![Screenshot_2023-02-18-10-07-04-227_com.tencent.mobileqq.jpg](https://imgs.hujiayucc.cn/2023/02/18/63f03af482b55.jpg)
-
-![Screenshot_2023-02-18-10-45-44-710_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/18/63f03bf73fe50.jpg)
+[![Screenshot_2023-02-19-12-55-18-899_org.lsposed.manager.png](https://imgs.hujiayucc.cn/2023/02/19/63f1ac4d9dbc6.png)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac4d9dbc6.png)
+[![Screenshot_2023-02-19-12-54-33-112_org.lsposed.manager.png](https://imgs.hujiayucc.cn/2023/02/19/63f1ac53b5851.png)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac53b5851.png)
+[![Screenshot_2023-02-19-12-55-30-830_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/19/63f1ac56dd05e.jpg)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac56dd05e.jpg)
+[![Screenshot_2023-02-19-12-56-05-743_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/19/63f1ac585e0b2.jpg)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac585e0b2.jpg)
+[![Screenshot_2023-02-19-12-55-50-020_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/19/63f1ac5564763.jpg)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac5564763.jpg)
+[![Screenshot_2023-02-19-12-55-54-588_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/19/63f1ac4f8a5d3.jpg)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac4f8a5d3.jpg)
+[![Screenshot_2023-02-19-13-05-49-924_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/19/63f1ae48ae7bd.jpg)](https://imgs.hujiayucc.cn/2023/02/19/63f1ae48ae7bd.jpg)
+[![Screenshot_2023-02-19-13-05-54-666_com.hujiayucc.hook.jpg](https://imgs.hujiayucc.cn/2023/02/19/63f1ae46174f7.jpg)](https://imgs.hujiayucc.cn/2023/02/19/63f1ae46174f7.jpg)
