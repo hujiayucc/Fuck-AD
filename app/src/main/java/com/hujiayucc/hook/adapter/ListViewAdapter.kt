@@ -2,7 +2,6 @@ package com.hujiayucc.hook.adapter
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,8 +20,6 @@ class ListViewAdapter(
     val appList: List<AppInfo>,
     val modulePrefs: YukiHookModulePrefs,
 ) : BaseAdapter() {
-    private var packageManager: PackageManager? = null
-
     override fun getCount(): Int {
         return appList.size
     }
