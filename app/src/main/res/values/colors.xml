@@ -4,4 +4,5 @@
     <color name="white">#FFFFFFFF</color>
     <color name="is_active">#26A69A</color>
     <color name="not_active">#661B1B1B</color>
+    <color name="has_update">#FF9800</color>
 </resources>

@@ -30,14 +30,14 @@
                 android:elevation="0dp"
                 android:gravity="center">
 
-            <androidx.constraintlayout.utils.widget.ImageFilterView
+            <ImageView
                     android:id="@+id/main_img_status"
                     android:layout_width="25dp"
                     android:layout_height="25dp"
                     android:layout_marginStart="25dp"
                     android:layout_marginEnd="5dp"
                     android:src="@drawable/ic_warn"
-                    android:tint="@color/white" />
+                    app:tint="@color/white"/>
 
             <LinearLayout
                     android:layout_width="match_parent"

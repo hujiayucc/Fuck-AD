@@ -1,9 +1,17 @@
 <resources>
     <string name="app_name">Fuck AD</string>
-    <string name="menu_global">全局设置</string>
-    <string name="not_active">插件未激活</string>
-    <string name="is_active">插件已激活</string>
-    <string name="main_version">模块版本：%1</string>
-    <string name="menu_show_sys_app">系统应用</string>
-    <string name="menu_hook_success">Hook提示</string>
+    <string name="menu_global">Global</string>
+    <string name="not_active">Not Activity</string>
+    <string name="is_active">Active</string>
+    <string name="main_version">Version: %1$s (%2$s)</string>
+    <string name="menu_show_sys_app">System APP</string>
+    <string name="menu_hook_success">Hook Tip</string>
+    <string name="wait_loading">Please wait for APP data loading to complete.</string>
+    <string name="exit_tip">Press again to exit APP.</string>
+    <string name="language_settings">Language Settings</string>
+    <string name="language_default">Default</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese_zh">简体中文</string>
+    <string name="has_update">New Version</string>
+    <string name="check_update_failed">Update detection failed</string>
 </resources>

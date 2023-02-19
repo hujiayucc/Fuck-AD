@@ -7,9 +7,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import android.widget.ImageView
 import android.widget.Switch
 import android.widget.TextView
-import androidx.constraintlayout.utils.widget.ImageFilterView
 import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
@@ -39,7 +39,7 @@ class ListViewAdapter(
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val view = LayoutInflater.from(appContext).inflate(R.layout.app_child, null)
         val info = getItem(position)
-        val icon = view.findViewById<ImageFilterView>(R.id.app_icon)
+        val icon = view.findViewById<ImageView>(R.id.app_icon)
         val name = view.findViewById<TextView>(R.id.app_name)
         val appPackage = view.findViewById<TextView>(R.id.app_package)
         val check = view.findViewById<Switch>(R.id.switch_check)

@@ -6,6 +6,8 @@ import com.highcapable.yukihookapi.hook.factory.configs
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.data.Data.global
+import com.hujiayucc.hook.hook.entity.KWAD
+import com.hujiayucc.hook.hook.entity.Pangle
 import com.hujiayucc.hook.hook.entity.Tencent
 import com.hujiayucc.hook.utils.Log
 
@@ -22,10 +24,14 @@ object HookEntry : IYukiHookXposedInit {
         if (YukiHookAPI.Status.isModuleActive) {
             if (prefs.get(global)) {
                 loadHooker(Tencent)
+                loadHooker(Pangle)
+                loadHooker(KWAD)
             } else {
                 if (prefs.getBoolean(packageName)) {
                     loadApp(packageName) {
                         loadHooker(Tencent)
+                        loadHooker(Pangle)
+                        loadHooker(KWAD)
                     }
                 }
             }

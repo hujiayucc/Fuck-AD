@@ -1,9 +1,14 @@
 package com.hujiayucc.hook.ui
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.content.Intent.ACTION_VIEW
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.StrictMode
+import android.os.StrictMode.ThreadPolicy
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
@@ -24,8 +29,12 @@ import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data.buildTime
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hookTip
+import com.hujiayucc.hook.data.Data.localeId
 import com.hujiayucc.hook.data.Data.showSystemApp
 import com.hujiayucc.hook.databinding.ActivityMainBinding
+import com.hujiayucc.hook.update.Update
+import com.hujiayucc.hook.update.Update.url
+import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
 import java.util.*
 
@@ -37,9 +46,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var refresh: SwipeRefreshLayout
     private var mExitTime: Long = 0L
-    val list = ArrayList<AppInfo>()
+    private val list = ArrayList<AppInfo>()
+    private var localeID = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val policy = ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
+        localeID = modulePrefs.get(localeId)
+        if (localeID != 0) checkLanguage(Language.fromId(localeID))
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         initView()
@@ -65,8 +79,19 @@ class MainActivity : AppCompatActivity() {
             binding.mainStatus.text = getString(R.string.is_active)
             binding.mainActiveStatus.background = getDrawable(R.drawable.is_active)
         }
-        binding.mainVersion.text = "插件版本：${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        binding.mainVersion.text = getString(R.string.main_version)
+            .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         binding.mainDate.text = "Build Time：${buildTime}"
+
+        if (!Update.isLast()) {
+            binding.mainStatus.text = getString(R.string.has_update)
+            binding.mainActiveStatus.background = getDrawable(R.drawable.has_update_version)
+            binding.mainActiveStatus.setOnClickListener {
+                val url = Uri.parse(url)
+                val intent = Intent(ACTION_VIEW, url)
+                startActivity(intent)
+            }
+        }
     }
 
     private fun loadAppList(showSysApp: Boolean = false) {
@@ -130,6 +155,12 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.menu_show_sys_app).isChecked = modulePrefs.get(showSystemApp)
         menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(global)
         menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
+        val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
+        when (localeID) {
+            0 -> group?.subMenu?.findItem(R.id.menu_language_defualt)?.isChecked = true
+            1 -> group?.subMenu?.findItem(R.id.menu_language_en)?.isChecked = true
+            2 -> group?.subMenu?.findItem(R.id.menu_language_zh)?.isChecked = true
+        }
         return true
     }
 
@@ -137,7 +168,7 @@ class MainActivity : AppCompatActivity() {
         return when (item.itemId) {
             R.id.menu_show_sys_app -> {
                 if (refresh.visibility == View.GONE) {
-                    Toast.makeText(appContext, "请等待数据加载完成", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(appContext, getString(R.string.wait_loading), Toast.LENGTH_SHORT).show()
                     return false
                 }
                 item.isChecked = !item.isChecked
@@ -158,6 +189,27 @@ class MainActivity : AppCompatActivity() {
                 true
             }
 
+            R.id.menu_language_defualt -> {
+                item.isChecked = true
+                checkLanguage(Locale.getDefault())
+                modulePrefs.put(localeId, 0)
+                true
+            }
+
+            R.id.menu_language_en -> {
+                item.isChecked = true
+                checkLanguage(Locale.ENGLISH)
+                modulePrefs.put(localeId, 1)
+                true
+            }
+
+            R.id.menu_language_zh -> {
+                item.isChecked = true
+                checkLanguage(Locale.CHINESE)
+                modulePrefs.put(localeId, 2)
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -166,7 +218,7 @@ class MainActivity : AppCompatActivity() {
         return when (keyCode) {
             KeyEvent.KEYCODE_BACK -> {
                 if (System.currentTimeMillis() - mExitTime > 2000) {
-                    Toast.makeText(applicationContext, "再按一次退出应用", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, getString(R.string.exit_tip), Toast.LENGTH_SHORT).show()
                     mExitTime = System.currentTimeMillis()
                 } else {
                     finish()
@@ -180,5 +232,12 @@ class MainActivity : AppCompatActivity() {
 
             else -> super.onKeyDown(keyCode, event)
         }
+    }
+
+    private fun checkLanguage(language: Locale) {
+        val configuration = resources.configuration
+        configuration.setLocale(language)
+        resources.updateConfiguration(configuration, resources.displayMetrics)
+        recreate()
     }
 }
