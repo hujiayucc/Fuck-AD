@@ -6,13 +6,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import android.widget.ImageView
-import android.widget.Switch
-import android.widget.TextView
 import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
+import com.hujiayucc.hook.databinding.AppChildBinding
 import com.hujiayucc.hook.utils.Log
 
 class ListViewAdapter(
@@ -20,6 +18,7 @@ class ListViewAdapter(
     val appList: List<AppInfo>,
     val modulePrefs: YukiHookModulePrefs,
 ) : BaseAdapter() {
+    private lateinit var binding: AppChildBinding
     override fun getCount(): Int {
         return appList.size
     }
@@ -35,19 +34,17 @@ class ListViewAdapter(
     @SuppressLint("ViewHolder", "InflateParams", "UseSwitchCompatOrMaterialCode")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val view = LayoutInflater.from(appContext).inflate(R.layout.app_child, null)
+        binding = AppChildBinding.bind(view)
         val info = getItem(position)
-        val icon = view.findViewById<ImageView>(R.id.app_icon)
-        val name = view.findViewById<TextView>(R.id.app_name)
-        val appPackage = view.findViewById<TextView>(R.id.app_package)
-        val check = view.findViewById<Switch>(R.id.switch_check)
-        check.setOnCheckedChangeListener { buttonView, isChecked ->
+
+        binding.switchCheck.setOnCheckedChangeListener { buttonView, isChecked ->
             modulePrefs.put(PrefsData(info.app_package!!, false), isChecked)
         }
-        if (info.app_icon != null) icon.setImageDrawable(info.app_icon)
-        name.text = info.app_name
-        appPackage.text = info.app_package
-        check.isChecked = modulePrefs.get(PrefsData(info.app_package!!, true))
-        check.setOnClickListener {
+        if (info.app_icon != null) binding.appIcon.setImageDrawable(info.app_icon)
+        binding.appName.text = info.app_name
+        binding.appPackage.text = info.app_package
+        binding.switchCheck.isChecked = modulePrefs.get(PrefsData(info.app_package!!, true))
+        binding.switchCheck.setOnClickListener {
             Log.d("${info.app_name}")
         }
         return view

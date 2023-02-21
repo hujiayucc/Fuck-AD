@@ -9,20 +9,30 @@ android {
     compileSdk 33
 
     def verCode = new Random()
-    int realVersion = 250
+    int realVersion = 300
     defaultConfig {
         applicationId "com.hujiayucc.hook"
         minSdk 23
         targetSdk 33
-        versionCode 250
-        versionName "1.0.2"
+        versionCode 300
+        versionName "1.0.3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            // 开启资源压缩
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            minifyEnabled true
+            // 开启资源压缩
+            shrinkResources true
+            versionNameSuffix " 开发版"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

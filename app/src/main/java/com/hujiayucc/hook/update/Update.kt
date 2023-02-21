@@ -11,13 +11,14 @@ import okhttp3.Request
 
 
 object Update {
-    var url = "https://gitee.com/hujiayucc/com.hujiayucc.hook/raw/main/version.json"
+    var url = ""
+    val json = "https://gitee.com/hujiayucc/com.hujiayucc.hook/raw/main/version.json"
     fun isLast(): Boolean {
         try {
             // 创建OkHttpClient对象
             val client = OkHttpClient()
             // 创建Request对象
-            val request: Request = Request.Builder().url(url).build()
+            val request: Request = Request.Builder().url(json).build()
             // 创建Call对象
             val call: Call = client.newCall(request)
             // 发起请求并处理响应

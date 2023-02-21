@@ -101,8 +101,8 @@ class MainActivity : AppCompatActivity() {
         binding.progress.visibility = View.VISIBLE
         Thread {
             try {
-                val
-                apps = packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
+                val apps =
+                    packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
                 var i = 0
                 progressBar.max = apps.size
                 for (info in apps) {
