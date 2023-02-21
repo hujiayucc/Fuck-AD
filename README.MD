@@ -11,6 +11,10 @@
 - **穿山甲广告 测试应用**：APP分享 (成功去除)
 - **快手广告 测试应用**：NP管理器 (成功去除)
 
+### 附加适配
+- **最右（开屏广告）**
+- **番茄小说（听书底部直播间广告）**
+
 ### 软件截图
 
 [![Screenshot_2023-02-19-12-55-18-899_org.lsposed.manager.png](https://imgs.hujiayucc.cn/2023/02/19/63f1ac4d9dbc6.png)](https://imgs.hujiayucc.cn/2023/02/19/63f1ac4d9dbc6.png)
