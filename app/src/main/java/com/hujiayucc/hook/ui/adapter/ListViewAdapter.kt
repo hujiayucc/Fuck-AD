@@ -11,7 +11,6 @@ import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.databinding.AppChildBinding
-import com.hujiayucc.hook.utils.Log
 
 class ListViewAdapter(
     val appContext: Context,
@@ -44,9 +43,6 @@ class ListViewAdapter(
         binding.appName.text = info.app_name
         binding.appPackage.text = info.app_package
         binding.switchCheck.isChecked = modulePrefs.get(PrefsData(info.app_package!!, true))
-        binding.switchCheck.setOnClickListener {
-            Log.d("${info.app_name}")
-        }
         return view
     }
 }

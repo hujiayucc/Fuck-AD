@@ -2,7 +2,6 @@ package com.hujiayucc.hook.ui
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.Intent.ACTION_VIEW
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -32,8 +31,7 @@ import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.data.Data.localeId
 import com.hujiayucc.hook.data.Data.showSystemApp
 import com.hujiayucc.hook.databinding.ActivityMainBinding
-import com.hujiayucc.hook.update.Update
-import com.hujiayucc.hook.update.Update.url
+import com.hujiayucc.hook.update.Update.checkUpdate
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
 import java.util.*
@@ -82,16 +80,25 @@ class MainActivity : AppCompatActivity() {
         binding.mainVersion.text = getString(R.string.main_version)
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         binding.mainDate.text = "Build Time：${buildTime}"
+        Update()
+    }
 
-        if (!Update.isLast()) {
-            binding.mainStatus.text = getString(R.string.has_update)
-            binding.mainActiveStatus.background = getDrawable(R.drawable.has_update_version)
-            binding.mainActiveStatus.setOnClickListener {
-                val url = Uri.parse(url)
-                val intent = Intent(ACTION_VIEW, url)
-                startActivity(intent)
-            }
-        }
+    @SuppressLint("UseCompatLoadingForDrawables")
+    private fun Update() {
+        Thread {
+            val info = checkUpdate()
+            if ((info != null) && (info.toString().length > 10)) {
+                runOnUiThread {
+                    binding.mainStatus.text = getString(R.string.has_update)
+                    binding.mainActiveStatus.background = getDrawable(R.drawable.has_update_version)
+                    binding.mainActiveStatus.setOnClickListener {
+                        val url = Uri.parse(info.toString())
+                        val intent = Intent(Intent.ACTION_VIEW, url)
+                        startActivity(intent)
+                    }
+                }
+            } else if (info != 0) runOnUiThread {Toast.makeText(appContext, getString(R.string.check_update_failed), Toast.LENGTH_SHORT).show()}
+        }.start()
     }
 
     private fun loadAppList(showSysApp: Boolean = false) {
