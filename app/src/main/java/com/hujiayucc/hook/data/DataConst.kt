@@ -8,6 +8,10 @@ object DataConst {
 object PackageName {
     /** 最右 */
     const val ZuiYou = "cn.xiaochuankeji.tieba"
+
     /** 番茄小说 */
     const val DragonRead = "com.dragon.read"
+
+    /** 堆糖 */
+    const val DuiTang = "com.duitang.main"
 }

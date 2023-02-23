@@ -4,7 +4,6 @@
     <string name="not_active">Not Activity</string>
     <string name="is_active">Active</string>
     <string name="main_version">Version: %1$s (%2$s)</string>
-    <string name="menu_show_sys_app">System APP</string>
     <string name="menu_hook_success">Hook Tip</string>
     <string name="wait_loading">Please wait for APP data loading to complete.</string>
     <string name="exit_tip">Press again to exit APP.</string>
@@ -15,4 +14,6 @@
     <string name="has_update">New Version</string>
     <string name="check_update_failed">Update detection failed</string>
     <string name="description">Fuck AD</string>
+    <string name="user_app">USER APP</string>
+    <string name="system_app">SYSTEM APP</string>
 </resources>

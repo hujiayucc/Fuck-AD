@@ -1,13 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto"
       xmlns:tools="http://schemas.android.com/tools"
-      tools:context="com.hujiayucc.hook.ui.MainActivity">
-
-    <item android:id="@+id/menu_show_sys_app"
-          android:title="@string/menu_show_sys_app"
-          android:orderInCategory="100"
-          android:checkable="true"
-          app:showAsAction="never"/>
+      tools:context="com.hujiayucc.hook.ui.activity.MainActivity">
 
     <item android:id="@+id/menu_global"
           android:title="@string/menu_global"
@@ -28,11 +22,11 @@
                    android:checkableBehavior="single"
                    android:checkable="true">
                 <item android:id="@+id/menu_language_defualt"
-                      android:title="@string/language_default" />
+                      android:title="@string/language_default"/>
                 <item android:id="@+id/menu_language_en"
-                      android:title="@string/language_english" />
+                      android:title="@string/language_english"/>
                 <item android:id="@+id/menu_language_zh"
-                      android:title="@string/language_chinese_zh" />
+                      android:title="@string/language_chinese_zh"/>
             </group>
         </menu>
     </item>

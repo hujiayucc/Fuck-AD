@@ -1,9 +1,7 @@
-package com.hujiayucc.hook.ui
+package com.hujiayucc.hook.ui.activity
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.StrictMode
@@ -11,40 +9,38 @@ import android.os.StrictMode.ThreadPolicy
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
-import android.widget.ListView
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import androidx.fragment.app.Fragment
+import androidx.viewpager.widget.ViewPager
+import com.google.android.material.tabs.TabLayout
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.adapter.ListViewAdapter
-import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data.buildTime
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.data.Data.localeId
-import com.hujiayucc.hook.data.Data.showSystemApp
 import com.hujiayucc.hook.databinding.ActivityMainBinding
+import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
+import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.update.Update.checkUpdate
 import com.hujiayucc.hook.utils.Language
-import com.hujiayucc.hook.utils.Log
 import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var listView: ListView
-    private lateinit var progressBar: ProgressBar
-    private lateinit var refresh: SwipeRefreshLayout
+    private lateinit var tabLayout: TabLayout
+    private lateinit var viewPager: ViewPager
+    private val fragmentList = ArrayList<Fragment>()
+    private lateinit var adapter: ViewPagerAdapter
+
     private var mExitTime: Long = 0L
-    private val list = ArrayList<AppInfo>()
     private var localeID = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +51,6 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         initView()
-        loadAppList(modulePrefs.get(showSystemApp))
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
@@ -63,14 +58,25 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
-        listView = binding.list
-        progressBar = binding.progress
-        refresh = binding.refresh
+        tabLayout = binding.tabLayout
+        viewPager = binding.viewPager
+        val userBundle = Bundle()
+        userBundle.putBoolean("system", false)
+        val user = Fragment.instantiate(appContext, MainFragment::class.java.name, userBundle)
+        val systemBundle = Bundle()
+        systemBundle.putBoolean("system", true)
+        val system = Fragment.instantiate(appContext, MainFragment::class.java.name, systemBundle)
 
-        refresh.setOnRefreshListener {
-            loadAppList(modulePrefs.get(showSystemApp))
-            refresh.isRefreshing = false
-        }
+        fragmentList.add(user)
+        fragmentList.add(system)
+        tabLayout.setupWithViewPager(viewPager)
+        val title = arrayOf(
+            getString(R.string.user_app),
+            getString(R.string.system_app)
+        )
+        adapter = ViewPagerAdapter(supportFragmentManager, fragmentList, title)
+        viewPager.adapter = adapter
+        viewPager.currentItem = 0
 
         if (YukiHookAPI.Status.isModuleActive) {
             binding.mainImgStatus.setImageResource(R.drawable.ic_success)
@@ -97,66 +103,18 @@ class MainActivity : AppCompatActivity() {
                         startActivity(intent)
                     }
                 }
-            } else if (info != 0) runOnUiThread {Toast.makeText(appContext, getString(R.string.check_update_failed), Toast.LENGTH_SHORT).show()}
-        }.start()
-    }
-
-    private fun loadAppList(showSysApp: Boolean = false) {
-        list.clear()
-        progressBar.progress = 0
-        refresh.visibility = View.GONE
-        binding.progress.visibility = View.VISIBLE
-        Thread {
-            try {
-                val apps =
-                    packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
-                var i = 0
-                progressBar.max = apps.size
-                for (info in apps) {
-                    if (!info.packageName.equals(BuildConfig.APPLICATION_ID) && !info.sourceDir.equals("/system/app/HybridPlatform/HybridPlatform.apk")) {
-                        val icon = info.loadIcon(packageManager)
-                        val label = packageManager.getApplicationLabel(info)
-                        val appinfo = AppInfo(icon, label, info.packageName)
-                        val flag = info.flags
-                        if (!showSysApp) {
-                            if ((flag and ApplicationInfo.FLAG_SYSTEM) == 0) list.add(appinfo)
-                        } else {
-                            list.add(appinfo)
-                        }
-                    }
-                    progressBar.progress = i
-                    i++
-                    if (i == apps.size) showList(list)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } else if (info != 0) runOnUiThread {
+                Toast.makeText(
+                    appContext,
+                    getString(R.string.check_update_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }.start()
     }
 
-    private fun showList(list: ArrayList<AppInfo>) {
-        val instance = java.text.Collator.getInstance(Locale.CHINA)
-        list.sortWith { o1, o2 ->
-            val o1Boolean = modulePrefs.getBoolean(o1.app_package!!, false)
-            val o2Boolean = modulePrefs.getBoolean(o2.app_package!!, false)
-
-            /** 排序 */
-            if (o1Boolean && !o2Boolean) -1
-            else if (!o1Boolean && o2Boolean) 0
-            else instance.compare(o1.app_name!!, o2.app_name!!)
-        }
-        runOnUiThread {
-            val adapter = ListViewAdapter(applicationContext, list, modulePrefs)
-            listView.adapter = adapter
-            progressBar.visibility = View.GONE
-            refresh.visibility = View.VISIBLE
-            Log.d("加载完毕")
-        }
-    }
-
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        menu.findItem(R.id.menu_show_sys_app).isChecked = modulePrefs.get(showSystemApp)
         menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(global)
         menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
         val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
@@ -170,17 +128,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.menu_show_sys_app -> {
-                if (refresh.visibility == View.GONE) {
-                    Toast.makeText(appContext, getString(R.string.wait_loading), Toast.LENGTH_SHORT).show()
-                    return false
-                }
-                item.isChecked = !item.isChecked
-                modulePrefs.put(showSystemApp, item.isChecked)
-                loadAppList(item.isChecked)
-                true
-            }
-
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
                 modulePrefs.put(global, item.isChecked)

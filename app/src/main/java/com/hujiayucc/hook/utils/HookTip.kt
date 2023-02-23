@@ -3,11 +3,10 @@ package com.hujiayucc.hook.utils
 import android.widget.Toast
 import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.type.android.ActivityClass
-import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
 import com.highcapable.yukihookapi.hook.type.android.BundleClass
 import com.highcapable.yukihookapi.hook.type.java.UnitType
 import com.hujiayucc.hook.data.Data
-import com.hujiayucc.hook.hook.entity.Service.hook
+import com.hujiayucc.hook.hook.app.DragonRead.hook
 
 enum class HookTip(val id: Int, val tip: String) {
     DEFAULT(0, "Hook 成功"),
@@ -23,22 +22,6 @@ enum class HookTip(val id: Int, val tip: String) {
 
         /** 显示Hook成功提示 */
         fun show(packageParam: PackageParam) {
-            ApplicationClass.hook {
-                injectMember {
-                    method {
-                        name = "onCreate"
-                    }
-
-                    afterHook {
-                        Toast.makeText(
-                            instance(),
-                            HookTip.fromId(packageParam.prefs.get(Data.localeId)),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            }
-
             ActivityClass.hook {
                 injectMember {
                     method {

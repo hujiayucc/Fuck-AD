@@ -9,15 +9,24 @@ android {
     compileSdk 33
 
     def verCode = new Random()
-    int realVersion = 300
     defaultConfig {
         applicationId "com.hujiayucc.hook"
         minSdk 23
         targetSdk 33
-        versionCode 300
-        versionName "1.0.3"
+        versionCode 350
+        versionName "1.0.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    android.applicationVariants.configureEach {
+        variant ->
+            variant.outputs.configureEach {
+                if (variant.versionName.contains("debug"))
+                    outputFileName = "Fk AD ${variant.versionName}.apk"
+                else
+                    outputFileName = "Fuck AD ${variant.versionName}.apk"
+            }
     }
 
     buildTypes {
@@ -25,6 +34,7 @@ android {
             minifyEnabled true
             // 开启资源压缩
             shrinkResources true
+            versionNameSuffix "-release"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
@@ -32,7 +42,7 @@ android {
             minifyEnabled true
             // 开启资源压缩
             shrinkResources true
-            versionNameSuffix " 开发版"
+            versionNameSuffix "-debug"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -61,6 +71,8 @@ dependencies {
     compileOnly 'de.robv.android.xposed:api:82'
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
     ksp 'com.highcapable.yukihookapi:ksp-xposed:1.1.8'
+
+    compileOnly 'com.pangle.cn:ads-sdk-pro:5.1.0.2'
 
     // 网络请求库
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'

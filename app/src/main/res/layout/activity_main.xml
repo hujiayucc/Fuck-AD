@@ -5,7 +5,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fitsSystemWindows="true"
-        tools:context=".ui.MainActivity"
+        tools:context=".ui.activity.MainActivity"
         android:orientation="vertical">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -62,7 +62,7 @@
                             android:layout_marginBottom="5dp"
                             android:text="@string/not_active"
                             android:textColor="@color/white"
-                            android:textSize="18sp" />
+                            android:textSize="18sp"/>
 
                     <TextView
                             android:id="@+id/main_version"
@@ -72,7 +72,7 @@
                             android:alpha="0.8"
                             android:text="@string/main_version"
                             android:textColor="@color/white"
-                            android:textSize="13sp" />
+                            android:textSize="13sp"/>
 
                     <TextView
                             android:id="@+id/main_date"
@@ -87,30 +87,18 @@
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:gravity="center"
             android:orientation="vertical">
-        <ProgressBar
-                style="?android:attr/progressBarStyleHorizontal"
-                android:id="@+id/progress"
+        <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tab_layout"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingLeft="50dp"
-                android:paddingRight="50dp"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintTop_toTopOf="parent"/>
+                android:layout_height="wrap_content"/>
 
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-                android:id="@+id/refresh"
+        <androidx.viewpager.widget.ViewPager
+                android:id="@+id/viewPager"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone">
-            <ListView
-                    android:id="@+id/list"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+                android:layout_height="match_parent"/>
+    </LinearLayout>
 </LinearLayout>

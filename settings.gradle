@@ -14,6 +14,8 @@ dependencyResolutionManagement {
         maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
         // ❗作为 Xposed 模块使用务必添加，其它情况可选
         maven { url "https://api.xposed.info/" }
+        // 穿山甲
+        maven { url 'https://artifact.bytedance.com/repository/pangle' }
     }
 }
 rootProject.name = "Fuck AD"
