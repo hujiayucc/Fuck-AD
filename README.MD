@@ -2,9 +2,7 @@
 
 **顾名思义，这是一个去广告的Xposed插件**
 
-*
-*有任何问题请加QQ群：[494504522](https://qm.qq.com/cgi-bin/qm/qr?k=rrPSIlmQfYaZAlZuYH058gxUzEEKY00y&authKey=2YtvxFdMkwUaQfxU/SjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At&noverify=0&personal_qrcode_source=0)
-**
+**有任何问题请加QQ群：[494504522](https://qm.qq.com/cgi-bin/qm/qr?k=rrPSIlmQfYaZAlZuYH058gxUzEEKY00y&authKey=2YtvxFdMkwUaQfxU/SjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At&noverify=0&personal_qrcode_source=0)**
 
 ### 开发组件
 
