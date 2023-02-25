@@ -4,11 +4,11 @@
 
 # Fuck AD
 
-As the name suggests, this is an Xposed plugin to remove ads.
+顾名思义，这是一个去广告的Xposed插件
 
 ---
 
-**English | [简体中文](README.MD)**
+**[English](README_EN.md) | 简体中文**
 
 [![Stars](https://img.shields.io/github/stars/hujiayucc/Fuck-AD?label=stars)](https://github.com/hujiayucc/Fuck-AD)
 [![Release](https://img.shields.io/github/v/release/hujiayucc/Fuck-AD?include_prereleases)](https://github.com/Xposed-Modules-Repo/com.hujiayucc.hook/releases/latest)
@@ -17,7 +17,7 @@ As the name suggests, this is an Xposed plugin to remove ads.
 
 </div>
 
-### Development kits
+### 开发组件
 
 ---
 
@@ -28,18 +28,18 @@ As the name suggests, this is an Xposed plugin to remove ads.
 - [SwipeRefreshLayout](https://developer.android.com/reference/android/support/v4/widget/SwipeRefreshLayout.html)
 - ...
 
-### Supported
+### 目前支持
 
 ---
 
-- Tencent Ads | Test APP：大师兄影视 (Sucess)
-- Pangle Ads | Test APP：APP分享 (Sucess)
-- KW Ads | Test APP：NP Manager (Sucess)
+- 腾讯广告 测试应用：大师兄影视 (成功去除)
+- 穿山甲广告 测试应用：APP分享 (成功去除)
+- 快手广告 测试应用：NP管理器 (成功去除)
 
-### Additional features
+### 附加适配
 
 ---
 
-- 最右（Splash ads）
-- 番茄小说（Live ads）
-- 堆糖（Splash ads, in-app feed ads）
+- 最右（开屏广告）
+- 番茄小说（听书底部直播间广告）
+- 堆糖（开屏广告，应用内信息流广告）
