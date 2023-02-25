@@ -14,4 +14,10 @@ object PackageName {
 
     /** 堆糖 */
     const val DuiTang = "com.duitang.main"
+
+    /** 喜马拉雅 */
+    const val XiMaLaYa = "com.ximalaya.ting.android"
+
+    /** App分享 */
+    const val AppShare = "info.muge.appshare"
 }

@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Fuck AD</string>
     <string name="menu_global">Global</string>
-    <string name="not_active">Not Activity</string>
-    <string name="is_active">Active</string>
+    <string name="not_active">Not Active</string>
+    <string name="is_active">Activated</string>
     <string name="main_version">Version: %1$s (%2$s)</string>
     <string name="menu_hook_success">Hook Tip</string>
     <string name="wait_loading">Please wait for APP data loading to complete.</string>
