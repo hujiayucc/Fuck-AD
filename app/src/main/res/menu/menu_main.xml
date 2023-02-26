@@ -30,4 +30,15 @@
             </group>
         </menu>
     </item>
+
+    <item
+        android:id="@+id/menu_search"
+        android:title="@string/search"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/ic_search"/>
+
+    <item
+        android:id="@+id/menu_qq_group"
+        android:title="@string/join_qq_group"
+        android:orderInCategory="400"/>
 </menu>

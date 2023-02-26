@@ -16,4 +16,7 @@
     <string name="description">Fuck AD</string>
     <string name="user_app">USER APP</string>
     <string name="system_app">SYSTEM APP</string>
+    <string name="search">Search</string>
+    <string name="join_qq_group">Join QQ Group</string>
+    <string name="failed_to_start_qq">Failed to start QQ</string>
 </resources>

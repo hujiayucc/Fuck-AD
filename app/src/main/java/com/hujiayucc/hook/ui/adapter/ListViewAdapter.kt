@@ -35,14 +35,14 @@ class ListViewAdapter(
         val view = LayoutInflater.from(appContext).inflate(R.layout.app_child, null)
         binding = AppChildBinding.bind(view)
         val info = getItem(position)
-
-        binding.switchCheck.setOnCheckedChangeListener { buttonView, isChecked ->
-            modulePrefs.put(PrefsData(info.app_package!!, false), isChecked)
+        info.switchCheck = binding.switchCheck
+        info.switchCheck.setOnCheckedChangeListener { buttonView, isChecked ->
+            modulePrefs.put(PrefsData(info.app_package, false), isChecked)
         }
         if (info.app_icon != null) binding.appIcon.setImageDrawable(info.app_icon)
         binding.appName.text = info.app_name
         binding.appPackage.text = info.app_package
-        binding.switchCheck.isChecked = modulePrefs.get(PrefsData(info.app_package!!, true))
+        binding.switchCheck.isChecked = modulePrefs.get(PrefsData(info.app_package, true))
         return view
     }
 }

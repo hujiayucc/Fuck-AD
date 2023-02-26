@@ -12,7 +12,6 @@ object Data {
 
     /** 获取项目编译完成的时间戳 (当前本地时间) */
     val buildTime: String = format.format(Date(YukiHookAPI.Status.compiledTimestamp))
-    val showSystemApp: PrefsData<Boolean> = PrefsData("showSystemApp", false)
     val global: PrefsData<Boolean> = PrefsData("global", true)
     val hookTip: PrefsData<Boolean> = PrefsData("hookTip", true)
     val localeId: PrefsData<Int> = PrefsData("locale", 0)

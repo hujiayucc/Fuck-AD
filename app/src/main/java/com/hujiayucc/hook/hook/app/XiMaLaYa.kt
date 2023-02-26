@@ -3,7 +3,7 @@ package com.hujiayucc.hook.hook.app
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.MembersType
 
-object XiMaLaYa: YukiBaseHooker() {
+object XiMaLaYa : YukiBaseHooker() {
     override fun onHook() {
         val list = arrayOf(
             "com.ximalaya.ting.android.adsdk.adapter.JADSplashADWrapper",
@@ -17,8 +17,7 @@ object XiMaLaYa: YukiBaseHooker() {
             findClass(clazz).hook {
                 injectMember {
                     allMembers(type = MembersType.ALL)
-                    beforeHook { resultNull() }
-                    afterHook { resultNull() }
+                    replaceTo(null)
                 }
             }
         }

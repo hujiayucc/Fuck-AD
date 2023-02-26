@@ -56,7 +56,6 @@ object HookEntry : IYukiHookXposedInit {
         if (packageParam.packageName.equals(PackageName.XiMaLaYa)) packageParam.loadHooker(XiMaLaYa)
         // App分享
         if (packageParam.packageName.equals(PackageName.AppShare)) packageParam.loadHooker(AppShare)
-
         // 360加固
         if ("com.stub.StubApp".toClassOrNull(packageParam.appClassLoader) != null) {
             Log.d("360加固")

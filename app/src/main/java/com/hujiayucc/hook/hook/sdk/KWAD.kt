@@ -15,7 +15,7 @@ object KWAD : YukiBaseHooker() {
 
         findClass("com.kwad.components.offline.api.core.network.model.CommonOfflineCompoResultData").hook {
             injectMember {
-                method { name = "isResultOk" }.onNoSuchMethod {  }
+                method { name = "isResultOk" }.onNoSuchMethod { }
                 replaceToFalse()
             }
         }.ignoredHookClassNotFoundFailure()
