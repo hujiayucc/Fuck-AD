@@ -8,7 +8,7 @@
 
 ---
 
-**[English](README_EN.md) | 简体中文**
+**[English](./README_EN.md) | 简体中文**
 
 [![Stars](https://img.shields.io/github/stars/hujiayucc/Fuck-AD?label=stars)](https://github.com/hujiayucc/Fuck-AD)
 [![Release](https://img.shields.io/github/v/release/hujiayucc/Fuck-AD?include_prereleases)](https://github.com/Xposed-Modules-Repo/com.hujiayucc.hook/releases/latest)
@@ -43,3 +43,4 @@
 - 最右（开屏广告）
 - 番茄小说（听书底部直播间广告）
 - 堆糖（开屏广告，应用内信息流广告）
+- 酷安 （信息流广告）
