@@ -1,16 +1,16 @@
 package com.hujiayucc.hook.ui.fragment
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
+import android.widget.*
+import android.widget.AbsListView.OnScrollListener
 import android.widget.AdapterView.OnItemClickListener
-import android.widget.ListView
-import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
@@ -50,6 +50,12 @@ class MainFragment : Fragment() {
         refresh.setOnRefreshListener {
             if (searchText.isEmpty()) {
                 loadAppList(isSystem)
+            } else {
+                val list: ArrayList<AppInfo> = ArrayList()
+                for (app in this.list) {
+                    if (app.app_name.contains(searchText) or app.app_package.contains(searchText)) list.add(app)
+                }
+                showList(list)
             }
             refresh.isRefreshing = false
         }
@@ -62,8 +68,67 @@ class MainFragment : Fragment() {
 
         listView.onItemLongClickListener =
             AdapterView.OnItemLongClickListener { parent, view, position, id ->
+                val info = list[position]
+                val popupMenu = PopupMenu(activity, view)
+                val menu = popupMenu.menu
+                menu.add(getString(R.string.menu_open_application).format(info.app_name)).setOnMenuItemClickListener {
+                    try {
+                        val intent: Intent? = appContext.packageManager.getLaunchIntentForPackage(info.app_package)
+                        appContext.startActivity(intent)
+                    } catch (e : Exception) {
+                        Toast.makeText(appContext, getString(R.string.failed_to_open_application)
+                            .format(info.app_name), Toast.LENGTH_SHORT).show()
+                    }
+                    false
+                }
+                menu.add(getString(R.string.menu_open_all)).setOnMenuItemClickListener {
+                    for (app in list) {
+                        activity?.modulePrefs?.putBoolean(app.app_package, true)
+                    }
+                    showList(list)
+                    false
+                }
+                menu.add(getString(R.string.menu_close_all)).setOnMenuItemClickListener {
+                    for (app in list) {
+                        activity?.modulePrefs?.putBoolean(app.app_package, false)
+                    }
+                    showList(list)
+                    false
+                }
+                menu.add(getString(R.string.menu_invert_selection)).setOnMenuItemClickListener {
+                    for (app in list) {
+                        val isChecked = !activity?.modulePrefs?.getBoolean(app.app_package, true)!!
+                        activity?.modulePrefs?.putBoolean(app.app_package, isChecked)
+                    }
+                    showList(list)
+                    false
+                }
+                popupMenu.show()
                 true
             }
+
+        listView.setOnScrollListener(object : OnScrollListener {
+            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
+                // 监听滑动状态的改变
+            }
+            // 滚动时一直回调，直到停止滚动时才停止回调。单击时回调一次
+            // firstVisibleItem：当前能看见的第一个列表项ID（从0开始）
+            // visibleItemCount：当前能看见的列表项个数，总共的个数 ，小半个也算一个
+            // totalItemCount：ListView列表项总数
+            override fun onScroll(
+                view: AbsListView?,
+                firstVisibleItem: Int,
+                visibleItemCount: Int,
+                totalItemCount: Int,
+            ) {
+                if (firstVisibleItem > 10) binding.fab.visibility = View.VISIBLE
+                else binding.fab.visibility = View.INVISIBLE
+            }
+        })
+
+        binding.fab.setOnClickListener {
+            listView.setSelection(0)
+        }
     }
 
     private fun loadAppList(showSysApp: Boolean) {
@@ -91,8 +156,8 @@ class MainFragment : Fragment() {
                         }
                         progressBar.progress = i
                         i++
-                        if (i == apps.size) showList(list)
                     }
+                    showList(list)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -106,21 +171,29 @@ class MainFragment : Fragment() {
         Thread {
             val instance = Collator.getInstance(Language.fromId(appContext.modulePrefs.get(Data.localeId)))
             try {
-                list.sortWith { o1, o2 ->
-                    val o1Boolean = requireActivity().modulePrefs.getBoolean(o1.app_package, false)
-                    val o2Boolean = requireActivity().modulePrefs.getBoolean(o2.app_package, false)
-
-                    /** 排序 */
-                    if (o1Boolean && !o2Boolean) -1
-                    else if (!o1Boolean && o2Boolean) 0
-                    else instance.compare(o1.app_name, o2.app_name)
+                /** 排序 */
+                val isCheckList: ArrayList<AppInfo> = ArrayList()
+                val notCheckList: ArrayList<AppInfo> = ArrayList()
+                for (app in list) {
+                    val isChecked = requireActivity().modulePrefs.getBoolean(app.app_package, true)
+                    if (isChecked) isCheckList.add(app)
+                    else notCheckList.add(app)
                 }
+                isCheckList.sortWith { o1, o2 ->
+                    instance.compare(o1.app_name, o2.app_name)
+                }
+                notCheckList.sortWith { o1, o2 ->
+                    instance.compare(o1.app_name, o2.app_name)
+                }
+                list.clear()
+                list.addAll(isCheckList)
+                list.addAll(notCheckList)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }.start()
         val adapter = ListViewAdapter(appContext, list, appContext.modulePrefs)
-        requireActivity().runOnUiThread {
+        activity?.runOnUiThread {
             listView.adapter = adapter
             progressBar.visibility = View.GONE
             refresh.visibility = View.VISIBLE

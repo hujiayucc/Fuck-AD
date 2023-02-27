@@ -18,5 +18,10 @@
     <string name="system_app">系统应用</string>
     <string name="search">搜索</string>
     <string name="join_qq_group">加入QQ群</string>
-    <string name="failed_to_start_qq">QQ启动失败</string>
+    <string name="failed_to_open_qq">QQ启动失败</string>
+    <string name="menu_open_all">全部开启</string>
+    <string name="menu_close_all">全部关闭</string>
+    <string name="menu_invert_selection">反选</string>
+    <string name="menu_open_application">打开 %1$s</string>
+    <string name="failed_to_open_application">%1$s 启动失败</string>
 </resources>

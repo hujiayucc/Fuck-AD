@@ -18,5 +18,10 @@
     <string name="system_app">SYSTEM APP</string>
     <string name="search">Search</string>
     <string name="join_qq_group">Join QQ Group</string>
-    <string name="failed_to_start_qq">Failed to start QQ</string>
+    <string name="failed_to_open_qq">Failed to open QQ</string>
+    <string name="menu_open_all">Open All</string>
+    <string name="menu_close_all">Close All</string>
+    <string name="menu_invert_selection">Invert Selection</string>
+    <string name="menu_open_application">Open %1$s</string>
+    <string name="failed_to_open_application">Failed to open %1$s</string>
 </resources>

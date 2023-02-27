@@ -106,9 +106,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun afterTextChanged(s: Editable?) {
                 searchText = s.toString()
-                Thread {
-                    search(searchText)
-                }.start()
+                search(searchText)
             }
         })
 
@@ -226,7 +224,7 @@ class MainActivity : AppCompatActivity() {
                 try {
                     appContext.startActivity(intent)
                 } catch (e : Exception) {
-                    Toast.makeText(appContext, getString(R.string.failed_to_start_qq), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(appContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
                 }
                 true
             }
@@ -268,6 +266,13 @@ class MainActivity : AppCompatActivity() {
         resources.updateConfiguration(configuration, resources.displayMetrics)
         val locale = resources.configuration.locale
         if (Language.fromId(localeID) != locale) recreate()
+    }
+
+    override fun recreate() {
+        finish()
+        val intent = Intent(appContext, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        appContext.startActivity(intent)
     }
 
     companion object {
