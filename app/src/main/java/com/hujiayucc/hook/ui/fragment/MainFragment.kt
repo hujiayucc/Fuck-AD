@@ -9,7 +9,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import android.widget.AbsListView.OnScrollListener
 import android.widget.AdapterView.OnItemClickListener
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -29,10 +28,11 @@ import java.util.*
 
 class MainFragment : Fragment() {
     private lateinit var binding: FragmentMainBinding
-    private lateinit var listView: ListView
+    lateinit var listView: ListView
     private lateinit var progressBar: ProgressBar
     lateinit var refresh: SwipeRefreshLayout
     val list = ArrayList<AppInfo>()
+    var searchList = ArrayList<AppInfo>()
     private var isSystem: Boolean = false
 
     @SuppressLint("InflateParams")
@@ -68,7 +68,8 @@ class MainFragment : Fragment() {
 
         listView.onItemLongClickListener =
             AdapterView.OnItemLongClickListener { parent, view, position, id ->
-                val info = list[position]
+                var info: AppInfo = list[position]
+                if (searchText.isNotEmpty()) info = searchList[position]
                 val popupMenu = PopupMenu(activity, view)
                 val menu = popupMenu.menu
                 menu.add(getString(R.string.menu_open_application).format(info.app_name)).setOnMenuItemClickListener {
@@ -106,29 +107,6 @@ class MainFragment : Fragment() {
                 popupMenu.show()
                 true
             }
-
-        listView.setOnScrollListener(object : OnScrollListener {
-            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
-                // 监听滑动状态的改变
-            }
-            // 滚动时一直回调，直到停止滚动时才停止回调。单击时回调一次
-            // firstVisibleItem：当前能看见的第一个列表项ID（从0开始）
-            // visibleItemCount：当前能看见的列表项个数，总共的个数 ，小半个也算一个
-            // totalItemCount：ListView列表项总数
-            override fun onScroll(
-                view: AbsListView?,
-                firstVisibleItem: Int,
-                visibleItemCount: Int,
-                totalItemCount: Int,
-            ) {
-                if (firstVisibleItem > 10) binding.fab.visibility = View.VISIBLE
-                else binding.fab.visibility = View.INVISIBLE
-            }
-        })
-
-        binding.fab.setOnClickListener {
-            listView.setSelection(0)
-        }
     }
 
     private fun loadAppList(showSysApp: Boolean) {
@@ -188,6 +166,8 @@ class MainFragment : Fragment() {
                 list.clear()
                 list.addAll(isCheckList)
                 list.addAll(notCheckList)
+                searchList.clear()
+                searchList.addAll(list)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

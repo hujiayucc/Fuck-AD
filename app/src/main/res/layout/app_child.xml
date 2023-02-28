@@ -3,6 +3,7 @@
         xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
+        android:theme="@style/Theme.XYHook"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -18,38 +19,46 @@
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
 
-    <TextView
-            android:id="@+id/app_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:textSize="15sp"
-            android:text="APP NAME"
-            android:textStyle="bold"
-            app:layout_constraintTop_toTopOf="@+id/app_icon"
-            app:layout_constraintLeft_toRightOf="@id/app_icon"/>
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:layout_marginStart="60dp"
+            android:layout_marginEnd="75dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+        <TextView
+                android:id="@+id/app_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:textSize="15sp"
+                android:text="APP NAME"
+                android:textStyle="bold"/>
 
-    <TextView
-            android:id="@+id/app_package"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:gravity="left"
-            android:layout_marginTop="4dp"
-            android:text="APP PACKAGE"
-            app:layout_constraintStart_toStartOf="@id/app_name"
-            app:layout_constraintTop_toBottomOf="@id/app_name"
-            tools:ignore="RtlHardcoded,SmallSp"/>
+        <TextView
+                android:id="@+id/app_package"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"
+                android:layout_marginStart="16dp"
+                android:text="APP PACKAGE"
+                tools:ignore="RtlHardcoded,SmallSp"/>
+    </LinearLayout>
 
     <Switch
             android:id="@+id/switch_check"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="46dp"
+            android:layout_height="27dp"
             android:focusable="false"
             android:clickable="true"
+            android:checked="true"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             android:layout_marginEnd="20dp"
-            tools:ignore="KeyboardInaccessibleWidget,UseSwitchCompatOrMaterialXml"/>
+            tools:ignore="UseSwitchCompatOrMaterialXml"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

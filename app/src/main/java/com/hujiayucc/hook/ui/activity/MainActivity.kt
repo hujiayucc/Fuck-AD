@@ -124,6 +124,16 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTabReselected(tab: TabLayout.Tab?) {
                 // 标签页已经选中，并且再次被选中时触发
+                val fragment = fragmentList[viewPager.currentItem]
+                val listView = fragment.listView
+                var i = listView.firstVisiblePosition
+                Thread {
+                    while (i != 0) {
+                        i--
+                        runOnUiThread { listView.setSelection(i) }
+                        Thread.sleep(2)
+                    }
+                }.start()
             }
         })
     }
@@ -131,8 +141,18 @@ class MainActivity : AppCompatActivity() {
     fun search(text: String) {
         val fragment = fragmentList[tabLayout.selectedTabPosition]
         val list: ArrayList<AppInfo> = ArrayList()
-        for (app in fragment.list) {
-            if (app.app_name.contains(text) or app.app_package.contains(text)) list.add(app)
+        if (searchText.isEmpty()) {
+            for (app in fragment.list) {
+                if (app.app_name.contains(text) or app.app_package.contains(text))
+                    list.add(app)
+            }
+        } else {
+            for (app in fragment.list) {
+                if (app.app_name.contains(text) or app.app_package.contains(text))
+                    list.add(app)
+            }
+            fragment.searchList.clear()
+            fragment.searchList.addAll(list)
         }
         fragment.showList(list)
     }

@@ -1,7 +1,14 @@
 <resources>
-    <!-- Base application theme. -->
     <style name="Base.Theme.XYHook" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">@color/pink</item>
+        <item name="android:colorControlActivated">@color/pink</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="headerTextColor">@color/text</item>
+        <item name="menuColor">@color/text</item>
     </style>
+
+    <style name="Theme.XYHook" parent="Base.Theme.XYHook"/>
+    <color name="pink">#D3839D</color>
 </resources>

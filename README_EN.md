@@ -32,9 +32,10 @@ As the name suggests, this is an Xposed plugin to remove ads.
 
 ---
 
-- Tencent Ads | Test APP：大师兄影视 (Sucess)
-- Pangle Ads | Test APP：APP分享 (Sucess)
-- KW Ads | Test APP：NP Manager (Sucess)
+- Tencent Ads | Test APP：大师兄影视 (Success)
+- Pangle Ads | Test APP：APP分享 (Success)
+- KW Ads | Test APP：NP Manager (Success)
+- Google Ads | Test APP：老王VPN (Success)
 
 ### Additional features
 

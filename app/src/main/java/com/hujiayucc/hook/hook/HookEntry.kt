@@ -13,6 +13,7 @@ import com.hujiayucc.hook.data.PackageName
 import com.hujiayucc.hook.hook.app.*
 import com.hujiayucc.hook.hook.app.DragonRead.hook
 import com.hujiayucc.hook.hook.entity.Provider
+import com.hujiayucc.hook.hook.sdk.Google
 import com.hujiayucc.hook.hook.sdk.KWAD
 import com.hujiayucc.hook.hook.sdk.Pangle
 import com.hujiayucc.hook.hook.sdk.Tencent
@@ -73,6 +74,7 @@ object HookEntry : IYukiHookXposedInit {
                         packageParam.loadHooker(KWAD)
                         // 禁用广告SDK Provider
                         packageParam.loadHooker(Provider)
+                        packageParam.loadHooker(Google)
                     }
                 }
             }.ignoredHookClassNotFoundFailure()
@@ -86,6 +88,7 @@ object HookEntry : IYukiHookXposedInit {
             packageParam.loadHooker(KWAD)
             // 禁用广告SDK Provider
             packageParam.loadHooker(Provider)
+            packageParam.loadHooker(Google)
         }
     }
 }

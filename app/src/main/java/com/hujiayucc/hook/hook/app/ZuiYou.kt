@@ -2,7 +2,6 @@ package com.hujiayucc.hook.hook.app
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.MembersType
-import com.hujiayucc.hook.utils.Log
 import de.robv.android.xposed.XposedHelpers
 
 
@@ -29,7 +28,6 @@ object ZuiYou : YukiBaseHooker() {
                         name = "init"
                     }
                     replaceTo(null)
-                    Log.d("Hook Provider: $clazz")
                 }
             }.ignoredHookClassNotFoundFailure()
         }
@@ -41,7 +39,6 @@ object ZuiYou : YukiBaseHooker() {
                     val ob = instance
                     val a = XposedHelpers.getObjectField(ob, "url")
                     XposedHelpers.setObjectField(ob, "downloadUrl", a)
-                    Log.d("Hook ZuiYou: cn.xiaochuankeji.tieba.background.data.ServerVideo")
                 }
             }
         }

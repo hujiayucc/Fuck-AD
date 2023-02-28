@@ -2,7 +2,6 @@ package com.hujiayucc.hook.hook.entity
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.MembersType
-import com.hujiayucc.hook.utils.Log
 
 /** 禁用广告SDK Provider */
 object Provider : YukiBaseHooker() {
@@ -23,7 +22,6 @@ object Provider : YukiBaseHooker() {
                 injectMember {
                     allMembers(type = MembersType.ALL)
                     replaceTo(null)
-                    Log.d("Hook Provider: $clazz")
                 }
             }.ignoredHookClassNotFoundFailure()
         }

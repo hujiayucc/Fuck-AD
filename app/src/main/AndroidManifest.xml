@@ -7,6 +7,12 @@
             tools:ignore="QueryAllPackagesPermission"/>
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+    </queries>
+
     <application
             android:name=".application.XYApplication"
             android:allowBackup="true"
@@ -26,7 +32,7 @@
                 android:value="@string/description"/>
         <meta-data
                 android:name="xposedminversion"
-                android:value="93"/>
+                android:value="89"/>
 
         <activity
                 android:name=".ui.activity.MainActivity"
@@ -40,5 +46,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>
