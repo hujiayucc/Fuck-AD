@@ -1,8 +1,12 @@
 package com.hujiayucc.hook.ui.activity
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.os.StrictMode
@@ -29,7 +33,9 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data.buildTime
 import com.hujiayucc.hook.data.Data.global
+import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.data.Data.hookTip
+import com.hujiayucc.hook.data.Data.isLauncherIconShowing
 import com.hujiayucc.hook.data.Data.localeId
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.databinding.ActivityMainBinding
@@ -47,8 +53,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewPager: ViewPager
     private val fragmentList = ArrayList<MainFragment>()
     private lateinit var adapter: ViewPagerAdapter
-
-    private var mExitTime: Long = 0L
     private var localeID = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +63,11 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         initView()
+        // 检查是否已经授权该权限
+        if (checkSelfPermission(Manifest.permission.CHANGE_CONFIGURATION) != PackageManager.PERMISSION_GRANTED) {
+            // 请求授权该权限
+            requestPermissions(arrayOf(Manifest.permission.CHANGE_CONFIGURATION), 2001)
+        }
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
@@ -185,6 +194,7 @@ class MainActivity : AppCompatActivity() {
         menuInflater.inflate(R.menu.menu_main, menu)
         menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(global)
         menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
+        menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
         val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
         when (localeID) {
             0 -> group?.subMenu?.findItem(R.id.menu_language_defualt)?.isChecked = true
@@ -249,6 +259,12 @@ class MainActivity : AppCompatActivity() {
                 true
             }
 
+            R.id.menu_hide_icon -> {
+                hideOrShowLauncherIcon(!item.isChecked)
+                super.finish()
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -262,21 +278,40 @@ class MainActivity : AppCompatActivity() {
                     binding.search.visibility = View.GONE
                     false
                 } else {
-                    if (System.currentTimeMillis() - mExitTime > 2000) {
-                        Toast.makeText(applicationContext, getString(R.string.exit_tip), Toast.LENGTH_SHORT).show()
-                        mExitTime = System.currentTimeMillis()
-                    } else {
-                        finish()
-                        Thread {
-                            Thread.sleep(500)
-                            System.exit(0)
-                        }.start()
-                    }
+                    finish()
                     true
                 }
             }
 
             else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+
+    override fun finish() {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
+        excludeFromRecent(true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        excludeFromRecent(false)
+    }
+
+    /** 隐藏最近任务列表视图 */
+    private fun excludeFromRecent(exclude: Boolean) {
+        try {
+            val manager: ActivityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            for (appTask in manager.appTasks) {
+                if (appTask.taskInfo.id == taskId) {
+                    appTask.setExcludeFromRecents(exclude)
+                }
+            }
+        } catch (e : Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -289,10 +324,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun recreate() {
-        finish()
-        val intent = Intent(appContext, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        super.finish()
+        val intent = Intent(appContext, this::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         appContext.startActivity(intent)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        recreate()
     }
 
     companion object {

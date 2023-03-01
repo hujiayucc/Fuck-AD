@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="xposed_scope">
+        <item>android</item>
+        <item>com.dogal.kenhuangzhe.geh.dashixiong</item>
+        <item>cn.xiaochuankeji.tieba</item>
+        <item>info.muge.appshare</item>
+        <item>com.dragon.read</item>
+        <item>com.duitang.main</item>
+        <item>com.wn.app.np</item>
+        <item>com.kai.video</item>
+        <item>com.coolapk.market</item>
+        <item>com.sticktoit</item>
+    </string-array>
+</resources>

@@ -30,7 +30,7 @@ object HookEntry : IYukiHookXposedInit {
                     load(this)
                 }
             } else {
-                if (prefs.getBoolean(packageName, true)) {
+                if (prefs.getBoolean(packageName, false)) {
                     loadApp(packageName) {
                         load(this)
                     }
