@@ -24,4 +24,7 @@
     <string name="menu_open_application">Open %1$s</string>
     <string name="failed_to_open_application">Failed to open %1$s</string>
     <string name="menu_hide_icon">Hide Icon</string>
+    <string name="popup_cancel">Cancel</string>
+    <string name="popup_done">Done</string>
+    <string name="menu_theme_colors">Theme Color</string>
 </resources>

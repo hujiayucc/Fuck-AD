@@ -21,6 +21,16 @@
           android:checkable="true"
           app:showAsAction="never"/>
 
+    <item android:id="@+id/menu_color"
+          android:title="@string/menu_theme_colors"
+          android:orderInCategory="500"
+          app:showAsAction="never"/>
+
+    <item
+            android:id="@+id/menu_qq_group"
+            android:title="@string/join_qq_group"
+            android:orderInCategory="600"/>
+
     <item android:id="@+id/menu_language_settings"
           android:title="@string/language_settings">
         <menu>
@@ -42,9 +52,4 @@
         android:title="@string/search"
         app:showAsAction="ifRoom"
         android:icon="@drawable/ic_search"/>
-
-    <item
-        android:id="@+id/menu_qq_group"
-        android:title="@string/join_qq_group"
-        android:orderInCategory="500"/>
 </menu>

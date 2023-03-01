@@ -37,12 +37,14 @@ import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.data.Data.isLauncherIconShowing
 import com.hujiayucc.hook.data.Data.localeId
+import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.update.Update.checkUpdate
 import com.hujiayucc.hook.utils.Language
+import top.defaults.colorpicker.ColorPickerPopup
 import java.util.*
 
 
@@ -98,8 +100,8 @@ class MainActivity : AppCompatActivity() {
         if (YukiHookAPI.Status.isModuleActive) {
             binding.mainImgStatus.setImageResource(R.drawable.ic_success)
             binding.mainStatus.text = getString(R.string.is_active)
-            binding.mainActiveStatus.background = getDrawable(R.drawable.is_active)
         }
+        binding.mainActiveStatus.background = getDrawable(R.drawable.bg_header)
         binding.mainVersion.text = getString(R.string.main_version)
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         binding.mainDate.text = "Build Time：${buildTime}"
@@ -173,7 +175,6 @@ class MainActivity : AppCompatActivity() {
             if ((info != null) && (info.toString().length > 10)) {
                 runOnUiThread {
                     binding.mainStatus.text = getString(R.string.has_update)
-                    binding.mainActiveStatus.background = getDrawable(R.drawable.has_update_version)
                     binding.mainActiveStatus.setOnClickListener {
                         val url = Uri.parse(info.toString())
                         val intent = Intent(Intent.ACTION_VIEW, url)
@@ -256,6 +257,33 @@ class MainActivity : AppCompatActivity() {
                 } catch (e : Exception) {
                     Toast.makeText(appContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
                 }
+                true
+            }
+
+            R.id.menu_color -> {
+                ColorPickerPopup.Builder(this)
+                    .initialColor(modulePrefs.get(themes))
+                    .enableBrightness(true)
+                    .enableAlpha(true)
+                    .okTitle(getString(R.string.popup_done))
+                    .cancelTitle(getString(R.string.popup_cancel))
+                    .showIndicator(true)
+                    .showValue(false)
+                    .build()
+                    .show(item.actionView, object : ColorPickerPopup.ColorPickerObserver() {
+                        @SuppressLint("UnspecifiedImmutableFlag")
+                        override fun onColorPicked(color: Int) {
+                            modulePrefs.put(themes, color)
+                            Thread {
+                                Thread.sleep(300)
+                                val intent = packageManager.getLaunchIntentForPackage(packageName)
+                                intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                startActivity(intent)
+                                //杀掉以前进程
+                                android.os.Process.killProcess(android.os.Process.myPid())
+                            }.start()
+                        }
+                    })
                 true
             }
 

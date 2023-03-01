@@ -18,6 +18,7 @@ object Data {
     val global: PrefsData<Boolean> = PrefsData("global", false)
     val hookTip: PrefsData<Boolean> = PrefsData("hookTip", false)
     val localeId: PrefsData<Int> = PrefsData("locale", 0)
+    val themes: PrefsData<Int> = PrefsData("theme", -25412)
 
     /**
      * 隐藏或显示启动器图标

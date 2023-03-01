@@ -9,6 +9,7 @@ import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hookTip
+import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.data.PackageName
 import com.hujiayucc.hook.hook.app.*
 import com.hujiayucc.hook.hook.app.DragonRead.hook
@@ -33,6 +34,21 @@ object HookEntry : IYukiHookXposedInit {
                 if (prefs.getBoolean(packageName, false)) {
                     loadApp(packageName) {
                         load(this)
+                    }
+                }
+            }
+        } else if (packageName.equals(BuildConfig.APPLICATION_ID)) {
+            if (YukiHookAPI.Status.isModuleActive) {
+                loadApp(BuildConfig.APPLICATION_ID) {
+                    resources().hook {
+                        injectResource {
+                            conditions {
+                                name = "theme"
+                                color()
+                            }
+
+                            replaceTo(prefs.get(themes))
+                        }
                     }
                 }
             }

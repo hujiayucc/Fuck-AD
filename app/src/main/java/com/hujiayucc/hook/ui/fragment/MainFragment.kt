@@ -18,6 +18,7 @@ import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data
+import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
@@ -46,7 +47,7 @@ class MainFragment : Fragment() {
         listView = binding.list
         progressBar = binding.progress
         refresh = binding.refresh
-
+        refresh.setColorSchemeColors(appContext.modulePrefs.get(themes))
         refresh.setOnRefreshListener {
             if (searchText.isEmpty()) {
                 loadAppList(isSystem)

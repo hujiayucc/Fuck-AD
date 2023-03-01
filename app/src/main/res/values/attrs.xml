@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <attr name="headerTextColor" format="reference|color"/>
-    <attr name="menuColor" format="reference|color"/>
+    <declare-styleable name="Base.Theme.XYHook">
+        <attr name="headerTextColor" format="reference|color"/>
+        <attr name="menuColor" format="reference|color"/>
+        <attr name="popupBackground" format="reference|color"/>
+    </declare-styleable>
 </resources>
