@@ -26,10 +26,15 @@
           android:orderInCategory="500"
           app:showAsAction="never"/>
 
+    <item android:id="@+id/menu_background"
+          android:title="@string/menu_background_settings"
+          android:orderInCategory="600"
+          app:showAsAction="never"/>
+
     <item
             android:id="@+id/menu_qq_group"
             android:title="@string/join_qq_group"
-            android:orderInCategory="600"/>
+            android:orderInCategory="700"/>
 
     <item android:id="@+id/menu_language_settings"
           android:title="@string/language_settings">

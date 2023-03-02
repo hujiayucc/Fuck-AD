@@ -77,9 +77,11 @@ class MainFragment : Fragment() {
                     try {
                         val intent: Intent? = appContext.packageManager.getLaunchIntentForPackage(info.app_package)
                         appContext.startActivity(intent)
-                    } catch (e : Exception) {
-                        Toast.makeText(appContext, getString(R.string.failed_to_open_application)
-                            .format(info.app_name), Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            appContext, getString(R.string.failed_to_open_application)
+                                .format(info.app_name), Toast.LENGTH_SHORT
+                        ).show()
                     }
                     false
                 }

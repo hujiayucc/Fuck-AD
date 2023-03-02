@@ -7,10 +7,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.KeyEvent
@@ -18,8 +22,11 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.ImageView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager.widget.ViewPager
@@ -31,6 +38,7 @@ import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Com
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
+import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.buildTime
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
@@ -45,6 +53,8 @@ import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.update.Update.checkUpdate
 import com.hujiayucc.hook.utils.Language
 import top.defaults.colorpicker.ColorPickerPopup
+import java.io.File
+import java.io.FileOutputStream
 import java.util.*
 
 
@@ -56,6 +66,8 @@ class MainActivity : AppCompatActivity() {
     private val fragmentList = ArrayList<MainFragment>()
     private lateinit var adapter: ViewPagerAdapter
     private var localeID = 0
+    private lateinit var imageView: ImageView
+    private var alert_imageView: ImageView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val policy = ThreadPolicy.Builder().permitAll().build()
@@ -79,13 +91,13 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         tabLayout = binding.tabLayout
         viewPager = binding.viewPager
+        initBackGround()
         val userBundle = Bundle()
         userBundle.putBoolean("system", false)
         val user = Fragment.instantiate(appContext, MainFragment::class.java.name, userBundle) as MainFragment
         val systemBundle = Bundle()
         systemBundle.putBoolean("system", true)
         val system = Fragment.instantiate(appContext, MainFragment::class.java.name, systemBundle) as MainFragment
-
         fragmentList.add(user)
         fragmentList.add(system)
         tabLayout.setupWithViewPager(viewPager)
@@ -137,12 +149,10 @@ class MainActivity : AppCompatActivity() {
                 // 标签页已经选中，并且再次被选中时触发
                 val fragment = fragmentList[viewPager.currentItem]
                 val listView = fragment.listView
-                var i = listView.firstVisiblePosition
                 Thread {
-                    while (i != 0) {
-                        i--
-                        runOnUiThread { listView.setSelection(i) }
-                        Thread.sleep(2)
+                    while (listView.firstVisiblePosition != 0) {
+                        runOnUiThread { listView.setSelection(listView.firstVisiblePosition - 1) }
+                        Thread.sleep(10)
                     }
                 }.start()
             }
@@ -254,7 +264,7 @@ class MainActivity : AppCompatActivity() {
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 try {
                     appContext.startActivity(intent)
-                } catch (e : Exception) {
+                } catch (e: Exception) {
                     Toast.makeText(appContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
                 }
                 true
@@ -276,8 +286,11 @@ class MainActivity : AppCompatActivity() {
                             modulePrefs.put(themes, color)
                             Thread {
                                 Thread.sleep(300)
-                                val intent = packageManager.getLaunchIntentForPackage(packageName)
-                                intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                var intent = packageManager.getLaunchIntentForPackage(packageName)
+                                if (intent != null)
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                else intent = Intent(appContext, MainActivity::class.java)
+
                                 startActivity(intent)
                                 //杀掉以前进程
                                 android.os.Process.killProcess(android.os.Process.myPid())
@@ -293,9 +306,87 @@ class MainActivity : AppCompatActivity() {
                 true
             }
 
+            R.id.menu_background -> {
+                val filename = "background.png"
+                alert_imageView = ImageView(appContext)
+                alert_imageView!!.setPadding(0, 50, 0, 0)
+                try {
+                    alert_imageView!!.setImageBitmap((imageView.drawable as BitmapDrawable).toBitmap())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                val dialog = AlertDialog.Builder(this)
+                    .setCancelable(true)
+                    .setTitle(getString(R.string.alert_choose_image_title))
+                    .setNeutralButton(getString(R.string.alert_choose_image), null)
+                    .setPositiveButton(getString(R.string.alert_done)) { dialog, which ->
+                        binding.root.background = alert_imageView!!.drawable
+                        try {
+                            val file = File(filesDir, filename)
+                            val image = (alert_imageView!!.drawable as BitmapDrawable).toBitmap()
+                            val fileOutputStream = FileOutputStream(file)
+                            image.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
+                            fileOutputStream.flush()
+                            fileOutputStream.close()
+                            modulePrefs.put(Data.background, file.path)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        dialog.dismiss()
+                        recreate()
+                    }
+                    .setNegativeButton(getString(R.string.alert_reset)) { dialog, which ->
+                        try {
+                            val file = File(filesDir, filename)
+                            if (file.exists())
+                                file.delete()
+                            recreate()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        dialog?.dismiss()
+                    }
+                    .setView(alert_imageView)
+                    .create()
+                dialog.show()
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                    val intent = Intent(Intent.ACTION_PICK, null)
+                    intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
+                    startActivityForResult(intent, 2)
+                    return@setOnClickListener
+                }
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
+
+    @SuppressLint("ResourceAsColor")
+    private fun initBackGround() {
+        imageView = ImageView(appContext)
+        try {
+            val background = modulePrefs.get(Data.background)
+            imageView.setImageBitmap(BitmapFactory.decodeFile(background))
+            binding.root.background = imageView.drawable
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 2) {
+            // 从相册返回的数据
+            if (data != null) {
+                // 得到图片的全路径并设置
+                val uri = data.data
+                alert_imageView!!.setImageURI(data.data)
+            }
+        }
+    }
+
 
     @SuppressLint("ResourceType")
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -338,7 +429,7 @@ class MainActivity : AppCompatActivity() {
                     appTask.setExcludeFromRecents(exclude)
                 }
             }
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
         }
     }

@@ -2,12 +2,13 @@
     <style name="Base.Theme.XYHook" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/theme</item>
         <item name="android:colorControlActivated">?attr/colorPrimary</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">?attr/BackgroundColor</item>
+        <item name="android:statusBarColor">?attr/BackgroundColor</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="headerTextColor">@color/white</item>
         <item name="menuColor">@color/black</item>
         <item name="popupBackground">@color/white</item>
+        <item name="BackgroundColor">#80FFFFFF</item>
     </style>
 
     <style name="Theme.XYHook" parent="Base.Theme.XYHook"/>

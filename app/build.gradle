@@ -13,8 +13,8 @@ android {
         applicationId "com.hujiayucc.hook"
         minSdk 28
         targetSdk 33
-        versionCode 580
-        versionName "1.0.9"
+        versionCode 600
+        versionName "1.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

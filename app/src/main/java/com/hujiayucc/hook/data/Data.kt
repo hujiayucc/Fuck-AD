@@ -15,10 +15,11 @@ object Data {
 
     /** 获取项目编译完成的时间戳 (当前本地时间) */
     val buildTime: String = format.format(Date(YukiHookAPI.Status.compiledTimestamp))
-    val global: PrefsData<Boolean> = PrefsData("global", false)
+    val global: PrefsData<Boolean> = PrefsData("global", true)
     val hookTip: PrefsData<Boolean> = PrefsData("hookTip", false)
     val localeId: PrefsData<Int> = PrefsData("locale", 0)
     val themes: PrefsData<Int> = PrefsData("theme", -25412)
+    val background: PrefsData<String> = PrefsData("background", "")
 
     /**
      * 隐藏或显示启动器图标
@@ -38,7 +39,8 @@ object Data {
      * 获取启动器图标状态
      * @return [Boolean] 是否显示
      */
-    val Context.isLauncherIconShowing get() = packageManager?.getComponentEnabledSetting(
+    val Context.isLauncherIconShowing
+        get() = packageManager?.getComponentEnabledSetting(
             ComponentName(packageName, "com.hujiayucc.hook.ui.activity.Home")
         ) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED
 }

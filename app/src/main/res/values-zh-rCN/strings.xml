@@ -27,4 +27,9 @@
     <string name="popup_cancel">取消</string>
     <string name="popup_done">确定</string>
     <string name="menu_theme_colors">主题配色</string>
+    <string name="menu_background_settings">背景设置</string>
+    <string name="alert_choose_image_title">选择你的图片</string>
+    <string name="alert_choose_image">选择图片</string>
+    <string name="alert_done">完成</string>
+    <string name="alert_reset">重置背景</string>
 </resources>
