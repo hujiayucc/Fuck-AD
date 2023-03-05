@@ -8,7 +8,7 @@
         <item name="headerTextColor">@color/text</item>
         <item name="menuColor">@color/text</item>
         <item name="popupBackground">@color/not_active</item>
-        <item name="BackgroundColor">#80000000</item>
+        <item name="BackgroundColor">#4D000000</item>
     </style>
 
     <style name="Theme.XYHook" parent="Base.Theme.XYHook"/>
