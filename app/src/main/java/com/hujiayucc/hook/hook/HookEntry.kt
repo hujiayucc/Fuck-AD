@@ -94,6 +94,26 @@ object HookEntry : IYukiHookXposedInit {
                     }
                 }
             }.ignoredHookClassNotFoundFailure()
+        } else if ("com.wrapper.proxyapplication.WrapperProxyApplication".toClassOrNull(packageParam.appClassLoader) != null) {
+            Log.d("腾讯御安全")
+            packageParam.findClass("com.wrapper.proxyapplication.WrapperProxyApplication").hook {
+                injectMember {
+                    method { name = "attachBaseContext" }
+                    afterHook {
+                        val context = args[0] as Context
+                        packageParam.appClassLoader = context.classLoader
+                        // 腾讯广告
+                        packageParam.loadHooker(Tencent)
+                        // 穿山甲广告
+                        packageParam.loadHooker(Pangle)
+                        // 快手广告
+                        packageParam.loadHooker(KWAD)
+                        // 禁用广告SDK Provider
+                        packageParam.loadHooker(Provider)
+                        packageParam.loadHooker(Google)
+                    }
+                }
+            }.ignoredHookClassNotFoundFailure()
         } else {
             Log.d("非360加固")
             // 腾讯广告
