@@ -37,6 +37,7 @@ As the name suggests, this is an Xposed plugin to remove ads.
 - Pangle Ads | Test APP：APP分享 (Success)
 - KW Ads | Test APP：NP Manager (Success)
 - Google Ads | Test APP：老王VPN (Success)
+- Auto Click Skip
 
 ### Additional features
 

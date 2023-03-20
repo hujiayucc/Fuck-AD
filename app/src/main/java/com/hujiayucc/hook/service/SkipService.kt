@@ -12,7 +12,7 @@ import android.widget.Toast
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.data.Data.hookTip
+import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.utils.Log
 
 class SkipService : AccessibilityService() {
@@ -42,6 +42,7 @@ class SkipService : AccessibilityService() {
     private fun findSkipButtonByText(nodeInfo: AccessibilityNodeInfo?) {
         if (nodeInfo == null) return
         if (nodeInfo.packageName.equals(BuildConfig.APPLICATION_ID)) return
+        if (!applicationContext.modulePrefs.getBoolean(nodeInfo.packageName.toString(), true)) return
         val list = nodeInfo.findAccessibilityNodeInfosByText("跳过")
         if (list.isNotEmpty()) {
             for (node in list) {
@@ -49,16 +50,30 @@ class SkipService : AccessibilityService() {
                     if (!node.parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                         val rect = Rect()
                         node.getBoundsInScreen(rect)
-                        click(rect.centerX(), rect.centerY(), 0, 20)
+                        click(rect.centerX(), rect.centerY(),200,20)
                     }
                 }
                 node.recycle()
+                if (applicationContext.modulePrefs.get(Data.hookTip))
+                    Toast.makeText(applicationContext, getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
+                Log.i("成功跳过")
             }
-            if (applicationContext.modulePrefs.get(hookTip))
+            return
+        }
+        if (nodeInfo.text != null) {
+            if (!nodeInfo.text.contains("跳过")) return
+            if (!nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                val rect = Rect()
+                nodeInfo.getBoundsInScreen(rect)
+                click(rect.centerX(), rect.centerY(),200,20)
+            }
+            nodeInfo.recycle()
+            if (applicationContext.modulePrefs.get(Data.hookTip))
                 Toast.makeText(applicationContext, getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
             Log.i("成功跳过")
             return
         }
+
         nodeInfo.recycle()
     }
 
