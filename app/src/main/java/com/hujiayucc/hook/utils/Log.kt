@@ -22,4 +22,20 @@ object Log {
     fun w(msg: String) {
         loggerW(TAG, "------$msg------")
     }
+
+    fun d(TAG: String, msg: String) {
+        loggerD(TAG, "------$msg------")
+    }
+
+    fun e(TAG: String, msg: String) {
+        loggerE(TAG, "------$msg------")
+    }
+
+    fun i(TAG: String, msg: String) {
+        loggerI(TAG, "------$msg------")
+    }
+
+    fun w(TAG: String, msg: String) {
+        loggerW(TAG, "------$msg------")
+    }
 }

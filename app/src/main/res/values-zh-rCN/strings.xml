@@ -32,4 +32,8 @@
     <string name="alert_choose_image">选择图片</string>
     <string name="alert_done">完成</string>
     <string name="alert_reset">重置背景</string>
+    <string name="menu_auto_skip">自动跳过</string>
+    <string name="menu_minimize">最小化</string>
+    <string name="tip_skip_success">成功跳过</string>
+    <string name="service_open_success">服务启动成功</string>
 </resources>

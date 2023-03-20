@@ -32,4 +32,8 @@
     <string name="alert_choose_image">Choose Image</string>
     <string name="alert_done">Done</string>
     <string name="alert_reset">Reset</string>
+    <string name="menu_auto_skip">Auto Skip</string>
+    <string name="menu_minimize">minimize</string>
+    <string name="tip_skip_success">Skip Success</string>
+    <string name="service_open_success">Service Started</string>
 </resources>

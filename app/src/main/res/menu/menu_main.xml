@@ -21,20 +21,31 @@
           android:checkable="true"
           app:showAsAction="never"/>
 
+    <item android:id="@+id/menu_auto_skip"
+          android:title="@string/menu_auto_skip"
+          android:orderInCategory="500"
+          android:checkable="true"
+          app:showAsAction="never"/>
+
     <item android:id="@+id/menu_color"
           android:title="@string/menu_theme_colors"
-          android:orderInCategory="500"
+          android:orderInCategory="600"
           app:showAsAction="never"/>
 
     <item android:id="@+id/menu_background"
           android:title="@string/menu_background_settings"
-          android:orderInCategory="600"
+          android:orderInCategory="700"
+          app:showAsAction="never"/>
+
+    <item android:id="@+id/menu_minimize"
+          android:title="@string/menu_minimize"
+          android:orderInCategory="800"
           app:showAsAction="never"/>
 
     <item
             android:id="@+id/menu_qq_group"
             android:title="@string/join_qq_group"
-            android:orderInCategory="700"/>
+            android:orderInCategory="900"/>
 
     <item android:id="@+id/menu_language_settings"
           android:title="@string/language_settings">

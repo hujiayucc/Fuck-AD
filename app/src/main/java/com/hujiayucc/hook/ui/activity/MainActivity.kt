@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -12,10 +13,13 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
 import android.provider.MediaStore
+import android.provider.Settings
 import android.text.Editable
+import android.text.TextUtils.SimpleStringSplitter
 import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.Menu
@@ -48,10 +52,13 @@ import com.hujiayucc.hook.data.Data.localeId
 import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.databinding.ActivityMainBinding
+import com.hujiayucc.hook.service.BootReceiver
+import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.update.Update.checkUpdate
 import com.hujiayucc.hook.utils.Language
+import com.hujiayucc.hook.utils.Log
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
 import java.io.FileOutputStream
@@ -68,6 +75,7 @@ class MainActivity : AppCompatActivity() {
     private var localeID = 0
     private lateinit var imageView: ImageView
     private var alert_imageView: ImageView? = null
+    private var menu: Menu? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val policy = ThreadPolicy.Builder().permitAll().build()
@@ -82,6 +90,9 @@ class MainActivity : AppCompatActivity() {
             // 请求授权该权限
             requestPermissions(arrayOf(Manifest.permission.CHANGE_CONFIGURATION), 2001)
         }
+        val filter = IntentFilter()
+        filter.addAction("com.hujiayucc.hook.service.StartService")
+        registerReceiver(BootReceiver(), filter)
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
@@ -206,13 +217,25 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(global)
         menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
         menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
+        menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
         val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
         when (localeID) {
             0 -> group?.subMenu?.findItem(R.id.menu_language_defualt)?.isChecked = true
             1 -> group?.subMenu?.findItem(R.id.menu_language_en)?.isChecked = true
             2 -> group?.subMenu?.findItem(R.id.menu_language_zh)?.isChecked = true
         }
+        this.menu = menu
         return true
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
+        menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
+        if (isChecked) {
+            intent = Intent(appContext, SkipService::class.java)
+            startService(intent)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -358,6 +381,28 @@ class MainActivity : AppCompatActivity() {
                 true
             }
 
+            R.id.menu_auto_skip -> {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+                true
+            }
+
+            R.id.menu_minimize -> {
+                try {
+                    super.finishAndRemoveTask()
+                    if (isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)) {
+                        val intent = Intent("com.hujiayucc.hook.service.StartService")
+                        sendBroadcast(intent)
+                    }
+                    Handler().postDelayed({
+                        android.os.Process.killProcess(android.os.Process.myPid())
+                    },1000)
+                } catch (e : Exception) {
+                    e.printStackTrace()
+                }
+                false
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -452,6 +497,42 @@ class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         recreate()
+    }
+
+    /** 检测辅助功能是否开启 */
+    private fun isAccessibilitySettingsOn(serviceName: String): Boolean {
+        var accessibilityEnabled = 0
+        // 对应的服务
+        val service = "$packageName/$serviceName"
+        try {
+            accessibilityEnabled = Settings.Secure.getInt(
+                applicationContext.contentResolver,
+                Settings.Secure.ACCESSIBILITY_ENABLED
+            )
+            Log.i("accessibilityEnabled = $accessibilityEnabled")
+        } catch (e: Settings.SettingNotFoundException) {
+            Log.e("Error finding setting, default accessibility to not found: " + e.message)
+        }
+        val mStringColonSplitter = SimpleStringSplitter(':')
+        if (accessibilityEnabled == 1) {
+            Log.i("***ACCESSIBILITY IS ENABLED***")
+            val settingValue: String = Settings.Secure.getString(
+                applicationContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            mStringColonSplitter.setString(settingValue)
+            while (mStringColonSplitter.hasNext()) {
+                val accessibilityService = mStringColonSplitter.next()
+                Log.i(" > accessibilityService :: $accessibilityService $service")
+                if (accessibilityService.equals(service,true)) {
+                    Log.i("We've found the correct setting - accessibility is switched on!")
+                    return true
+                }
+            }
+        } else {
+            Log.i("***ACCESSIBILITY IS DISABLED***")
+        }
+        return false
     }
 
     companion object {
