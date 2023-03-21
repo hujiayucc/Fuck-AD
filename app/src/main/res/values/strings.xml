@@ -33,7 +33,10 @@
     <string name="alert_done">Done</string>
     <string name="alert_reset">Reset</string>
     <string name="menu_auto_skip">Auto Skip</string>
-    <string name="menu_minimize">minimize</string>
+    <string name="menu_minimize">Minimize</string>
     <string name="tip_skip_success">Skip Success</string>
     <string name="service_open_success">Service Started</string>
+    <string name="error_accessibilityservice">AccessibilityService exception</string>
+    <string name="accessibility_description">Auto Skip ADs AccessibilityService</string>
+    <string name="accessibility_notification">Auto Skipped: %1$s\nAuto Skip ADs AccessibilityService</string>
 </resources>

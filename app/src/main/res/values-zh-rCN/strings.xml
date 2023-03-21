@@ -36,4 +36,7 @@
     <string name="menu_minimize">最小化</string>
     <string name="tip_skip_success">成功跳过</string>
     <string name="service_open_success">服务启动成功</string>
+    <string name="error_accessibilityservice">无障碍服务异常</string>
+    <string name="accessibility_description">自动跳过广告无障碍服务</string>
+    <string name="accessibility_notification">已自动跳过：%1$s\n自动跳过广告无障碍服务</string>
 </resources>

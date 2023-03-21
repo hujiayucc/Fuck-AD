@@ -19,7 +19,6 @@ import android.os.StrictMode.ThreadPolicy
 import android.provider.MediaStore
 import android.provider.Settings
 import android.text.Editable
-import android.text.TextUtils.SimpleStringSplitter
 import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.Menu
@@ -44,11 +43,14 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.buildTime
+import com.hujiayucc.hook.data.Data.checkRoot
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.data.Data.hookTip
+import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
 import com.hujiayucc.hook.data.Data.isLauncherIconShowing
 import com.hujiayucc.hook.data.Data.localeId
+import com.hujiayucc.hook.data.Data.openService
 import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.databinding.ActivityMainBinding
@@ -58,7 +60,6 @@ import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.update.Update.checkUpdate
 import com.hujiayucc.hook.utils.Language
-import com.hujiayucc.hook.utils.Log
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
 import java.io.FileOutputStream
@@ -93,6 +94,8 @@ class MainActivity : AppCompatActivity() {
         val filter = IntentFilter()
         filter.addAction("com.hujiayucc.hook.service.StartService")
         registerReceiver(BootReceiver(), filter)
+        val intent = Intent("com.hujiayucc.hook.service.StartService")
+        sendBroadcast(intent)
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
@@ -309,12 +312,11 @@ class MainActivity : AppCompatActivity() {
                             modulePrefs.put(themes, color)
                             Thread {
                                 Thread.sleep(300)
-                                var intent = packageManager.getLaunchIntentForPackage(packageName)
-                                if (intent != null)
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                else intent = Intent(appContext, MainActivity::class.java)
-
-                                startActivity(intent)
+                                var intents = packageManager.getLaunchIntentForPackage(packageName)
+                                if (intents != null)
+                                    intents.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                else intents = Intent(appContext, MainActivity::class.java)
+                                startActivity(intents)
                                 //杀掉以前进程
                                 android.os.Process.killProcess(android.os.Process.myPid())
                             }.start()
@@ -382,18 +384,27 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_auto_skip -> {
-                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                startActivity(intent)
+                if (checkRoot()) {
+                    openService()
+                    val isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
+                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
+                    if (isChecked) {
+                        intent = Intent(appContext, SkipService::class.java)
+                        startService(intent)
+                    }
+                }
+                else {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    startActivity(intent)
+                }
                 true
             }
 
             R.id.menu_minimize -> {
                 try {
                     super.finishAndRemoveTask()
-                    if (isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)) {
-                        val intent = Intent("com.hujiayucc.hook.service.StartService")
-                        sendBroadcast(intent)
-                    }
+                    val intent = Intent("com.hujiayucc.hook.service.StartService")
+                    sendBroadcast(intent)
                     Handler().postDelayed({
                         android.os.Process.killProcess(android.os.Process.myPid())
                     },1000)
@@ -497,42 +508,6 @@ class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         recreate()
-    }
-
-    /** 检测辅助功能是否开启 */
-    private fun isAccessibilitySettingsOn(serviceName: String): Boolean {
-        var accessibilityEnabled = 0
-        // 对应的服务
-        val service = "$packageName/$serviceName"
-        try {
-            accessibilityEnabled = Settings.Secure.getInt(
-                applicationContext.contentResolver,
-                Settings.Secure.ACCESSIBILITY_ENABLED
-            )
-            Log.i("accessibilityEnabled = $accessibilityEnabled")
-        } catch (e: Settings.SettingNotFoundException) {
-            Log.e("Error finding setting, default accessibility to not found: " + e.message)
-        }
-        val mStringColonSplitter = SimpleStringSplitter(':')
-        if (accessibilityEnabled == 1) {
-            Log.i("***ACCESSIBILITY IS ENABLED***")
-            val settingValue: String = Settings.Secure.getString(
-                applicationContext.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-            )
-            mStringColonSplitter.setString(settingValue)
-            while (mStringColonSplitter.hasNext()) {
-                val accessibilityService = mStringColonSplitter.next()
-                Log.i(" > accessibilityService :: $accessibilityService $service")
-                if (accessibilityService.equals(service,true)) {
-                    Log.i("We've found the correct setting - accessibility is switched on!")
-                    return true
-                }
-            }
-        } else {
-            Log.i("***ACCESSIBILITY IS DISABLED***")
-        }
-        return false
     }
 
     companion object {
