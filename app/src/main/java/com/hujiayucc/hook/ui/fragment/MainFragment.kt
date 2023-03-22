@@ -27,6 +27,7 @@ import com.hujiayucc.hook.utils.Log
 import java.text.Collator
 import java.util.*
 
+@Suppress("NAME_SHADOWING", "DEPRECATION")
 class MainFragment : Fragment() {
     private lateinit var binding: FragmentMainBinding
     lateinit var listView: ListView

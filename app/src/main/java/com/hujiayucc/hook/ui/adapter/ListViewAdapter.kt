@@ -10,6 +10,7 @@ import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
+import com.hujiayucc.hook.data.Data.updateConfig
 import com.hujiayucc.hook.databinding.AppChildBinding
 
 class ListViewAdapter(
@@ -38,6 +39,7 @@ class ListViewAdapter(
         info.switchCheck = binding.switchCheck
         info.switchCheck.setOnCheckedChangeListener { buttonView, isChecked ->
             modulePrefs.put(PrefsData(info.app_package, false), isChecked)
+            appContext.updateConfig(modulePrefs.all())
         }
         if (info.app_icon != null) binding.appIcon.setImageDrawable(info.app_icon)
         binding.appName.text = info.app_name

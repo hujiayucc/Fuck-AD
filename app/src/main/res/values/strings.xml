@@ -36,7 +36,7 @@
     <string name="menu_minimize">Minimize</string>
     <string name="tip_skip_success">Skip Success</string>
     <string name="service_open_success">Service Started</string>
-    <string name="error_accessibilityservice">AccessibilityService exception</string>
+    <string name="close_accessibilityservice">AccessibilityService Closed</string>
     <string name="accessibility_description">Auto Skip ADs AccessibilityService</string>
     <string name="accessibility_notification">Auto Skipped: %1$s\nAuto Skip ADs AccessibilityService</string>
 </resources>

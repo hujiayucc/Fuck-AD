@@ -11,7 +11,6 @@ class BootReceiver : BroadcastReceiver() {
     @SuppressLint("UnsafeProtectedBroadcastReceiver")
     override fun onReceive(context: Context?, intent: Intent?) {
         val intents = Intent(context, SkipService::class.java)
-        context?.stopService(intents)
         context?.startService(intents)
         if (context?.isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!) == false) openService()
     }

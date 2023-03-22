@@ -44,14 +44,17 @@ import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.buildTime
 import com.hujiayucc.hook.data.Data.checkRoot
+import com.hujiayucc.hook.data.Data.closeService
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
 import com.hujiayucc.hook.data.Data.isLauncherIconShowing
+import com.hujiayucc.hook.data.Data.isServiceWork
 import com.hujiayucc.hook.data.Data.localeId
 import com.hujiayucc.hook.data.Data.openService
 import com.hujiayucc.hook.data.Data.themes
+import com.hujiayucc.hook.data.Data.updateConfig
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.service.BootReceiver
@@ -66,6 +69,7 @@ import java.io.FileOutputStream
 import java.util.*
 
 
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -91,11 +95,6 @@ class MainActivity : AppCompatActivity() {
             // 请求授权该权限
             requestPermissions(arrayOf(Manifest.permission.CHANGE_CONFIGURATION), 2001)
         }
-        val filter = IntentFilter()
-        filter.addAction("com.hujiayucc.hook.service.StartService")
-        registerReceiver(BootReceiver(), filter)
-        val intent = Intent("com.hujiayucc.hook.service.StartService")
-        sendBroadcast(intent)
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
@@ -171,6 +170,7 @@ class MainActivity : AppCompatActivity() {
                 }.start()
             }
         })
+        updateConfig(modulePrefs.all())
     }
 
     fun search(text: String) {
@@ -239,6 +239,7 @@ class MainActivity : AppCompatActivity() {
             intent = Intent(appContext, SkipService::class.java)
             startService(intent)
         }
+        updateConfig(modulePrefs.all())
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -246,12 +247,14 @@ class MainActivity : AppCompatActivity() {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
                 modulePrefs.put(global, item.isChecked)
+                updateConfig(modulePrefs.all())
                 true
             }
 
             R.id.menu_show_hook_success -> {
                 item.isChecked = !item.isChecked
                 modulePrefs.put(hookTip, item.isChecked)
+                updateConfig(modulePrefs.all())
                 true
             }
 
@@ -259,6 +262,7 @@ class MainActivity : AppCompatActivity() {
                 item.isChecked = true
                 checkLanguage(Locale.getDefault())
                 modulePrefs.put(localeId, 0)
+                updateConfig(modulePrefs.all())
                 true
             }
 
@@ -266,6 +270,7 @@ class MainActivity : AppCompatActivity() {
                 item.isChecked = true
                 checkLanguage(Locale.ENGLISH)
                 modulePrefs.put(localeId, 1)
+                updateConfig(modulePrefs.all())
                 true
             }
 
@@ -273,6 +278,7 @@ class MainActivity : AppCompatActivity() {
                 item.isChecked = true
                 checkLanguage(Locale.CHINESE)
                 modulePrefs.put(localeId, 2)
+                updateConfig(modulePrefs.all())
                 true
             }
 
@@ -310,6 +316,7 @@ class MainActivity : AppCompatActivity() {
                         @SuppressLint("UnspecifiedImmutableFlag")
                         override fun onColorPicked(color: Int) {
                             modulePrefs.put(themes, color)
+                            updateConfig(modulePrefs.all())
                             Thread {
                                 Thread.sleep(300)
                                 var intents = packageManager.getLaunchIntentForPackage(packageName)
@@ -354,6 +361,7 @@ class MainActivity : AppCompatActivity() {
                             fileOutputStream.flush()
                             fileOutputStream.close()
                             modulePrefs.put(Data.background, file.path)
+                            updateConfig(modulePrefs.all())
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -384,27 +392,34 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_auto_skip -> {
+                var isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
                 if (checkRoot()) {
-                    openService()
-                    val isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
-                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
                     if (isChecked) {
-                        intent = Intent(appContext, SkipService::class.java)
-                        startService(intent)
+                        closeService()
+                    } else {
+                        openService()
                     }
-                }
-                else {
+                } else {
                     val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                     startActivity(intent)
                 }
+                Handler().postDelayed({
+                    isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
+                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
+                },500)
                 true
             }
 
             R.id.menu_minimize -> {
                 try {
                     super.finishAndRemoveTask()
-                    val intent = Intent("com.hujiayucc.hook.service.StartService")
-                    sendBroadcast(intent)
+                    if (!isServiceWork(appContext,"com.hujiayucc.hook.service.SkipService")) {
+                        val filter = IntentFilter()
+                        filter.addAction("com.hujiayucc.hook.service.StartService")
+                        registerReceiver(BootReceiver(), filter)
+                        val intent = Intent("com.hujiayucc.hook.service.StartService")
+                        sendBroadcast(intent)
+                    }
                     Handler().postDelayed({
                         android.os.Process.killProcess(android.os.Process.myPid())
                     },1000)
@@ -436,8 +451,6 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == 2) {
             // 从相册返回的数据
             if (data != null) {
-                // 得到图片的全路径并设置
-                val uri = data.data
                 alert_imageView!!.setImageURI(data.data)
             }
         }
