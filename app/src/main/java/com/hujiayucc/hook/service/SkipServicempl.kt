@@ -11,6 +11,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Point
 import android.graphics.Rect
@@ -26,7 +27,9 @@ import com.hujiayucc.hook.data.DataConst
 import com.hujiayucc.hook.ui.activity.MainActivity
 import com.hujiayucc.hook.utils.FindId
 import com.hujiayucc.hook.utils.Language
+import com.hujiayucc.hook.utils.Log
 import java.util.*
+
 
 @Suppress("DEPRECATION")
 @SuppressLint("StaticFieldLeak")
@@ -75,6 +78,17 @@ class SkipServicempl(private val service: SkipService) {
             }
 
             if (context.getConfig(packageName.toString()) as Boolean? == false) return
+
+            try {
+                val source = event.source?.findAccessibilityNodeInfosByText("跳")
+                if (source != null) {
+                    for (l in source) {
+                        Log.e("当前窗口activity=> ${l.packageName}  ${l.text}  ${l.viewIdResourceName}")
+                    }
+                }
+            } catch (e: PackageManager.NameNotFoundException) {
+                e.printStackTrace()
+            }
 
             if (event.source?.let { findSkipButtonById(it) } == true) {
                 success()
@@ -155,11 +169,13 @@ class SkipServicempl(private val service: SkipService) {
         notificationManager.createNotificationChannel(channel)
     }
 
-    fun findSkipButtonById(nodeInfo: AccessibilityNodeInfo) : Boolean {
+    private fun findSkipButtonById(nodeInfo: AccessibilityNodeInfo) : Boolean {
         val id = FindId.fromPackageName(packageName.toString()) ?: return false
-        val list = nodeInfo.findAccessibilityNodeInfosByViewId(id)
+        val list = nodeInfo.findAccessibilityNodeInfosByViewId(id["id"].toString())
         if (list.isNotEmpty()) {
+            Thread.sleep(id["wait"] as Long)
             for (node in list) {
+                Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${node.viewIdResourceName}")
                 skip(node)
             }
             return true

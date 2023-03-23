@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="xposed_scope">
-        <item>android</item>
         <item>com.dogal.kenhuangzhe.geh.dashixiong</item>
         <item>cn.xiaochuankeji.tieba</item>
         <item>info.muge.appshare</item>
