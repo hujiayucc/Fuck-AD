@@ -11,6 +11,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Point
 import android.graphics.Rect
@@ -79,6 +80,17 @@ class SkipServicempl(private val service: SkipService) {
             }
 
             if (context.getConfig(packageName.toString()) as Boolean? == false) return
+
+            try {
+                val source = event.source?.findAccessibilityNodeInfosByText("跳")
+                if (source != null) {
+                    for (l in source) {
+                        Log.e("当前窗口activity=> ${l.packageName}  ${l.text}  ${l.viewIdResourceName}")
+                    }
+                }
+            } catch (e: PackageManager.NameNotFoundException) {
+                e.printStackTrace()
+            }
 
             eventTime = event.eventTime
 
@@ -168,7 +180,7 @@ class SkipServicempl(private val service: SkipService) {
             Thread.sleep(id["wait"] as Long)
             for (node in list) {
                 Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${node.viewIdResourceName}")
-                if (time != eventTime && time - eventTime < 500) {
+                if (time != eventTime && eventTime - time > 500) {
                     skip(node)
                     time = eventTime
                 }
@@ -189,7 +201,7 @@ class SkipServicempl(private val service: SkipService) {
                 val className = node.className.toString().toLowerCase(Locale.getDefault())
                 if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
                     if (text == "跳过" || text == "跳过广告" || textRegx1.matches(text) || textRegx2.matches(text) || textRegx3.matches(text)) {
-                        if (time != eventTime && time - eventTime < 500) {
+                        if (time != eventTime && eventTime - time > 500) {
                             skip(node)
                             time = eventTime
                         }
