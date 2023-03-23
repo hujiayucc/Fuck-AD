@@ -1,5 +1,12 @@
 package com.hujiayucc.hook.utils
 
+/**
+ * 枚举软件开屏跳过按钮ID
+ *
+ * @param packageName 软件包名
+ * @param id 跳过控件ID
+ * @param wait 等待延迟点击时长
+ */
 enum class FindId(val packageName: String, val id: String, val wait: Long) {
     TencentKG("com.tencent.karaoke","com.tencent.karaoke:id/m4i",0),
     MiMarket("com.xiaomi.market","com.miui.systemAdSolution:id/view_skip_button",0),
