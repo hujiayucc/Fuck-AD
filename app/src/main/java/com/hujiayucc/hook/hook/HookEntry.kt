@@ -3,6 +3,7 @@ package com.hujiayucc.hook.hook
 import android.content.Context
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
+import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.toClassOrNull
 import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
@@ -10,9 +11,9 @@ import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.data.Data.themes
-import com.hujiayucc.hook.data.PackageName
-import com.hujiayucc.hook.hook.app.*
 import com.hujiayucc.hook.hook.app.DragonRead.hook
+import com.hujiayucc.hook.hook.app.HookerList
+import com.hujiayucc.hook.hook.entity.Jiagu
 import com.hujiayucc.hook.hook.entity.Provider
 import com.hujiayucc.hook.hook.sdk.Google
 import com.hujiayucc.hook.hook.sdk.KWAD
@@ -37,7 +38,7 @@ object HookEntry : IYukiHookXposedInit {
                     }
                 }
             }
-        } else if (packageName.equals(BuildConfig.APPLICATION_ID)) {
+        } else if (packageName == BuildConfig.APPLICATION_ID) {
             if (YukiHookAPI.Status.isModuleActive) {
                 loadApp(BuildConfig.APPLICATION_ID) {
                     resources().hook {
@@ -60,71 +61,51 @@ object HookEntry : IYukiHookXposedInit {
         // Hook成功提示
         if (packageParam.prefs.get(hookTip))
             HookTip.show(packageParam)
-        // 适配堆糖专属规则
-        if (packageParam.packageName.equals(PackageName.DuiTang)) {
-            packageParam.loadHooker(DuiTang)
-            return
+        // 加载应用专属规则
+        val hooker = HookerList.fromPackageName(packageParam.packageName)
+        if (hooker != null) {
+            packageParam.loadHooker(hooker["hooker"] as YukiBaseHooker)
+            if (hooker["stop"] as Boolean) return
         }
-        // 最右
-        if (packageParam.packageName.equals(PackageName.ZuiYou)) packageParam.loadHooker(ZuiYou)
-        // 番茄小说
-        if (packageParam.packageName.equals(PackageName.DragonRead)) packageParam.loadHooker(DragonRead)
-        // 喜马拉雅
-        if (packageParam.packageName.equals(PackageName.XiMaLaYa)) packageParam.loadHooker(XiMaLaYa)
-        // App分享
-        if (packageParam.packageName.equals(PackageName.AppShare)) packageParam.loadHooker(AppShare)
-        // 360加固
-        if ("com.stub.StubApp".toClassOrNull(packageParam.appClassLoader) != null) {
-            Log.d("360加固")
-            packageParam.findClass("com.stub.StubApp").hook {
-                injectMember {
-                    method { name = "attachBaseContext" }
-                    afterHook {
-                        val context = args[0] as Context
-                        packageParam.appClassLoader = context.classLoader
-                        // 腾讯广告
-                        packageParam.loadHooker(Tencent)
-                        // 穿山甲广告
-                        packageParam.loadHooker(Pangle)
-                        // 快手广告
-                        packageParam.loadHooker(KWAD)
-                        // 禁用广告SDK Provider
-                        packageParam.loadHooker(Provider)
-                        packageParam.loadHooker(Google)
+
+        val jiagu = Jiagu.values()
+
+        for (type in jiagu) {
+            if (type.packageName.toClassOrNull(packageParam.appClassLoader) != null) {
+                Log.d(type.type)
+                packageParam.findClass(type.packageName).hook {
+                    injectMember {
+                        method { name = "attachBaseContext" }
+                        afterHook {
+                            val context = args[0] as Context
+                            packageParam.appClassLoader = context.classLoader
+                            // 腾讯广告
+                            packageParam.loadHooker(Tencent)
+                            // 穿山甲广告
+                            packageParam.loadHooker(Pangle)
+                            // 快手广告
+                            packageParam.loadHooker(KWAD)
+                            // 禁用广告SDK Provider
+                            packageParam.loadHooker(Provider)
+                            // 谷歌广告
+                            packageParam.loadHooker(Google)
+                        }
                     }
-                }
-            }.ignoredHookClassNotFoundFailure()
-        } else if ("com.wrapper.proxyapplication.WrapperProxyApplication".toClassOrNull(packageParam.appClassLoader) != null) {
-            Log.d("腾讯御安全")
-            packageParam.findClass("com.wrapper.proxyapplication.WrapperProxyApplication").hook {
-                injectMember {
-                    method { name = "attachBaseContext" }
-                    afterHook {
-                        val context = args[0] as Context
-                        packageParam.appClassLoader = context.classLoader
-                        // 腾讯广告
-                        packageParam.loadHooker(Tencent)
-                        // 穿山甲广告
-                        packageParam.loadHooker(Pangle)
-                        // 快手广告
-                        packageParam.loadHooker(KWAD)
-                        // 禁用广告SDK Provider
-                        packageParam.loadHooker(Provider)
-                        packageParam.loadHooker(Google)
-                    }
-                }
-            }.ignoredHookClassNotFoundFailure()
-        } else {
-            Log.d("非360加固")
-            // 腾讯广告
-            packageParam.loadHooker(Tencent)
-            // 穿山甲广告
-            packageParam.loadHooker(Pangle)
-            // 快手广告
-            packageParam.loadHooker(KWAD)
-            // 禁用广告SDK Provider
-            packageParam.loadHooker(Provider)
-            packageParam.loadHooker(Google)
+                }.ignoredHookClassNotFoundFailure()
+                return
+            }
         }
+
+        Log.d("非加固应用")
+        // 腾讯广告
+        packageParam.loadHooker(Tencent)
+        // 穿山甲广告
+        packageParam.loadHooker(Pangle)
+        // 快手广告
+        packageParam.loadHooker(KWAD)
+        // 禁用广告SDK Provider
+        packageParam.loadHooker(Provider)
+        // 谷歌广告
+        packageParam.loadHooker(Google)
     }
 }

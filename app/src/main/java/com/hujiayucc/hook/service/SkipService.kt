@@ -9,10 +9,10 @@ import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
 @Suppress("DEPRECATION")
 @SuppressLint("ALL")
 class SkipService : AccessibilityService() {
-    private lateinit var servicempl: SkipServicempl
+    private lateinit var servicempl: SkipServiceImpl
     override fun onCreate() {
         super.onCreate()
-        servicempl = SkipServicempl(this)
+        servicempl = SkipServiceImpl(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

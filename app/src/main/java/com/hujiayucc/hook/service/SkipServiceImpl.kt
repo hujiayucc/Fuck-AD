@@ -33,7 +33,7 @@ import java.util.*
 
 @Suppress("DEPRECATION")
 @SuppressLint("StaticFieldLeak")
-class SkipServicempl(private val service: SkipService) {
+class SkipServiceImpl(private val service: SkipService) {
     private var packageName: CharSequence? = null
     private val context = service.applicationContext
     private var notification: Notification? = null
