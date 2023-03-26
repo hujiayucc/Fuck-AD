@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" tools:ignore="ProtectedPermissions"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions"/>
 
     <queries>
         <intent>
@@ -19,7 +21,7 @@
 
     <application
             android:name=".application.XYApplication"
-            android:process="com.hujiayucc.hook.application.XYApplication"
+            android:process=":XYApplication"
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
@@ -44,7 +46,7 @@
 
         <activity
                 android:name="com.hujiayucc.hook.ui.activity.MainActivity"
-                android:process="com.hujiayucc.hook.ui.activity.MainActivity"
+                android:process=":MainActivity"
                 android:exported="true"
                 android:configChanges="uiMode"
                 android:screenOrientation="portrait"
@@ -59,7 +61,7 @@
 
         <activity-alias
                 android:name="com.hujiayucc.hook.ui.activity.Home"
-                android:process="com.hujiayucc.hook.ui.activity.MainActivity"
+                android:process=":MainActivity"
                 android:enabled="true"
                 android:exported="true"
                 android:configChanges="uiMode"
@@ -76,7 +78,7 @@
 
         <service android:name=".service.SkipService"
                  android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-                 android:process="com.hujiayucc.hook.service.SkipService"
+                 android:process=":SkipService"
                  android:enabled="true"
                  android:exported="true"
                  android:label="@string/app_name">
@@ -89,9 +91,9 @@
         </service>
 
         <receiver android:name=".service.BootReceiver"
-                  android:process="com.hujiayucc.hook.service.BootReceiver"
+                  android:process=":BootReceiver"
                   android:exported="true">
-            <intent-filter android:priority="9000">
+            <intent-filter>
                 <!-- 系统启动完成后会调用-->
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.DATE_CHANGED"/>

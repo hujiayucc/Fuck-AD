@@ -23,7 +23,7 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.getConfig
 import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
-import com.hujiayucc.hook.data.DataConst
+import com.hujiayucc.hook.data.DataConst.CHANNEL_ID
 import com.hujiayucc.hook.ui.activity.MainActivity
 import com.hujiayucc.hook.utils.FindId
 import com.hujiayucc.hook.utils.Language
@@ -130,7 +130,7 @@ class SkipServiceImpl(private val service: SkipService) {
             context, 0, notificationIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return NotificationCompat.Builder(context, DataConst.CHANNEL_ID)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -155,11 +155,11 @@ class SkipServiceImpl(private val service: SkipService) {
     @Synchronized
     private fun createNotificationChannel() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (notificationManager.getNotificationChannel(CHANNEL_ID) != null) return
         val channelName = context.getString(R.string.app_name)
-        if (notificationManager.getNotificationChannel(DataConst.CHANNEL_ID) != null) return
         val descriptionText = "常驻通知"
         val channel = NotificationChannel(
-            DataConst.CHANNEL_ID,
+            CHANNEL_ID,
             channelName,
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
@@ -180,10 +180,12 @@ class SkipServiceImpl(private val service: SkipService) {
             Thread.sleep(id["wait"] as Long)
             for (node in list) {
                 Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${node.viewIdResourceName}")
-                if (time != eventTime && eventTime - time > 500) {
+                if (time != eventTime && eventTime - time > 800) {
                     skip(node)
                     time = eventTime
                 }
+
+                Log.d("${eventTime - time}")
             }
             return true
         }
@@ -193,7 +195,7 @@ class SkipServiceImpl(private val service: SkipService) {
 
     /** 自动查找启动广告的 “跳过” 控件 */
     private fun findSkipButtonByText(nodeInfo: AccessibilityNodeInfo): Boolean {
-        val list = nodeInfo.findAccessibilityNodeInfosByText("跳过")
+        var list = nodeInfo.findAccessibilityNodeInfosByText("跳过")
         var result = false
         if (list.isNotEmpty()) {
             for (node in list) {
@@ -201,17 +203,33 @@ class SkipServiceImpl(private val service: SkipService) {
                 val className = node.className.toString().toLowerCase(Locale.getDefault())
                 if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
                     if (text == "跳过" || text == "跳过广告" || textRegx1.matches(text) || textRegx2.matches(text) || textRegx3.matches(text)) {
-                        if (time != eventTime && eventTime - time > 500) {
+                        if (time != eventTime && eventTime - time > 800) {
                             skip(node)
                             time = eventTime
+                            result = true
                         }
-                        result = true
                     }
                 }
             }
-            return result
+        } else {
+            list = nodeInfo.findAccessibilityNodeInfosByText("知道了")
+            if (list.isNotEmpty()) {
+                for (node in list) {
+                    val text = node.text.trim()
+                    val className = node.className.toString().toLowerCase(Locale.getDefault())
+                    if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
+                        if (text == "我知道了" || text == "我知道了") {
+                            if (time != eventTime && eventTime - time > 800) {
+                                skip(node)
+                                time = eventTime
+                                result = true
+                            }
+                        }
+                    }
+                }
+            }
         }
-        return false
+        return result
     }
 
     @Synchronized

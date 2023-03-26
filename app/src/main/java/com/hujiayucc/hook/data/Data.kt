@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.hujiayucc.hook.data
 
 import android.annotation.SuppressLint
@@ -19,6 +21,10 @@ import java.util.*
 @SuppressLint("SimpleDateFormat", "StaticFieldLeak")
 object Data {
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    private var process: Process? = null
+    private var os: DataOutputStream? = null
+    private var isRoot: Boolean = false
+    private var result: BufferedReader? = null
 
     /** 获取项目编译完成的时间戳 (当前本地时间) */
     val buildTime: String = format.format(Date(YukiHookAPI.Status.compiledTimestamp))
@@ -84,69 +90,80 @@ object Data {
 
     /** 判断是否具有ROOT权限 */
     fun checkRoot(): Boolean {
-        val process = Runtime.getRuntime().exec("su\n")
+        if (isRoot) return true
         try {
-            val os = DataOutputStream(process?.outputStream)
-            os.writeBytes("cat /system/build.prop\n")
-            os.writeBytes("exit\n")
-            os.flush()
-            process?.waitFor()
-            val result = getStringFromIO(process?.inputStream)
-            if (result == null) return false
-            else return result.contains("ro.build.id")
+            if (process == null) {
+                process = Runtime.getRuntime().exec("su\n")
+                os = DataOutputStream(process?.outputStream)
+            }
+            os?.writeBytes("cat /system/build.prop\n")
+            os?.flush()
+            result = BufferedReader(InputStreamReader(process?.inputStream))
+            var temp: String
+            while (result!!.readLine().also { temp = it }.isNotEmpty()) {
+                if (temp.contains("ro.build.id")) {
+                    isRoot = true
+                    return true
+                }
+            }
+            return false
         } catch (e : Exception) {
+            process = null
+            os = null
+            e.printStackTrace()
             return false
         }
     }
 
-    private fun getStringFromIO(inputStream: InputStream?): String? {
-        var br: BufferedReader? = null
-        var result: String? = null
-        try {
-            var temp: String?
-            val sb = StringBuilder()
-            br = BufferedReader(InputStreamReader(inputStream))
-            while (br.readLine().also { temp = it } != null) {
-                sb.append(temp)
+    private fun RunAsRoot(cmd: ArrayList<String>): Boolean {
+        return try {
+            for (tmpCmd in cmd) {
+                os?.writeBytes("$tmpCmd\n")
             }
-            result = sb.toString()
-        } catch (e: Exception) {
+            os?.flush()
+            true
+        } catch (e : Exception) {
+            isRoot = false
+            process = null
             e.printStackTrace()
-        } finally {
-            if (br != null) try {
-                br.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
+            false
+        }
+    }
+
+    fun Context.openService() {
+        if (checkRoot()) {
+            val cmd = ArrayList<String>()
+            cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
+            if (RunAsRoot(cmd)) {
+                // 防止关闭其他正在运行的无障碍服务
+                val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).trim()
+                Settings.Secure.putString(contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"${list}:com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService")
+                Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
             }
         }
-        return result
     }
 
-    fun RunAsRoot(cmd: ArrayList<String>) {
-        val process = Runtime.getRuntime().exec("su\n")
-        val os = DataOutputStream(process.outputStream)
-        for (tmpCmd in cmd) {
-            os.writeBytes("$tmpCmd\n")
-        }
-        os.writeBytes("exit\n")
-        os.flush()
-    }
-
-    fun openService() {
+    fun Context.closeService() {
         if (checkRoot()) {
             val cmd = ArrayList<String>()
-            cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService")
-            cmd.add("settings put secure accessibility_enabled 1")
-            RunAsRoot(cmd)
-        }
-    }
-
-    fun closeService() {
-        if (checkRoot()) {
-            val cmd = ArrayList<String>()
-            cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService")
-            cmd.add("settings put secure accessibility_enabled 0")
-            RunAsRoot(cmd)
+            cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
+            if (RunAsRoot(cmd)) {
+                // 防止关闭其他正在运行的无障碍服务
+                val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+                    .replace("com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService:","")
+                    .replace(":com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService","")
+                    .replace("com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService","").trim()
+                if (list.isNotEmpty()) {
+                    Settings.Secure.putString(contentResolver,
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,list)
+                    Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
+                } else {
+                    cmd.clear()
+                    cmd.add("settings delete secure enabled_accessibility_services")
+                    RunAsRoot(cmd)
+                }
+            }
         }
     }
 
@@ -165,17 +182,17 @@ object Data {
     }
 
     fun Context.getConfig(key: String): Any? {
-        try {
+        return try {
             val config = File(filesDir, "config.json")
             val inputStream = config.inputStream()
             val byte = ByteArray(config.length().toInt())
             inputStream.read(byte)
             inputStream.close()
             val json = JSON.parseObject(String(byte))
-            return json.get(key)
+            json[key]
         } catch (e : Exception) {
             e.printStackTrace()
-            return null
+            null
         }
     }
 

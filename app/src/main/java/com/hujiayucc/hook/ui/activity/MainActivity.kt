@@ -3,6 +3,7 @@ package com.hujiayucc.hook.ui.activity
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -12,6 +13,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.StrictMode
@@ -37,7 +39,6 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
-import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.bean.AppInfo
@@ -95,6 +96,13 @@ class MainActivity : AppCompatActivity() {
             // 请求授权该权限
             requestPermissions(arrayOf(Manifest.permission.CHANGE_CONFIGURATION), 2001)
         }
+        // 适配 Android13 通知权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (!notificationManager.areNotificationsEnabled()) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS),2000)
+            }
+        }
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
@@ -107,10 +115,10 @@ class MainActivity : AppCompatActivity() {
         initBackGround()
         val userBundle = Bundle()
         userBundle.putBoolean("system", false)
-        val user = Fragment.instantiate(appContext, MainFragment::class.java.name, userBundle) as MainFragment
+        val user = Fragment.instantiate(applicationContext, MainFragment::class.java.name, userBundle) as MainFragment
         val systemBundle = Bundle()
         systemBundle.putBoolean("system", true)
-        val system = Fragment.instantiate(appContext, MainFragment::class.java.name, systemBundle) as MainFragment
+        val system = Fragment.instantiate(applicationContext, MainFragment::class.java.name, systemBundle) as MainFragment
         fragmentList.add(user)
         fragmentList.add(system)
         tabLayout.setupWithViewPager(viewPager)
@@ -207,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } else if (info != 0) runOnUiThread {
                 Toast.makeText(
-                    appContext,
+                    applicationContext,
                     getString(R.string.check_update_failed),
                     Toast.LENGTH_SHORT
                 ).show()
@@ -236,7 +244,7 @@ class MainActivity : AppCompatActivity() {
         val isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
         menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
         if (isChecked) {
-            intent = Intent(appContext, SkipService::class.java)
+            intent = Intent(applicationContext, SkipService::class.java)
             startService(intent)
         }
         updateConfig(modulePrefs.all())
@@ -295,9 +303,9 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(QQ_GROUP))
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 try {
-                    appContext.startActivity(intent)
+                    applicationContext.startActivity(intent)
                 } catch (e: Exception) {
-                    Toast.makeText(appContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
                 }
                 true
             }
@@ -322,7 +330,7 @@ class MainActivity : AppCompatActivity() {
                                 var intents = packageManager.getLaunchIntentForPackage(packageName)
                                 if (intents != null)
                                     intents.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                else intents = Intent(appContext, MainActivity::class.java)
+                                else intents = Intent(applicationContext, MainActivity::class.java)
                                 startActivity(intents)
                                 //杀掉以前进程
                                 android.os.Process.killProcess(android.os.Process.myPid())
@@ -340,7 +348,7 @@ class MainActivity : AppCompatActivity() {
 
             R.id.menu_background -> {
                 val filename = "background.png"
-                alert_imageView = ImageView(appContext)
+                alert_imageView = ImageView(applicationContext)
                 alert_imageView!!.setPadding(0, 50, 0, 0)
                 try {
                     alert_imageView!!.setImageBitmap((imageView.drawable as BitmapDrawable).toBitmap())
@@ -392,12 +400,12 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_auto_skip -> {
-                var isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
+                var isChecked = item.isChecked
                 if (checkRoot()) {
                     if (isChecked) {
-                        closeService()
+                        applicationContext.closeService()
                     } else {
-                        openService()
+                        applicationContext.openService()
                     }
                 } else {
                     val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -413,7 +421,7 @@ class MainActivity : AppCompatActivity() {
             R.id.menu_minimize -> {
                 try {
                     super.finishAndRemoveTask()
-                    if (!isServiceWork(appContext,"com.hujiayucc.hook.service.SkipService")) {
+                    if (!isServiceWork(applicationContext,"com.hujiayucc.hook.service.SkipService")) {
                         val filter = IntentFilter()
                         filter.addAction("com.hujiayucc.hook.service.StartService")
                         registerReceiver(BootReceiver(), filter)
@@ -435,7 +443,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("ResourceAsColor")
     private fun initBackGround() {
-        imageView = ImageView(appContext)
+        imageView = ImageView(applicationContext)
         try {
             val background = modulePrefs.get(Data.background)
             imageView.setImageBitmap(BitmapFactory.decodeFile(background))
@@ -513,9 +521,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun recreate() {
         super.finish()
-        val intent = Intent(appContext, this::class.java)
+        val intent = Intent(applicationContext, this::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        appContext.startActivity(intent)
+        applicationContext.startActivity(intent)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

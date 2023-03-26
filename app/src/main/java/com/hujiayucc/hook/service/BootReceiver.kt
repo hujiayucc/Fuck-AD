@@ -12,6 +12,6 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val intents = Intent(context, SkipService::class.java)
         context?.startService(intents)
-        if (context?.isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!) == false) openService()
+        if (context?.isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!) == false) context.openService()
     }
 }
