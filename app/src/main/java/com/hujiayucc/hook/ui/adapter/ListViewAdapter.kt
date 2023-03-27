@@ -37,7 +37,7 @@ class ListViewAdapter(
         binding = AppChildBinding.bind(view)
         val info = getItem(position)
         info.switchCheck = binding.switchCheck
-        info.switchCheck.setOnCheckedChangeListener { buttonView, isChecked ->
+        info.switchCheck.setOnCheckedChangeListener { _, isChecked ->
             modulePrefs.put(PrefsData(info.app_package, false), isChecked)
             appContext.updateConfig(modulePrefs.all())
         }

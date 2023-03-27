@@ -2,9 +2,9 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
                        android:accessibilityEventTypes="typeAllMask"
                        android:accessibilityFeedbackType="feedbackAllMask"
-                       android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
+                       android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
                        android:canPerformGestures="true"
                        android:canRetrieveWindowContent="true"
                        android:description="@string/accessibility_description"
-                       android:notificationTimeout="50"
+                       android:notificationTimeout="0"
                        android:settingsActivity="com.hujiayucc.hook.ui.activity.MainActivity" />

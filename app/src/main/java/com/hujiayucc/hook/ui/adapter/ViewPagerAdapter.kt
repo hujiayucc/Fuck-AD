@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.hujiayucc.hook.ui.adapter
 
 import androidx.fragment.app.Fragment

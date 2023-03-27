@@ -14,7 +14,11 @@ enum class HookerList(val packageName: String, val hooker: YukiBaseHooker, val s
     /** App分享 */
     AppShare("info.muge.appshare", com.hujiayucc.hook.hook.app.AppShare,false),
     /** 腾讯动漫 */
-    QQAc("com.qq.ac.android", com.hujiayucc.hook.hook.app.QQAc,true);
+    QQAc("com.qq.ac.android", com.hujiayucc.hook.hook.app.QQAc,true),
+    /** 小猿搜题 */
+    XYST("com.fenbi.android.solar", com.hujiayucc.hook.hook.app.XYST,true),
+    /** QQ阅读 */
+    QQReader("com.qq.reader", com.hujiayucc.hook.hook.app.QQReader,true);
 
     companion object {
         /** 通过包名获取对应Hooker */

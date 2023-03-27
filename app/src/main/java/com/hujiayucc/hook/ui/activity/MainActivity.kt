@@ -6,7 +6,6 @@ import android.app.ActivityManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -45,20 +44,19 @@ import com.hujiayucc.hook.bean.AppInfo
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.buildTime
 import com.hujiayucc.hook.data.Data.checkRoot
-import com.hujiayucc.hook.data.Data.closeService
 import com.hujiayucc.hook.data.Data.global
 import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
 import com.hujiayucc.hook.data.Data.isLauncherIconShowing
-import com.hujiayucc.hook.data.Data.isServiceWork
 import com.hujiayucc.hook.data.Data.localeId
-import com.hujiayucc.hook.data.Data.openService
+import com.hujiayucc.hook.data.Data.runService
+import com.hujiayucc.hook.data.Data.stopService
 import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.data.Data.updateConfig
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
+import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.databinding.ActivityMainBinding
-import com.hujiayucc.hook.service.BootReceiver
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
@@ -228,7 +226,7 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(global)
         menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
         menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
-        menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
+        menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
         val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
         when (localeID) {
             0 -> group?.subMenu?.findItem(R.id.menu_language_defualt)?.isChecked = true
@@ -241,7 +239,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        val isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
+        val isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
         menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
         if (isChecked) {
             intent = Intent(applicationContext, SkipService::class.java)
@@ -359,7 +357,7 @@ class MainActivity : AppCompatActivity() {
                     .setCancelable(true)
                     .setTitle(getString(R.string.alert_choose_image_title))
                     .setNeutralButton(getString(R.string.alert_choose_image), null)
-                    .setPositiveButton(getString(R.string.alert_done)) { dialog, which ->
+                    .setPositiveButton(getString(R.string.alert_done)) { dialog, _ ->
                         binding.root.background = alert_imageView!!.drawable
                         try {
                             val file = File(filesDir, filename)
@@ -376,7 +374,7 @@ class MainActivity : AppCompatActivity() {
                         dialog.dismiss()
                         recreate()
                     }
-                    .setNegativeButton(getString(R.string.alert_reset)) { dialog, which ->
+                    .setNegativeButton(getString(R.string.alert_reset)) { dialog, _ ->
                         try {
                             val file = File(filesDir, filename)
                             if (file.exists())
@@ -400,37 +398,34 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_auto_skip -> {
-                var isChecked = item.isChecked
                 if (checkRoot()) {
-                    if (isChecked) {
-                        applicationContext.closeService()
+                    if (!applicationContext.isAccessibilitySettingsOn(SERVICE_NAME)) {
+                        applicationContext.runService()
                     } else {
-                        applicationContext.openService()
+                        applicationContext.stopService()
                     }
                 } else {
                     val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                     startActivity(intent)
                 }
                 Handler().postDelayed({
-                    isChecked = isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)
-                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
-                },500)
+                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = applicationContext
+                        .isAccessibilitySettingsOn(SERVICE_NAME)
+                },200)
                 true
             }
 
             R.id.menu_minimize -> {
                 try {
                     super.finishAndRemoveTask()
-                    if (!isServiceWork(applicationContext,"com.hujiayucc.hook.service.SkipService")) {
-                        val filter = IntentFilter()
-                        filter.addAction("com.hujiayucc.hook.service.StartService")
-                        registerReceiver(BootReceiver(), filter)
-                        val intent = Intent("com.hujiayucc.hook.service.StartService")
-                        sendBroadcast(intent)
+                    if (!applicationContext.isAccessibilitySettingsOn(SERVICE_NAME) &&
+                        menu?.findItem(R.id.menu_auto_skip)?.isChecked == true
+                    ) {
+                        applicationContext.runService()
                     }
                     Handler().postDelayed({
                         android.os.Process.killProcess(android.os.Process.myPid())
-                    },1000)
+                    },200)
                 } catch (e : Exception) {
                     e.printStackTrace()
                 }

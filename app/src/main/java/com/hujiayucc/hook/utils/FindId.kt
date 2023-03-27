@@ -17,7 +17,8 @@ enum class FindId(val packageName: String, val id: String, val wait: Long) {
     APPShare("info.muge.appshare","info.muge.appshare:id/tv_jump",0),
     IQiYi("com.qiyi.video","com.qiyi.video:id/id377a",0),
     ZuiYou("cn.xiaochuankeji.tieba","com.byted.pangle:id/tt_interact_splash_click_bar_text",0),
-    ZhiHu("com.zhihu.android","com.zhihu.android:id/btn_skip",0);
+    ZhiHu("com.zhihu.android","com.zhihu.android:id/btn_skip",0),
+    XYST("com.fenbi.android.solar","com.fenbi.android.solar:id/btn_skip",0);
 
     companion object {
         /** 通过包名获取对应id */

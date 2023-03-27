@@ -58,6 +58,7 @@ object HookEntry : IYukiHookXposedInit {
 
     /** 加载规则 */
     private fun load(packageParam: PackageParam) {
+        if (packageParam.packageName == "com.google.android.webview") return
         // Hook成功提示
         if (packageParam.prefs.get(hookTip))
             HookTip.show(packageParam)

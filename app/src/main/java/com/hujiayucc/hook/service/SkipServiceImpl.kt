@@ -3,14 +3,12 @@ package com.hujiayucc.hook.service
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.accessibilityservice.GestureDescription.StrokeDescription
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Point
@@ -23,7 +21,9 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.getConfig
 import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.data.Data.skipCount
 import com.hujiayucc.hook.data.DataConst.CHANNEL_ID
+import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.ui.activity.MainActivity
 import com.hujiayucc.hook.utils.FindId
 import com.hujiayucc.hook.utils.Language
@@ -32,13 +32,11 @@ import java.util.*
 
 
 @Suppress("DEPRECATION")
-@SuppressLint("StaticFieldLeak")
 class SkipServiceImpl(private val service: SkipService) {
     private var packageName: CharSequence? = null
     private val context = service.applicationContext
     private var notification: Notification? = null
     private var localeID = 0
-    private var skipCount = 0
     private val textRegx1 = Regex("^[0-9]+[\\ss]*跳过[广告]*\$")
     private val textRegx2 = Regex("^[点击]*跳过[广告]*[\\ss]{0,}[0-9]+\$")
     private val textRegx3 = Regex("跳过*[(（][0-9]*[)）]+\$")
@@ -46,11 +44,17 @@ class SkipServiceImpl(private val service: SkipService) {
     private var time: Long = 0
 
     init {
-        start()
-        guard()
+        createNotificationChannel()
+        if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
+            notification = createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
+        } else {
+            notification = createNotification(context.getString(R.string.close_accessibilityservice))
+        }
+        service.startForeground(1, notification)
         checkLanguage()
-        if (context.isAccessibilitySettingsOn("com.hujiayucc.hook.service.SkipService"))
+        if (context.isAccessibilitySettingsOn(SERVICE_NAME) && !show)
             Toast.makeText(context, context.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
+        show = true
     }
 
     private val blackLIst = arrayOf(
@@ -69,10 +73,10 @@ class SkipServiceImpl(private val service: SkipService) {
         skipCount++
         if (context.getConfig(Data.hookTip.key) as Boolean? == true)
             Toast.makeText(context, context.getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
-        start()
+        refresh()
     }
 
-    fun run(event: AccessibilityEvent) {
+    fun onAccessibilityEvent(event: AccessibilityEvent) {
         try {
             packageName = event.packageName
             for (name in blackLIst) {
@@ -107,11 +111,9 @@ class SkipServiceImpl(private val service: SkipService) {
         }
     }
 
-    @Synchronized
-    fun start() {
+    fun refresh() {
         checkLanguage()
-        createNotificationChannel()
-        if (context.isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)) {
+        if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
             notification = createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
         } else {
             notification = createNotification(context.getString(R.string.close_accessibilityservice))
@@ -119,9 +121,14 @@ class SkipServiceImpl(private val service: SkipService) {
         service.startForeground(1, notification)
     }
 
+    fun onInterrupt() {
+        notification = createNotification(context.getString(R.string.close_accessibilityservice))
+        Toast.makeText(context, context.getString(R.string.close_accessibilityservice), Toast.LENGTH_SHORT).show()
+        service.startForeground(1, notification)
+    }
+
 
     /** 创建常驻通知 */
-    @Synchronized
     private fun createNotification(text: String): Notification {
         val notificationIntent = Intent(context, MainActivity::class.java)
         notificationIntent.action = Intent.ACTION_MAIN
@@ -140,8 +147,7 @@ class SkipServiceImpl(private val service: SkipService) {
             .build()
     }
 
-    @Synchronized
-    fun checkLanguage() {
+    private fun checkLanguage() {
         localeID =
             if (context.getConfig(Data.localeId.key) as Int? != null) context.getConfig(Data.localeId.key) as Int else 0
         val configuration = service.resources.configuration
@@ -152,7 +158,6 @@ class SkipServiceImpl(private val service: SkipService) {
     }
 
     /** 创建通知渠道 */
-    @Synchronized
     private fun createNotificationChannel() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (notificationManager.getNotificationChannel(CHANNEL_ID) != null) return
@@ -232,7 +237,6 @@ class SkipServiceImpl(private val service: SkipService) {
         return result
     }
 
-    @Synchronized
     private fun skip(node: AccessibilityNodeInfo): Boolean {
         if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
             node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
@@ -257,7 +261,6 @@ class SkipServiceImpl(private val service: SkipService) {
     }
 
     /** 模拟点击 */
-    @Synchronized
     private fun click(rect: Rect): Boolean {
         val gestureDescription = gestureDescription(rect)
         val callback = object : AccessibilityService.GestureResultCallback() {
@@ -273,26 +276,7 @@ class SkipServiceImpl(private val service: SkipService) {
         return service.dispatchGesture(gestureDescription, callback, null)
     }
 
-    @Synchronized
-    fun guard() {
-        Thread {
-            while (true) {
-                if (context.isAccessibilitySettingsOn(SkipService::class.java.canonicalName!!)) {
-                    val filter = IntentFilter()
-                    filter.addAction("com.hujiayucc.hook.service.StartService")
-                    context.registerReceiver(BootReceiver(), filter)
-                    val intent = Intent("com.hujiayucc.hook.service.StartService")
-                    context.sendBroadcast(intent)
-                    Thread.sleep(60000)
-                }
-            }
-        }.start()
-
-        Thread {
-            while (true) {
-                start()
-                Thread.sleep(10000)
-            }
-        }.start()
+    companion object {
+        private var show = false
     }
 }

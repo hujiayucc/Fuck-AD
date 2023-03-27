@@ -3,9 +3,9 @@
 package com.hujiayucc.hook.data
 
 import android.annotation.SuppressLint
-import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import android.text.TextUtils
@@ -13,6 +13,8 @@ import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.JSONObject
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
+import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
+import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.utils.Log
 import java.io.*
 import java.text.SimpleDateFormat
@@ -33,6 +35,7 @@ object Data {
     val localeId: PrefsData<Int> = PrefsData("locale", 0)
     val themes: PrefsData<Int> = PrefsData("theme", -25412)
     val background: PrefsData<String> = PrefsData("background", "")
+    var skipCount = 0
 
     /**
      * 隐藏或显示启动器图标
@@ -58,7 +61,6 @@ object Data {
         ) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED
 
     /** 检测辅助功能是否开启 */
-    @Synchronized
     fun Context.isAccessibilitySettingsOn(serviceName: String): Boolean {
         var accessibilityEnabled = 0
         // 对应的服务
@@ -96,7 +98,7 @@ object Data {
                 process = Runtime.getRuntime().exec("su\n")
                 os = DataOutputStream(process?.outputStream)
             }
-            os?.writeBytes("cat /system/build.prop\n")
+            os?.writeBytes("cat /system/build.prop | grep ro.build.id\n")
             os?.flush()
             result = BufferedReader(InputStreamReader(process?.inputStream))
             var temp: String
@@ -116,11 +118,14 @@ object Data {
     }
 
     private fun RunAsRoot(cmd: ArrayList<String>): Boolean {
+        os?.writeBytes("clear\n")
+        os?.flush()
         return try {
             for (tmpCmd in cmd) {
                 os?.writeBytes("$tmpCmd\n")
             }
             os?.flush()
+            Thread.sleep(200)
             true
         } catch (e : Exception) {
             isRoot = false
@@ -130,30 +135,35 @@ object Data {
         }
     }
 
-    fun Context.openService() {
+    private fun Context.openService() {
         if (checkRoot()) {
             val cmd = ArrayList<String>()
             cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
             if (RunAsRoot(cmd)) {
                 // 防止关闭其他正在运行的无障碍服务
                 val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).trim()
-                Settings.Secure.putString(contentResolver,
-                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"${list}:com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService")
+                if (list.isNotEmpty()) {
+                    Settings.Secure.putString(contentResolver,
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"${list}:com.hujiayucc.hook/$SERVICE_NAME")
+                } else {
+                    Settings.Secure.putString(contentResolver,
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"com.hujiayucc.hook/$SERVICE_NAME")
+                }
                 Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
             }
         }
     }
 
-    fun Context.closeService() {
+    private fun Context.closeService() {
         if (checkRoot()) {
             val cmd = ArrayList<String>()
             cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
             if (RunAsRoot(cmd)) {
                 // 防止关闭其他正在运行的无障碍服务
                 val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-                    .replace("com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService:","")
-                    .replace(":com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService","")
-                    .replace("com.hujiayucc.hook/com.hujiayucc.hook.service.SkipService","").trim()
+                    .replace("com.hujiayucc.hook/$SERVICE_NAME:","")
+                    .replace(":com.hujiayucc.hook/$SERVICE_NAME","")
+                    .replace("com.hujiayucc.hook/$SERVICE_NAME","").trim()
                 if (list.isNotEmpty()) {
                     Settings.Secure.putString(contentResolver,
                         Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,list)
@@ -165,6 +175,18 @@ object Data {
                 }
             }
         }
+    }
+
+    fun Context.runService() {
+        val intent = Intent(applicationContext, SkipService::class.java)
+        applicationContext.startService(intent)
+        applicationContext.openService()
+    }
+
+    fun Context.stopService() {
+        val intent = Intent(applicationContext, SkipService::class.java)
+        applicationContext.stopService(intent)
+        applicationContext.closeService()
     }
 
     fun Context.updateConfig(map: Map<String, Any?>) {
@@ -194,29 +216,5 @@ object Data {
             e.printStackTrace()
             null
         }
-    }
-
-    /**
-     *
-     * @param mContext
-     * @param serviceName
-     * 是包名+服务的类名（例如：com.example.testbackstage.TestService）
-     * @return true代表正在运行，false代表服务没有正在运行
-     */
-    fun isServiceWork(mContext: Context, serviceName: String): Boolean {
-        var isWork = false
-        val manager = mContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val list: List<ActivityManager.RunningServiceInfo> = manager.getRunningServices(40)
-        if (list.isEmpty()) {
-            return false
-        }
-        for (i in list.indices) {
-            val name: String = list[i].service.className
-            if (name == serviceName) {
-                isWork = true
-                break
-            }
-        }
-        return isWork
     }
 }

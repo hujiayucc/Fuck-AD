@@ -22,7 +22,7 @@ object Provider : YukiBaseHooker() {
                 injectMember {
                     allMembers(type = MembersType.ALL)
                     replaceTo(null)
-                }
+                }.ignoredAllFailure()
             }.ignoredHookClassNotFoundFailure()
         }
     }

@@ -1,37 +1,31 @@
 package com.hujiayucc.hook.service
 
 import android.accessibilityservice.AccessibilityService
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 
-@Suppress("DEPRECATION")
-@SuppressLint("ALL")
 class SkipService : AccessibilityService() {
-    private lateinit var servicempl: SkipServiceImpl
-    override fun onCreate() {
-        super.onCreate()
-        servicempl = SkipServiceImpl(this)
-    }
-
+    private lateinit var serviceImpl: SkipServiceImpl
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        servicempl.start()
+        serviceImpl = SkipServiceImpl(this)
+        serviceImpl.refresh()
         return START_STICKY
     }
 
     override fun onInterrupt() {
-        servicempl.start()
+        serviceImpl.onInterrupt()
     }
 
-    @Synchronized
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (!isAccessibilitySettingsOn("com.hujiayucc.hook.service.SkipService")) return
+        if (!isAccessibilitySettingsOn(SERVICE_NAME)) return
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
             AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
-                event.also { servicempl.run(it) }
+                event.also { serviceImpl.onAccessibilityEvent(it) }
+                serviceImpl.refresh()
             }
 
             else -> {}

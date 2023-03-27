@@ -63,13 +63,13 @@ class MainFragment : Fragment() {
         }
         isSystem = requireArguments().getBoolean("system")
         loadAppList(isSystem)
-        listView.onItemClickListener = OnItemClickListener { parent, view, position, id ->
+        listView.onItemClickListener = OnItemClickListener { _, _, position, _ ->
             val info = listView.adapter.getItem(position) as AppInfo
             info.switchCheck.isChecked = !info.switchCheck.isChecked
         }
 
         listView.onItemLongClickListener =
-            AdapterView.OnItemLongClickListener { parent, view, position, id ->
+            AdapterView.OnItemLongClickListener { _, view, position, _ ->
                 var info: AppInfo = list[position]
                 if (searchText.isNotEmpty()) info = searchList[position]
                 val popupMenu = PopupMenu(activity, view)
