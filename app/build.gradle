@@ -13,8 +13,8 @@ android {
         applicationId "com.hujiayucc.hook"
         minSdk 28
         targetSdk 33
-        versionCode 999
-        versionName "1.1.7"
+        versionCode 1314
+        versionName "1.1.8"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,8 +72,6 @@ dependencies {
     compileOnly 'de.robv.android.xposed:api:82'
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
     ksp 'com.highcapable.yukihookapi:ksp-xposed:1.1.8'
-
-    compileOnly 'com.pangle.cn:ads-sdk-pro:5.1.0.2'
 
     // 网络请求库
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
