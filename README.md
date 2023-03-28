@@ -1,3 +1,4 @@
+<!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
 
 <img width="160" src="https://imgs.hujiayucc.cn/2023/02/24/63f828f4582ad.png" alt="logo">
@@ -25,7 +26,6 @@
 - [YukiHookAPI](https://github.com/fankes/YukiHookAPI)
 - [LSPosed](https://github.com/LSPosed/LSPosed)
 - [OkHttp](https://github.com/square/okhttp)
-- [FastJson](https://github.com/alibaba/fastjson)
 - [SwipeRefreshLayout](https://developer.android.com/reference/android/support/v4/widget/SwipeRefreshLayout.html)
 - ...
 

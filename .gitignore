@@ -16,3 +16,4 @@ local.properties
 /app/src/main/resources/
 /app/src/main/assets/
 /app/release/
+/.idea/render.experimental.xml
