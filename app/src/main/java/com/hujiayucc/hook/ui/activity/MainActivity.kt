@@ -78,6 +78,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private var alert_imageView: ImageView? = null
     private var menu: Menu? = null
+    private var checkUpdate = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         localeID = modulePrefs.get(localeId)
@@ -133,6 +134,7 @@ class MainActivity : AppCompatActivity() {
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         binding.mainDate.text = "Build Time：${buildTime}"
         checkUpdate()
+        checkUpdate = true
         binding.search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
 
@@ -209,7 +211,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 } else {
                     runOnUiThread {
-                        Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
+                        if (checkUpdate) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
                         binding.mainActiveStatus.setOnClickListener {
                             checkUpdate()
                         }
