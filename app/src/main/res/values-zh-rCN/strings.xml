@@ -4,6 +4,7 @@
     <string name="not_active">插件未激活</string>
     <string name="is_active">插件已激活</string>
     <string name="main_version">模块版本：%1$s (%2$s)</string>
+    <string name="main_hot_version">热修复版本: %1$s (%2$s)</string>
     <string name="menu_hook_success">Hook提示</string>
     <string name="wait_loading">请等待数据加载完成</string>
     <string name="language_settings">语言设置</string>

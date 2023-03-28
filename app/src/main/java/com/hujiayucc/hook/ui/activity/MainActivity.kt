@@ -52,6 +52,8 @@ import com.hujiayucc.hook.data.Data.runService
 import com.hujiayucc.hook.data.Data.stopService
 import com.hujiayucc.hook.data.Data.themes
 import com.hujiayucc.hook.data.Data.updateConfig
+import com.hujiayucc.hook.data.DataConst.HOT_NAME
+import com.hujiayucc.hook.data.DataConst.HOT_VERSION
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.databinding.ActivityMainBinding
@@ -59,6 +61,7 @@ import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.update.Update
+import com.hujiayucc.hook.update.Update.updateHotFix
 import com.hujiayucc.hook.utils.Language
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
@@ -132,9 +135,10 @@ class MainActivity : AppCompatActivity() {
         binding.mainActiveStatus.background = getDrawable(R.drawable.bg_header)
         binding.mainVersion.text = getString(R.string.main_version)
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
-        binding.mainDate.text = "Build Time：${buildTime}"
+        binding.mainHotVersion.text = getString(R.string.main_hot_version)
+            .format(HOT_NAME, HOT_VERSION)
+        binding.mainDate.text = "Build Time：$buildTime"
         checkUpdate()
-        checkUpdate = true
         binding.search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
 
@@ -197,9 +201,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkUpdate() {
+        binding.mainActiveStatus.setOnClickListener {
+            checkUpdate()
+        }
         Thread {
             val info = Update.checkUpdate()
             if (info != null) {
+                if (info.getInt("hotFixVersion") > HOT_VERSION) {
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("发现热更新")
+                            .setMessage("${info.getString("hotFixName")}\n\n${info.getString("updateLog")}")
+                            .setPositiveButton("升级") { dialog, _ ->
+                                dialog?.dismiss()
+                                try {
+                                    updateHotFix(info.getString("dexUrl"),info.getString("dexMd5"))
+                                } catch (e : Exception) {
+                                    e.printStackTrace()
+                                }
+                            }.setNegativeButton("关闭") { dialog, _ -> dialog?.dismiss() }.setCancelable(false).show()
+                    }
+                    return@Thread
+                }
+
                 if (info.getInt("versionCode") > BuildConfig.VERSION_CODE) {
                     val url = Uri.parse(info.getString("url"))
                     val intent = Intent(Intent.ACTION_VIEW, url)
@@ -212,6 +236,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     runOnUiThread {
                         if (checkUpdate) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
+                        checkUpdate = true
                         binding.mainActiveStatus.setOnClickListener {
                             checkUpdate()
                         }

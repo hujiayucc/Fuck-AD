@@ -14,8 +14,8 @@ android {
         applicationId "com.hujiayucc.hook"
         minSdk 28
         targetSdk 33
-        versionCode 1500
-        versionName "1.1.9"
+        versionCode 1800
+        versionName "1.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -32,17 +32,17 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             // 开启资源压缩
-            shrinkResources true
+            shrinkResources false
             versionNameSuffix "-release"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
         debug {
-            minifyEnabled true
+            minifyEnabled false
             // 开启资源压缩
-            shrinkResources true
+            shrinkResources false
             versionNameSuffix "-debug"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

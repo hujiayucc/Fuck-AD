@@ -14,6 +14,7 @@ import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.utils.Log
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.*
 import java.text.SimpleDateFormat
@@ -203,17 +204,18 @@ object Data {
     }
 
     fun Context.getConfig(key: String): Any? {
-        return try {
+        try {
             val config = File(filesDir, "config.json")
             val inputStream = config.inputStream()
             val byte = ByteArray(config.length().toInt())
             inputStream.read(byte)
             inputStream.close()
-            val json = JSONObject(String(byte))
-            json[key]
-        } catch (e : Exception) {
-            e.printStackTrace()
-            null
+            if (String(byte).isEmpty()) return null
+            return JSONObject(String(byte)).get(key)
+        } catch (e : IOException) {
+            return null
+        } catch (e : JSONException) {
+            return null
         }
     }
 }

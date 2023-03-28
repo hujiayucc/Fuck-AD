@@ -4,6 +4,7 @@
     <string name="not_active">Not Active</string>
     <string name="is_active">Activated</string>
     <string name="main_version">Version: %1$s (%2$s)</string>
+    <string name="main_hot_version">HotFix Version: %1$s (%2$s)</string>
     <string name="menu_hook_success">Hook Tip</string>
     <string name="wait_loading">Please wait for APP data loading to complete.</string>
     <string name="language_settings">Language Settings</string>

@@ -79,6 +79,7 @@ class SkipServiceImpl(private val service: SkipService) {
     fun onAccessibilityEvent(event: AccessibilityEvent) {
         try {
             packageName = event.packageName
+            if (packageName.isNullOrEmpty()) return
             for (name in blackLIst) {
                 if (name == packageName) return
             }

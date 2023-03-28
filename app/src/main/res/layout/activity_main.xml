@@ -79,6 +79,16 @@
                             android:textSize="18sp"/>
 
                     <TextView
+                            android:id="@+id/main_hot_version"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="5dp"
+                            android:alpha="0.8"
+                            android:text="@string/main_hot_version"
+                            android:textColor="?attr/headerTextColor"
+                            android:textSize="13sp"/>
+
+                    <TextView
                             android:id="@+id/main_version"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
