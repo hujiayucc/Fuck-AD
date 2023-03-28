@@ -8,13 +8,14 @@ android {
     namespace 'com.hujiayucc.hook'
     compileSdk 33
 
+    //noinspection GroovyUnusedAssignment
     def verCode = new Random()
     defaultConfig {
         applicationId "com.hujiayucc.hook"
         minSdk 28
         targetSdk 33
-        versionCode 1314
-        versionName "1.1.8"
+        versionCode 1400
+        versionName "1.1.9"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,12 +57,14 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    packagingOptions {
+        exclude 'META-INF/*.version'
+        exclude 'kotlin'
+    }
 }
 
 dependencies {
-
-    implementation 'androidx.core:core-ktx:1.9.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation 'com.github.duanhong169:colorpicker:1.1.6'
@@ -72,11 +75,6 @@ dependencies {
     compileOnly 'de.robv.android.xposed:api:82'
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
     ksp 'com.highcapable.yukihookapi:ksp-xposed:1.1.8'
-
-    // 网络请求库
-    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
-    // JSON解析库
-    implementation 'com.alibaba:fastjson:1.2.80'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
