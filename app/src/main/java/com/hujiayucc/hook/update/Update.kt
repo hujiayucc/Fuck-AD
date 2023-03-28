@@ -8,7 +8,7 @@ import java.net.URL
 
 
 object Update {
-    const val json = "https://gitee.com/hujiayucc/com.hujiayucc.hook/raw/main/version.json"
+    const val json = "https://fkad.hujiayucc.cn/version.json"
     fun checkUpdate(): JSONObject? {
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
