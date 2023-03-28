@@ -9,13 +9,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import android.text.TextUtils
-import com.alibaba.fastjson.JSON
-import com.alibaba.fastjson.JSONObject
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.utils.Log
+import org.json.JSONObject
 import java.io.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -195,7 +194,7 @@ object Data {
             val config = File(filesDir, "config.json")
             if (!config.exists()) config.createNewFile()
             val outputStream = FileOutputStream(config)
-            outputStream.write(jsonObject.toJSONString().toByteArray())
+            outputStream.write(jsonObject.toString().toByteArray(Charsets.UTF_8))
             outputStream.flush()
             outputStream.close()
         } catch (e : Exception) {
@@ -210,7 +209,7 @@ object Data {
             val byte = ByteArray(config.length().toInt())
             inputStream.read(byte)
             inputStream.close()
-            val json = JSON.parseObject(String(byte))
+            val json = JSONObject(String(byte))
             json[key]
         } catch (e : Exception) {
             e.printStackTrace()

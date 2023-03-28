@@ -10,11 +10,12 @@ import com.hujiayucc.hook.utils.Log
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         when (intent?.action) {
-            ACTION_BOOT_COMPLETED -> {
+            ACTION_BOOT_COMPLETED,
+            "com.hujiayucc.hook.service.StartService" -> {
                 context?.runService()
             }
 
-            else -> intent?.action?.let { Log.e(it) }
+            else -> intent?.action?.let { Log.d("BootReceiver",it) }
         }
     }
 }

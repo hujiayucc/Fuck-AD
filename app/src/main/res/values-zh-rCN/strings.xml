@@ -39,4 +39,5 @@
     <string name="close_accessibilityservice">无障碍服务已关闭</string>
     <string name="accessibility_description">自动跳过广告无障碍服务</string>
     <string name="accessibility_notification">已自动跳过：%1$s\n自动跳过广告无障碍服务</string>
+    <string name="latest_version">已经是最新版</string>
 </resources>

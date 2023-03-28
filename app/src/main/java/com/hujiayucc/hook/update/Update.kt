@@ -1,15 +1,17 @@
 package com.hujiayucc.hook.update
 
-import com.alibaba.fastjson.JSON
-import com.hujiayucc.hook.BuildConfig
+import android.os.StrictMode
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 
 
 object Update {
-    val json = "https://gitee.com/hujiayucc/com.hujiayucc.hook/raw/main/version.json"
-    fun checkUpdate(): Any? {
+    const val json = "https://gitee.com/hujiayucc/com.hujiayucc.hook/raw/main/version.json"
+    fun checkUpdate(): JSONObject? {
+        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
         try {
             // 创建OkHttpClient对象
             val client = OkHttpClient()
@@ -18,12 +20,7 @@ object Update {
             // 创建Call对象
             val call: Call = client.newCall(request)
             // 发起请求并处理响应
-            val jsonObject = JSON.parseObject(call.execute().body?.string() ?: "")
-            val versionCode = jsonObject.getIntValue("versionCode")
-            if (versionCode > BuildConfig.VERSION_CODE) {
-                return jsonObject.get("url")
-            }
-            return 0
+            return call.execute().body?.string()?.let { JSONObject(it) }
         } catch (e: Exception) {
             e.printStackTrace()
             return null

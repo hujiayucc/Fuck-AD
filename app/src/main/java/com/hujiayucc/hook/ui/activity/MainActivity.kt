@@ -15,8 +15,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
-import android.os.StrictMode
-import android.os.StrictMode.ThreadPolicy
 import android.provider.MediaStore
 import android.provider.Settings
 import android.text.Editable
@@ -60,7 +58,7 @@ import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
-import com.hujiayucc.hook.update.Update.checkUpdate
+import com.hujiayucc.hook.update.Update
 import com.hujiayucc.hook.utils.Language
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
@@ -82,8 +80,6 @@ class MainActivity : AppCompatActivity() {
     private var menu: Menu? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val policy = ThreadPolicy.Builder().permitAll().build()
-        StrictMode.setThreadPolicy(policy)
         localeID = modulePrefs.get(localeId)
         if (localeID != 0) checkLanguage(Language.fromId(localeID))
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -136,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         binding.mainVersion.text = getString(R.string.main_version)
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         binding.mainDate.text = "Build Time：${buildTime}"
-        Update()
+        checkUpdate()
         binding.search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
 
@@ -198,20 +194,28 @@ class MainActivity : AppCompatActivity() {
         fragment.showList(list)
     }
 
-    @SuppressLint("UseCompatLoadingForDrawables")
-    private fun Update() {
+    private fun checkUpdate() {
         Thread {
-            val info = checkUpdate()
-            if ((info != null) && (info.toString().length > 10)) {
-                runOnUiThread {
-                    binding.mainStatus.text = getString(R.string.has_update)
-                    binding.mainActiveStatus.setOnClickListener {
-                        val url = Uri.parse(info.toString())
-                        val intent = Intent(Intent.ACTION_VIEW, url)
-                        startActivity(intent)
+            val info = Update.checkUpdate()
+            if (info != null) {
+                if (info.getInt("versionCode") > BuildConfig.VERSION_CODE) {
+                    val url = Uri.parse(info.getString("url"))
+                    val intent = Intent(Intent.ACTION_VIEW, url)
+                    runOnUiThread {
+                        binding.mainStatus.text = getString(R.string.has_update)
+                        binding.mainActiveStatus.setOnClickListener {
+                            startActivity(intent)
+                        }
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
+                        binding.mainActiveStatus.setOnClickListener {
+                            checkUpdate()
+                        }
                     }
                 }
-            } else if (info != 0) runOnUiThread {
+            } else runOnUiThread {
                 Toast.makeText(
                     applicationContext,
                     getString(R.string.check_update_failed),

@@ -39,4 +39,5 @@
     <string name="close_accessibilityservice">AccessibilityService Closed</string>
     <string name="accessibility_description">Auto Skip ADs AccessibilityService</string>
     <string name="accessibility_notification">Auto Skipped: %1$s\nAuto Skip ADs AccessibilityService</string>
+    <string name="latest_version">Already the latest version</string>
 </resources>

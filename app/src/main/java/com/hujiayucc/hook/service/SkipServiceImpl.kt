@@ -182,7 +182,8 @@ class SkipServiceImpl(private val service: SkipService) {
         val id = FindId.fromPackageName(packageName.toString()) ?: return false
         val list = nodeInfo.findAccessibilityNodeInfosByViewId(id["id"].toString())
         if (list.isNotEmpty()) {
-            Thread.sleep(id["wait"] as Long)
+            val waitTime = id["wait"] as Long
+            Thread.sleep(waitTime)
             for (node in list) {
                 Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${node.viewIdResourceName}")
                 if (time != eventTime && eventTime - time > 800) {
