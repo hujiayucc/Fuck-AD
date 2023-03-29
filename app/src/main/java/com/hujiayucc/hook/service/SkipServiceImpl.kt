@@ -71,7 +71,7 @@ class SkipServiceImpl(private val service: SkipService) {
 
     private fun success() {
         skipCount++
-        if (context.getConfig(Data.hookTip.key) as Boolean? == true)
+        if (context.getConfig()?.getBoolean(Data.hookTip.key) == true)
             Toast.makeText(context, context.getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
         refresh()
     }
@@ -84,7 +84,7 @@ class SkipServiceImpl(private val service: SkipService) {
                 if (name == packageName) return
             }
 
-            if (context.getConfig(packageName.toString()) as Boolean? == false) return
+            if (context.getConfig()?.getBoolean(packageName.toString()) == false) return
 
             try {
                 val source = event.source?.findAccessibilityNodeInfosByText("跳")
@@ -149,8 +149,7 @@ class SkipServiceImpl(private val service: SkipService) {
     }
 
     private fun checkLanguage() {
-        localeID =
-            if (context.getConfig(Data.localeId.key) as Int? != null) context.getConfig(Data.localeId.key) as Int else 0
+        localeID = context.getConfig()?.getInt(Data.localeId.key) ?: 0
         val configuration = service.resources.configuration
         configuration.setLocale(Language.fromId(localeID))
         service.resources.updateConfiguration(configuration, service.resources.displayMetrics)

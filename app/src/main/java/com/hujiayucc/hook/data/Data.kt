@@ -203,7 +203,7 @@ object Data {
         }
     }
 
-    fun Context.getConfig(key: String): Any? {
+    fun Context.getConfig(): JSONObject? {
         try {
             val config = File(filesDir, "config.json")
             val inputStream = config.inputStream()
@@ -211,7 +211,7 @@ object Data {
             inputStream.read(byte)
             inputStream.close()
             if (String(byte).isEmpty()) return null
-            return JSONObject(String(byte)).get(key)
+            return JSONObject(String(byte))
         } catch (e : IOException) {
             return null
         } catch (e : JSONException) {

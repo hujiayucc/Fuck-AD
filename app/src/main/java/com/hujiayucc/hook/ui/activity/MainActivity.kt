@@ -57,6 +57,7 @@ import com.hujiayucc.hook.data.DataConst.HOT_VERSION
 import com.hujiayucc.hook.data.DataConst.QQ_GROUP
 import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.databinding.ActivityMainBinding
+import com.hujiayucc.hook.hotfix.HotFixUtils
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
@@ -81,6 +82,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private var alert_imageView: ImageView? = null
     private var menu: Menu? = null
+    override fun attachBaseContext(newBase: Context?) {
+        super.attachBaseContext(newBase)
+        runCatching {
+            HotFixUtils().doHotFix(newBase!!.classLoader)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         localeID = modulePrefs.get(localeId)
@@ -136,6 +143,9 @@ class MainActivity : AppCompatActivity() {
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         binding.mainHotVersion.text = getString(R.string.main_hot_version)
             .format(HOT_NAME, HOT_VERSION)
+        binding.mainActiveStatus.setOnClickListener {
+            checkUpdate(true)
+        }
         binding.mainDate.text = "Build Time：$buildTime"
         checkUpdate(false)
         binding.search.addTextChangedListener(object : TextWatcher {
@@ -200,11 +210,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkUpdate(show: Boolean) {
-        binding.mainActiveStatus.setOnClickListener {
-            checkUpdate(true)
-        }
         Thread {
             val info = Update.checkUpdate()
+            var hotFix = false
             if (info != null) {
                 if (info.getInt("hotFixVersion") > HOT_VERSION) {
                     runOnUiThread {
@@ -213,14 +221,12 @@ class MainActivity : AppCompatActivity() {
                             .setMessage("${info.getString("hotFixName")}\n\n${info.getString("updateLog")}")
                             .setPositiveButton("升级") { dialog, _ ->
                                 dialog?.dismiss()
-                                try {
+                                kotlin.runCatching {
                                     updateHotFix(info.getString("dexUrl"),info.getString("dexMd5"))
-                                } catch (e : Exception) {
-                                    e.printStackTrace()
                                 }
                             }.setNegativeButton("关闭") { dialog, _ -> dialog?.dismiss() }.setCancelable(false).show()
                     }
-                    return@Thread
+                    hotFix = true
                 }
 
                 if (info.getInt("versionCode") > BuildConfig.VERSION_CODE) {
@@ -234,10 +240,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 } else {
                     runOnUiThread {
-                        if (show) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
-                        binding.mainActiveStatus.setOnClickListener {
-                            checkUpdate(true)
-                        }
+                        if (show && !hotFix) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
                     }
                 }
             } else runOnUiThread {

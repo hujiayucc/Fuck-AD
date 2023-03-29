@@ -6,6 +6,6 @@ object DataConst {
         "mqqopensdkapi://bizAgent/qm/qr?url=https%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Fk%3DrrPSIlmQfYaZAlZuYH058gxUzEEKY00y%26jump_from%3D%26auth%3D%26app_name%3D%26authSig%3D2YtvxFdMkwUaQfxU%2FSjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At%26source_id%3D3_40001"
     const val CHANNEL_ID = "auto_skip1"
     const val SERVICE_NAME = "com.hujiayucc.hook.service.SkipService"
-    const val HOT_VERSION = 1810
-    const val HOT_NAME = "1.2.0.1"
+    const val HOT_VERSION = 1830
+    const val HOT_NAME = "1.2.0.2"
 }

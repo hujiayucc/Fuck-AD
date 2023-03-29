@@ -3,7 +3,7 @@ package com.hujiayucc.hook.update
 import android.app.Activity
 import android.os.StrictMode
 import androidx.appcompat.app.AlertDialog
-import com.hujiayucc.hook.hotfix.HotFixUtils.Companion.DEX_DIR
+import com.hujiayucc.hook.hotfix.HotFixUtils.Companion.DEX_FILE
 import org.json.JSONObject
 import java.io.*
 import java.net.URL
@@ -15,7 +15,7 @@ import kotlin.system.exitProcess
 
 
 object Update {
-    const val json = "https://fkad.hujiayucc.cn/version"
+    private const val json = "https://fkad.hujiayucc.cn/version"
     fun checkUpdate(): JSONObject? {
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
@@ -37,11 +37,10 @@ object Update {
 
     fun Activity.updateHotFix(downloadUrl: String, md5: String) {
         Thread {
-            val patchDir = File(filesDir, DEX_DIR)
-            deleteOld(patchDir)
+            deleteOld(DEX_FILE)
             val url = URL(downloadUrl)
             val dexFile = url.openStream()
-            val baseDex = File(patchDir, "base.dex")
+            val baseDex = File(DEX_FILE, "base.dex")
             if (!baseDex.exists()) baseDex.createNewFile()
             val outputStream = FileOutputStream(baseDex)
             val byte = dexFile.readBytes()
@@ -76,21 +75,19 @@ object Update {
     }
 
     private fun deleteOld(patchDir: File) {
-        val oatDir = File(patchDir, "oat")
-        if (oatDir.exists()) {
-            val path = Paths.get(oatDir.path)
-            Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
-                override fun visitFile(file: Path?, attrs: BasicFileAttributes?): FileVisitResult {
-                    Files.delete(file)
-                    return FileVisitResult.CONTINUE
-                }
+        val path = Paths.get(patchDir.path)
+        Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
+            override fun visitFile(file: Path?, attrs: BasicFileAttributes?): FileVisitResult {
+                Files.delete(file)
+                return FileVisitResult.CONTINUE
+            }
 
-                override fun postVisitDirectory(dir: Path?, exc: IOException?): FileVisitResult {
-                    Files.delete(dir)
-                    return FileVisitResult.CONTINUE
-                }
-            })
-        }
+            override fun postVisitDirectory(dir: Path?, exc: IOException?): FileVisitResult {
+                Files.delete(dir)
+                return FileVisitResult.CONTINUE
+            }
+        })
+        patchDir.mkdir()
     }
 
     @Throws(NoSuchAlgorithmException::class, UnsupportedEncodingException::class)
