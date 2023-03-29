@@ -268,7 +268,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        checkUpdate(true)
+        checkUpdate(false)
         val isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
         menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
         if (isChecked) {
