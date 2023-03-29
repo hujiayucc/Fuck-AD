@@ -1,7 +1,7 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
 
-<img width="160" src="https://imgs.hujiayucc.cn/2023/02/24/63f828f4582ad.png" alt="logo">
+<img width="160" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/icon.png" alt="logo">
 
 # Fuck AD
 
