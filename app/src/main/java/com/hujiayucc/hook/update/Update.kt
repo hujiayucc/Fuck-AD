@@ -38,9 +38,9 @@ object Update {
     fun Activity.updateHotFix(downloadUrl: String, md5: String) {
         Thread {
             val patchDir = File(filesDir, DEX_DIR)
+            deleteOld(patchDir)
             val url = URL(downloadUrl)
             val dexFile = url.openStream()
-            val oatDir = File(patchDir, "oat")
             val baseDex = File(patchDir, "base.dex")
             if (!baseDex.exists()) baseDex.createNewFile()
             val outputStream = FileOutputStream(baseDex)
@@ -49,20 +49,6 @@ object Update {
             outputStream.flush()
             outputStream.close()
             val dexMd5 = md5(byte)
-            if (oatDir.exists()) {
-                val path = Paths.get(oatDir.path)
-                Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
-                    override fun visitFile(file: Path?, attrs: BasicFileAttributes?): FileVisitResult {
-                        Files.delete(file)
-                        return FileVisitResult.CONTINUE
-                    }
-
-                    override fun postVisitDirectory(dir: Path?, exc: IOException?): FileVisitResult {
-                        Files.delete(dir)
-                        return FileVisitResult.CONTINUE
-                    }
-                })
-            }
             if (dexMd5.lowercase() == md5.lowercase()) {
                 runOnUiThread {
                     AlertDialog.Builder(this)
@@ -87,6 +73,24 @@ object Update {
                 }
             }
         }.start()
+    }
+
+    private fun deleteOld(patchDir: File) {
+        val oatDir = File(patchDir, "oat")
+        if (oatDir.exists()) {
+            val path = Paths.get(oatDir.path)
+            Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
+                override fun visitFile(file: Path?, attrs: BasicFileAttributes?): FileVisitResult {
+                    Files.delete(file)
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun postVisitDirectory(dir: Path?, exc: IOException?): FileVisitResult {
+                    Files.delete(dir)
+                    return FileVisitResult.CONTINUE
+                }
+            })
+        }
     }
 
     @Throws(NoSuchAlgorithmException::class, UnsupportedEncodingException::class)

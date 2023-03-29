@@ -81,7 +81,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private var alert_imageView: ImageView? = null
     private var menu: Menu? = null
-    private var checkUpdate = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         localeID = modulePrefs.get(localeId)
@@ -138,7 +137,7 @@ class MainActivity : AppCompatActivity() {
         binding.mainHotVersion.text = getString(R.string.main_hot_version)
             .format(HOT_NAME, HOT_VERSION)
         binding.mainDate.text = "Build Time：$buildTime"
-        checkUpdate()
+        checkUpdate(false)
         binding.search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
 
@@ -200,9 +199,9 @@ class MainActivity : AppCompatActivity() {
         fragment.showList(list)
     }
 
-    private fun checkUpdate() {
+    private fun checkUpdate(show: Boolean) {
         binding.mainActiveStatus.setOnClickListener {
-            checkUpdate()
+            checkUpdate(true)
         }
         Thread {
             val info = Update.checkUpdate()
@@ -235,10 +234,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 } else {
                     runOnUiThread {
-                        if (checkUpdate) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
-                        checkUpdate = true
+                        if (show) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
                         binding.mainActiveStatus.setOnClickListener {
-                            checkUpdate()
+                            checkUpdate(true)
                         }
                     }
                 }
@@ -270,7 +268,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        checkUpdate()
+        checkUpdate(true)
         val isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
         menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
         if (isChecked) {
