@@ -19,7 +19,9 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Data
+import com.hujiayucc.hook.data.Data.getBoolean
 import com.hujiayucc.hook.data.Data.getConfig
+import com.hujiayucc.hook.data.Data.getInt
 import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
 import com.hujiayucc.hook.data.Data.skipCount
 import com.hujiayucc.hook.data.DataConst.CHANNEL_ID
@@ -71,7 +73,7 @@ class SkipServiceImpl(private val service: SkipService) {
 
     private fun success() {
         skipCount++
-        if (context.getConfig()?.getBoolean(Data.hookTip.key) == true)
+        if (context.getConfig().getBoolean(Data.hookTip.key, true))
             Toast.makeText(context, context.getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
         refresh()
     }
@@ -84,7 +86,7 @@ class SkipServiceImpl(private val service: SkipService) {
                 if (name == packageName) return
             }
 
-            if (context.getConfig()?.getBoolean(packageName.toString()) == false) return
+            if (!context.getConfig().getBoolean(packageName.toString(), true)) return
 
             try {
                 val source = event.source?.findAccessibilityNodeInfosByText("跳")
@@ -149,7 +151,7 @@ class SkipServiceImpl(private val service: SkipService) {
     }
 
     private fun checkLanguage() {
-        localeID = context.getConfig()?.getInt(Data.localeId.key) ?: 0
+        localeID = context.getConfig().getInt(Data.localeId.key, 0)
         val configuration = service.resources.configuration
         configuration.setLocale(Language.fromId(localeID))
         service.resources.updateConfiguration(configuration, service.resources.displayMetrics)
