@@ -1,7 +1,6 @@
-package com.hujiayucc.hook.hotfix
+package com.hujiayucc.hook.utils
 
 import android.annotation.SuppressLint
-import com.hujiayucc.hook.utils.Log
 import dalvik.system.DexClassLoader
 import dalvik.system.PathClassLoader
 import java.io.File

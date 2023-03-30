@@ -36,34 +36,27 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
-import com.hujiayucc.hook.BuildConfig
+import com.hujiayucc.hook.BuildConfig.*
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.bean.AppInfo
-import com.hujiayucc.hook.data.Data
-import com.hujiayucc.hook.data.Data.buildTime
-import com.hujiayucc.hook.data.Data.checkRoot
-import com.hujiayucc.hook.data.Data.global
-import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
-import com.hujiayucc.hook.data.Data.hookTip
-import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
-import com.hujiayucc.hook.data.Data.isLauncherIconShowing
-import com.hujiayucc.hook.data.Data.localeId
-import com.hujiayucc.hook.data.Data.runService
-import com.hujiayucc.hook.data.Data.stopService
-import com.hujiayucc.hook.data.Data.themes
-import com.hujiayucc.hook.data.Data.updateConfig
-import com.hujiayucc.hook.data.DataConst.HOT_NAME
-import com.hujiayucc.hook.data.DataConst.HOT_VERSION
-import com.hujiayucc.hook.data.DataConst.QQ_GROUP
-import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
 import com.hujiayucc.hook.databinding.ActivityMainBinding
-import com.hujiayucc.hook.hotfix.HotFixUtils
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
-import com.hujiayucc.hook.update.Update
-import com.hujiayucc.hook.update.Update.updateHotFix
-import com.hujiayucc.hook.utils.Language
+import com.hujiayucc.hook.utils.*
+import com.hujiayucc.hook.utils.Data.QQ_GROUP
+import com.hujiayucc.hook.utils.Data.buildTime
+import com.hujiayucc.hook.utils.Data.checkRoot
+import com.hujiayucc.hook.utils.Data.global
+import com.hujiayucc.hook.utils.Data.hideOrShowLauncherIcon
+import com.hujiayucc.hook.utils.Data.hookTip
+import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.utils.Data.isLauncherIconShowing
+import com.hujiayucc.hook.utils.Data.localeId
+import com.hujiayucc.hook.utils.Data.runService
+import com.hujiayucc.hook.utils.Data.stopService
+import com.hujiayucc.hook.utils.Data.themes
+import com.hujiayucc.hook.utils.Data.updateConfig
+import com.hujiayucc.hook.utils.Update.updateHotFix
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
 import java.io.FileOutputStream
@@ -140,7 +133,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.mainActiveStatus.background = getDrawable(R.drawable.bg_header)
         binding.mainVersion.text = getString(R.string.main_version)
-            .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+            .format(VERSION_NAME, VERSION_CODE)
         binding.mainHotVersion.text = getString(R.string.main_hot_version)
             .format(HOT_NAME, HOT_VERSION)
         binding.mainActiveStatus.setOnClickListener {
@@ -222,14 +215,14 @@ class MainActivity : AppCompatActivity() {
                             .setPositiveButton("升级") { dialog, _ ->
                                 dialog?.dismiss()
                                 kotlin.runCatching {
-                                    updateHotFix(info.getString("dexUrl"),info.getString("dexMd5"))
+                                    updateHotFix(info)
                                 }
                             }.setNegativeButton("关闭") { dialog, _ -> dialog?.dismiss() }.setCancelable(false).show()
                     }
                     hotFix = true
                 }
 
-                if (info.getInt("versionCode") > BuildConfig.VERSION_CODE) {
+                if (info.getInt("versionCode") > VERSION_CODE) {
                     val url = Uri.parse(info.getString("url"))
                     val intent = Intent(Intent.ACTION_VIEW, url)
                     runOnUiThread {

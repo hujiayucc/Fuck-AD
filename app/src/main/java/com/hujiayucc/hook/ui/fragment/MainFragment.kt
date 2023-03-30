@@ -16,9 +16,9 @@ import com.highcapable.yukihookapi.hook.factory.modulePrefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.bean.AppInfo
-import com.hujiayucc.hook.data.Data
-import com.hujiayucc.hook.data.Data.themes
+import com.hujiayucc.hook.utils.AppInfo
+import com.hujiayucc.hook.utils.Data
+import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter

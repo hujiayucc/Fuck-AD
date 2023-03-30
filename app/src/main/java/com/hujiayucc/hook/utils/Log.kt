@@ -4,7 +4,7 @@ import com.highcapable.yukihookapi.hook.log.loggerD
 import com.highcapable.yukihookapi.hook.log.loggerE
 import com.highcapable.yukihookapi.hook.log.loggerI
 import com.highcapable.yukihookapi.hook.log.loggerW
-import com.hujiayucc.hook.data.DataConst.TAG
+import com.hujiayucc.hook.BuildConfig.TAG
 
 object Log {
     fun d(msg: String) {

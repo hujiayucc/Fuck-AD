@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package com.hujiayucc.hook.data
+package com.hujiayucc.hook.utils
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -12,9 +12,8 @@ import android.provider.Settings
 import android.text.TextUtils
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
-import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
+import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
 import com.hujiayucc.hook.service.SkipService
-import com.hujiayucc.hook.utils.Log
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.*
@@ -29,6 +28,7 @@ object Data {
     private var isRoot: Boolean = false
     private var result: BufferedReader? = null
 
+    const val QQ_GROUP = "mqqopensdkapi://bizAgent/qm/qr?url=https%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Fk%3DrrPSIlmQfYaZAlZuYH058gxUzEEKY00y%26jump_from%3D%26auth%3D%26app_name%3D%26authSig%3D2YtvxFdMkwUaQfxU%2FSjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At%26source_id%3D3_40001"
     /** 获取项目编译完成的时间戳 (当前本地时间) */
     val buildTime: String = format.format(Date(YukiHookAPI.Status.compiledTimestamp))
     val global: PrefsData<Boolean> = PrefsData("global", true)

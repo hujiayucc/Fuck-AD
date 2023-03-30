@@ -3,8 +3,8 @@ package com.hujiayucc.hook.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
-import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
-import com.hujiayucc.hook.data.DataConst.SERVICE_NAME
+import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
 
 class SkipService : AccessibilityService() {
     private lateinit var serviceImpl: SkipServiceImpl

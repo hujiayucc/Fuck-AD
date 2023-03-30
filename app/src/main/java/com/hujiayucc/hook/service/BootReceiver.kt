@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_BOOT_COMPLETED
-import com.hujiayucc.hook.data.Data.runService
+import com.hujiayucc.hook.utils.Data.runService
 import com.hujiayucc.hook.utils.Log
 
 class BootReceiver : BroadcastReceiver() {

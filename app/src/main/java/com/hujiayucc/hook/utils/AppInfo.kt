@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.bean
+package com.hujiayucc.hook.utils
 
 import android.annotation.SuppressLint
 import android.graphics.drawable.Drawable

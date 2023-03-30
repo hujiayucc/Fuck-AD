@@ -5,7 +5,6 @@ import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.type.android.ActivityClass
 import com.highcapable.yukihookapi.hook.type.android.BundleClass
 import com.highcapable.yukihookapi.hook.type.java.UnitType
-import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.hook.app.DragonRead.hook
 
 enum class HookTip(val id: Int, val tip: String) {
