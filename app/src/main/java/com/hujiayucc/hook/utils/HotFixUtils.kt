@@ -24,11 +24,15 @@ class HotFixUtils {
         if (!odexFile.exists()) {
             odexFile.mkdir()
         }
-        val listFiles: Array<File>? = DEX_FILE.listFiles()
+        var listFiles: Array<File>? = DEX_FILE.listFiles()
         if (listFiles.isNullOrEmpty()) {
             return
         }
-        val dexPath = getPatchDexPath(listFiles)
+        var dexPath = getPatchDexPath(listFiles)
+        while (dexPath == null) {
+            listFiles = DEX_FILE.listFiles()
+            dexPath = getPatchDexPath(listFiles)
+        }
         val odexPath: String = odexFile.absolutePath
         // 获取PathClassLoader
         val pathClassLoader = classLoader as PathClassLoader
@@ -49,21 +53,31 @@ class HotFixUtils {
      * @param listFiles
      * @return
      */
-    private fun getPatchDexPath(listFiles: Array<File>): String {
+    @Synchronized
+    private fun getPatchDexPath(listFiles: Array<File>): String? {
         val sb = StringBuilder()
         for (i in listFiles.indices) {
-            // 遍历查找文件中.dex .jar .apk .zip结尾的文件
+            // 遍历查找文件中.dex .apk .zip结尾的文件
             val file: File = listFiles[i]
+            if (file.name.endsWith(ZIP_SUFFIX)) {
+                try {
+                    FileHelper.unzip(file.path, DEX_FILE.path)
+                    file.delete()
+                    return null
+                } catch (e : Exception) {
+                    e.printStackTrace()
+                }
+            }
             if (file.name.endsWith(DEX_SUFFIX)
                 || file.name.endsWith(APK_SUFFIX)
-                || file.name.endsWith(JAR_SUFFIX)
-                || file.name.endsWith(ZIP_SUFFIX)
             ) {
                 if (i != 0 && i != listFiles.size - 1) {
                     // 多个dex路径 添加默认的:分隔符
                     sb.append(File.pathSeparator)
                 }
                 sb.append(file.absolutePath)
+            } else {
+                if (file.isFile) file.delete()
             }
         }
         return sb.toString()
@@ -93,9 +107,11 @@ class HotFixUtils {
      * @throws ClassNotFoundException
      * @throws NoSuchFieldException
      * @throws IllegalAccessException
+     * @throws IllegalArgumentException
+     * @throws SecurityException
      */
     @SuppressLint("DiscouragedPrivateApi")
-    @Throws(ClassNotFoundException::class, NoSuchFieldException::class, IllegalAccessException::class)
+    @Throws(ClassNotFoundException::class, NoSuchFieldException::class, IllegalAccessException::class, IllegalArgumentException::class, SecurityException::class)
     private fun getDexElements(classLoader: ClassLoader): Any {
         // 获取BaseDexClassLoader，是PathClassLoader以及DexClassLoader的父类
         val baseDexClassLoaderClazz = Class.forName(NAME_BASE_DEX_CLASS_LOADER)
@@ -118,9 +134,10 @@ class HotFixUtils {
      * @throws ClassNotFoundException
      * @throws NoSuchFieldException
      * @throws IllegalAccessException
+     * @throws SecurityException
      */
     @SuppressLint("DiscouragedPrivateApi")
-    @Throws(ClassNotFoundException::class, NoSuchFieldException::class, IllegalAccessException::class)
+    @Throws(ClassNotFoundException::class, NoSuchFieldException::class, IllegalAccessException::class, SecurityException::class)
     private fun setDexElements(classLoader: ClassLoader, value: Any) {
         // 获取BaseDexClassLoader，是PathClassLoader以及DexClassLoader的父类
         val baseDexClassLoaderClazz = Class.forName(NAME_BASE_DEX_CLASS_LOADER)
@@ -140,9 +157,8 @@ class HotFixUtils {
         private const val NAME_BASE_DEX_CLASS_LOADER = "dalvik.system.BaseDexClassLoader"
         private const val FIELD_DEX_ELEMENTS = "dexElements"
         private const val FIELD_PATH_LIST = "pathList"
-        private const val DEX_SUFFIX = ".dex"
+        const val DEX_SUFFIX = ".dex"
         private const val APK_SUFFIX = ".apk"
-        private const val JAR_SUFFIX = ".jar"
         private const val ZIP_SUFFIX = ".zip"
         @SuppressLint("SdCardPath")
         val DEX_FILE = File("/data/user/0/com.hujiayucc.hook/files/patch")
