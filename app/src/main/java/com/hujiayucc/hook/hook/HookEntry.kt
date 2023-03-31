@@ -8,17 +8,17 @@ import com.highcapable.yukihookapi.hook.factory.toClassOrNull
 import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.BuildConfig
-import com.hujiayucc.hook.utils.Data.global
-import com.hujiayucc.hook.utils.Data.hookTip
-import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.hook.app.DragonRead.hook
-import com.hujiayucc.hook.hook.app.HookerList
+import com.hujiayucc.hook.hook.entity.HookerList
 import com.hujiayucc.hook.hook.entity.Jiagu
 import com.hujiayucc.hook.hook.entity.Provider
 import com.hujiayucc.hook.hook.sdk.Google
 import com.hujiayucc.hook.hook.sdk.KWAD
 import com.hujiayucc.hook.hook.sdk.Pangle
 import com.hujiayucc.hook.hook.sdk.Tencent
+import com.hujiayucc.hook.utils.Data.global
+import com.hujiayucc.hook.utils.Data.hookTip
+import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.utils.HookTip
 import com.hujiayucc.hook.utils.Log
 

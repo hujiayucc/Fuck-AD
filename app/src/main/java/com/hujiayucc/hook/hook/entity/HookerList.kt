@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.hook.app
+package com.hujiayucc.hook.hook.entity
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 
@@ -18,7 +18,11 @@ enum class HookerList(val packageName: String, val hooker: YukiBaseHooker, val s
     /** 小猿搜题 */
     XYST("com.fenbi.android.solar", com.hujiayucc.hook.hook.app.XYST,true),
     /** QQ阅读 */
-    QQReader("com.qq.reader", com.hujiayucc.hook.hook.app.QQReader,true);
+    QQReader("com.qq.reader", com.hujiayucc.hook.hook.app.QQReader,true),
+    /** 追书小说阅读 */
+    ZSRead("com.zhuishuxiaoshuo.bbzz.app", com.hujiayucc.hook.hook.app.ZSRead,true),
+    /** 米游社 */
+    MiYoHyper("com.mihoyo.hyperion", com.hujiayucc.hook.hook.app.MiYoHyper,true);
 
     companion object {
         /** 通过包名获取对应Hooker */

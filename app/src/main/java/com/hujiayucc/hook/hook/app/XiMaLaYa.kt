@@ -3,6 +3,7 @@ package com.hujiayucc.hook.hook.app
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.MembersType
 
+/** 喜马拉雅 */
 object XiMaLaYa : YukiBaseHooker() {
     override fun onHook() {
         val list = arrayOf(

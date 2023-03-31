@@ -15,8 +15,8 @@ android {
         minSdk 28
         targetSdk 33
         // 别问，问就是2001是我出生年份
-        versionCode 2001
-        versionName "1.2.1"
+        versionCode 2002
+        versionName "1.2.1.1"
         def hotVersionCode = 1850
         def hotVersionName = "1.2.0.3"
 

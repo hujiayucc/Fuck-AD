@@ -5,6 +5,7 @@ import com.highcapable.yukihookapi.hook.factory.MembersType
 import com.hujiayucc.hook.hook.sdk.KWAD
 import com.hujiayucc.hook.hook.sdk.Tencent
 
+/** 堆糖 */
 object DuiTang : YukiBaseHooker() {
     override fun onHook() {
         loadHooker(Tencent)
