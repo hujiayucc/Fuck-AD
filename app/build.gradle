@@ -72,11 +72,12 @@ android {
     buildFeatures {
         viewBinding true
     }
-
     packagingOptions {
-        exclude 'META-INF/*.version'
-        exclude 'kotlin'
+        resources {
+            excludes += ['META-INF/*.version', 'kotlin']
+        }
     }
+
 }
 
 dependencies {
