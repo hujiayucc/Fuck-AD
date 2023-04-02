@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package com.hujiayucc.hook.utils
 
 import android.Manifest
@@ -118,7 +116,7 @@ object Data {
         }
     }
 
-    private fun RunAsRoot(cmd: ArrayList<String>): Boolean {
+    private fun runAsRoot(cmd: ArrayList<String>): Boolean {
         os?.writeBytes("clear\n")
         os?.flush()
         return try {
@@ -140,7 +138,7 @@ object Data {
         if (checkRoot()) {
             val cmd = ArrayList<String>()
             cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
-            if (RunAsRoot(cmd)) {
+            if (runAsRoot(cmd)) {
                 if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
                     // 防止关闭其他正在运行的无障碍服务
                     val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).trim()
@@ -156,7 +154,7 @@ object Data {
                     cmd.clear()
                     cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/$SERVICE_NAME")
                     cmd.add("settings put secure accessibility_enabled 1")
-                    RunAsRoot(cmd)
+                    runAsRoot(cmd)
                 }
             }
         }
@@ -166,7 +164,7 @@ object Data {
         if (checkRoot()) {
             val cmd = ArrayList<String>()
             cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
-            if (RunAsRoot(cmd)) {
+            if (runAsRoot(cmd)) {
                 if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
                     // 防止关闭其他正在运行的无障碍服务
                     val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
@@ -180,12 +178,12 @@ object Data {
                     } else {
                         cmd.clear()
                         cmd.add("settings delete secure enabled_accessibility_services")
-                        RunAsRoot(cmd)
+                        runAsRoot(cmd)
                     }
                 } else {
                     cmd.clear()
                     cmd.add("settings delete secure enabled_accessibility_services")
-                    RunAsRoot(cmd)
+                    runAsRoot(cmd)
                 }
             }
         }
@@ -218,17 +216,17 @@ object Data {
     }
 
     fun Context.getConfig(): JSONObject {
-        try {
+        return try {
             val config = File(filesDir, "config.json")
             val inputStream = config.inputStream()
             val byte = ByteArray(config.length().toInt())
             inputStream.read(byte)
             inputStream.close()
-            return JSONObject(String(byte))
+            JSONObject(String(byte))
         } catch (e : IOException) {
-            return JSONObject()
+            JSONObject()
         } catch (e : JSONException) {
-            return JSONObject()
+            JSONObject()
         }
     }
 
