@@ -40,4 +40,6 @@
     <string name="accessibility_description">Auto Skip ADs AccessibilityService</string>
     <string name="accessibility_notification">Auto Skipped: %1$s\nAuto Skip ADs AccessibilityService</string>
     <string name="latest_version">Already the latest version</string>
+    <string name="menu_module_settings">Module Settings</string>
+    <string name="menu_theme_settings">Theme Settings</string>
 </resources>
