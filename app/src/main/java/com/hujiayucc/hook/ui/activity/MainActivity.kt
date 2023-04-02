@@ -15,6 +15,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.Process
 import android.provider.MediaStore
 import android.provider.Settings
 import android.text.Editable
@@ -28,7 +29,6 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager.widget.ViewPager
@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: ViewPagerAdapter
     private var localeID = 0
     private lateinit var imageView: ImageView
-    private var alert_imageView: ImageView? = null
+    private var alertimageView: ImageView? = null
     private var menu: Menu? = null
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(newBase)
@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         }
         // 适配 Android13 通知权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager = applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             if (!notificationManager.areNotificationsEnabled()) {
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS),2000)
             }
@@ -316,7 +316,7 @@ class MainActivity : AppCompatActivity() {
 
             R.id.menu_search -> {
                 val inputMethodManager: InputMethodManager =
-                    getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 binding.search.visibility = View.VISIBLE
                 binding.search.requestFocus()
                 inputMethodManager.showSoftInput(binding.search, InputMethodManager.SHOW_IMPLICIT)
@@ -357,7 +357,7 @@ class MainActivity : AppCompatActivity() {
                                 else intents = Intent(applicationContext, MainActivity::class.java)
                                 startActivity(intents)
                                 //杀掉以前进程
-                                android.os.Process.killProcess(android.os.Process.myPid())
+                                Process.killProcess(Process.myPid())
                             }.start()
                         }
                     })
@@ -372,10 +372,10 @@ class MainActivity : AppCompatActivity() {
 
             R.id.menu_background -> {
                 val filename = "background.png"
-                alert_imageView = ImageView(applicationContext)
-                alert_imageView!!.setPadding(0, 50, 0, 0)
+                alertimageView = ImageView(applicationContext)
+                alertimageView!!.setPadding(0, 50, 0, 0)
                 try {
-                    alert_imageView!!.setImageBitmap((imageView.drawable as BitmapDrawable).toBitmap())
+                    alertimageView!!.setImageBitmap((imageView.drawable as BitmapDrawable).bitmap)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -384,10 +384,10 @@ class MainActivity : AppCompatActivity() {
                     .setTitle(getString(R.string.alert_choose_image_title))
                     .setNeutralButton(getString(R.string.alert_choose_image), null)
                     .setPositiveButton(getString(R.string.alert_done)) { dialog, _ ->
-                        binding.root.background = alert_imageView!!.drawable
+                        binding.root.background = alertimageView!!.drawable
                         try {
                             val file = File(filesDir, filename)
-                            val image = (alert_imageView!!.drawable as BitmapDrawable).toBitmap()
+                            val image = (alertimageView!!.drawable as BitmapDrawable).bitmap
                             val fileOutputStream = FileOutputStream(file)
                             image.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
                             fileOutputStream.flush()
@@ -411,7 +411,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         dialog?.dismiss()
                     }
-                    .setView(alert_imageView)
+                    .setView(alertimageView)
                     .create()
                 dialog.show()
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
@@ -450,7 +450,7 @@ class MainActivity : AppCompatActivity() {
                         applicationContext.runService()
                     }
                     Handler().postDelayed({
-                        android.os.Process.killProcess(android.os.Process.myPid())
+                        Process.killProcess(Process.myPid())
                     },200)
                 } catch (e : Exception) {
                     e.printStackTrace()
@@ -480,7 +480,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == 2) {
             // 从相册返回的数据
             if (data != null) {
-                alert_imageView!!.setImageURI(data.data)
+                alertimageView!!.setImageURI(data.data)
             }
         }
     }
@@ -521,7 +521,7 @@ class MainActivity : AppCompatActivity() {
     /** 隐藏最近任务列表视图 */
     private fun excludeFromRecent(exclude: Boolean) {
         try {
-            val manager: ActivityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
             for (appTask in manager.appTasks) {
                 if (appTask.taskInfo.id == taskId) {
                     appTask.setExcludeFromRecents(exclude)

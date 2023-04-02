@@ -19,7 +19,7 @@ object Update {
     fun checkUpdate(): JSONObject? {
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
-        try {
+        return try {
             val url = URL(json)
             val bufferedReader = BufferedReader(InputStreamReader(url.openStream()))
             val string = StringBuilder()
@@ -28,10 +28,10 @@ object Update {
                 string.append(str)
             }
             bufferedReader.close()
-            return if (string.toString().isNotEmpty()) JSONObject(string.toString()) else null
+            if (string.toString().isNotEmpty()) JSONObject(string.toString()) else null
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            null
         }
     }
 
