@@ -9,14 +9,14 @@ import android.widget.BaseAdapter
 import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
+import com.hujiayucc.hook.databinding.AppChildBinding
 import com.hujiayucc.hook.utils.AppInfo
 import com.hujiayucc.hook.utils.Data.updateConfig
-import com.hujiayucc.hook.databinding.AppChildBinding
 
 class ListViewAdapter(
-    val appContext: Context,
-    val appList: List<AppInfo>,
-    val modulePrefs: YukiHookModulePrefs,
+    private val appContext: Context,
+    private val appList: List<AppInfo>,
+    private val modulePrefs: YukiHookModulePrefs,
 ) : BaseAdapter() {
     private lateinit var binding: AppChildBinding
     override fun getCount(): Int {
@@ -24,7 +24,7 @@ class ListViewAdapter(
     }
 
     override fun getItem(position: Int): AppInfo {
-        return appList.get(position)
+        return appList[position]
     }
 
     override fun getItemId(position: Int): Long {

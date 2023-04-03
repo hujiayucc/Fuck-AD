@@ -1,5 +1,5 @@
+-dontobfuscate
+-assumenosideeffects class ** {*;}
 -keep class com.hujiayucc.hook.** {*;}
--dontwarn com.hujiayucc.hook.**
-
--assumenosideeffects class ** {*** **;}
+-keep class com.highcapable.yukihookapi.** {*;}
 -dontwarn **

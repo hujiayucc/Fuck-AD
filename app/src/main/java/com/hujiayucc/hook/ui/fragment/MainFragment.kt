@@ -5,10 +5,9 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.*
+import android.widget.AdapterView.AdapterContextMenuInfo
 import android.widget.AdapterView.OnItemClickListener
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -16,16 +15,17 @@ import com.highcapable.yukihookapi.hook.factory.modulePrefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.utils.AppInfo
-import com.hujiayucc.hook.utils.Data
-import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
+import com.hujiayucc.hook.utils.AppInfo
+import com.hujiayucc.hook.utils.Data
+import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
 import java.text.Collator
 import java.util.*
+
 
 @Suppress("NAME_SHADOWING", "DEPRECATION")
 class MainFragment : Fragment() {
@@ -36,6 +36,7 @@ class MainFragment : Fragment() {
     val list = ArrayList<AppInfo>()
     var searchList = ArrayList<AppInfo>()
     private var isSystem: Boolean = false
+    private var position = 0
 
     @SuppressLint("InflateParams")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -67,50 +68,71 @@ class MainFragment : Fragment() {
             val info = listView.adapter.getItem(position) as AppInfo
             info.switchCheck.isChecked = !info.switchCheck.isChecked
         }
-
-        listView.onItemLongClickListener =
-            AdapterView.OnItemLongClickListener { _, view, position, _ ->
-                var info: AppInfo = list[position]
-                if (searchText.isNotEmpty()) info = searchList[position]
-                val popupMenu = PopupMenu(activity, view)
-                val menu = popupMenu.menu
-                menu.add(getString(R.string.menu_open_application).format(info.app_name)).setOnMenuItemClickListener {
-                    try {
-                        val intent: Intent? = appContext.packageManager.getLaunchIntentForPackage(info.app_package)
-                        appContext.startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            appContext, getString(R.string.failed_to_open_application)
-                                .format(info.app_name), Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                    false
-                }
-                menu.add(getString(R.string.menu_open_all)).setOnMenuItemClickListener {
-                    for (app in list) {
-                        activity?.modulePrefs?.putBoolean(app.app_package, true)
-                    }
-                    showList(list)
-                    false
-                }
-                menu.add(getString(R.string.menu_close_all)).setOnMenuItemClickListener {
-                    for (app in list) {
-                        activity?.modulePrefs?.putBoolean(app.app_package, false)
-                    }
-                    showList(list)
-                    false
-                }
-                menu.add(getString(R.string.menu_invert_selection)).setOnMenuItemClickListener {
-                    for (app in list) {
-                        val isChecked = !activity?.modulePrefs?.getBoolean(app.app_package, true)!!
-                        activity?.modulePrefs?.putBoolean(app.app_package, isChecked)
-                    }
-                    showList(list)
-                    false
-                }
-                popupMenu.show()
+        registerForContextMenu(listView)
+        listView.setOnTouchListener { v, event ->
+            listView.setOnItemLongClickListener { parent, view, position, id ->
+                this.position = position
+                listView.showContextMenu(event.x, view.y)
                 true
             }
+            false
+        }
+    }
+
+    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
+        MenuInflater(appContext).inflate(R.menu.menu_app, menu)
+        menu.setHeaderView(TextView(appContext))
+        menu.setHeaderTitle(list[position].app_name)
+        menu.setHeaderIcon(list[position].app_icon)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterForContextMenu(listView)
+    }
+
+    override fun onContextItemSelected(item: MenuItem): Boolean {
+        val menuInfo = item.menuInfo as AdapterContextMenuInfo
+        val info = list[menuInfo.position]
+        when (item.itemId) {
+            R.id.menu_open_application -> {
+                try {
+                    val intent: Intent? = appContext.packageManager
+                        .getLaunchIntentForPackage(info.app_package)
+                    appContext.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        appContext, getString(R.string.failed_to_open_application)
+                            .format(info.app_name), Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            R.id.menu_open_all -> {
+                for (app in list) {
+                    activity?.modulePrefs?.putBoolean(app.app_package, true)
+                }
+                showList(list)
+            }
+
+            R.id.menu_close_all -> {
+                for (app in list) {
+                    activity?.modulePrefs?.putBoolean(app.app_package, false)
+                }
+                showList(list)
+            }
+
+            R.id.menu_invert_selection -> {
+                for (app in list) {
+                    val isChecked = !activity?.modulePrefs?.getBoolean(app.app_package, true)!!
+                    activity?.modulePrefs?.putBoolean(app.app_package, isChecked)
+                }
+                showList(list)
+            }
+
+            else -> return false
+        }
+        return true
     }
 
     private fun loadAppList(showSysApp: Boolean) {
@@ -121,11 +143,13 @@ class MainFragment : Fragment() {
             Thread {
                 try {
                     val apps =
-                        appContext.packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
+                        appContext.packageManager.getInstalledApplications(
+                            PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
                     var i = 0
                     progressBar.max = apps.size
                     for (info in apps) {
-                        if (!info.packageName.equals(BuildConfig.APPLICATION_ID) && !info.sourceDir.equals("/system/app/HybridPlatform/HybridPlatform.apk")) {
+                        if (!info.packageName.equals(BuildConfig.APPLICATION_ID) &&
+                            !info.sourceDir.equals("/system/app/HybridPlatform/HybridPlatform.apk")) {
                             val icon = info.loadIcon(appContext.packageManager)
                             val label = appContext.packageManager.getApplicationLabel(info)
                             val appinfo = AppInfo(icon, label, info.packageName)

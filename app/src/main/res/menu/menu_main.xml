@@ -3,51 +3,8 @@
       xmlns:tools="http://schemas.android.com/tools"
       tools:context="com.hujiayucc.hook.ui.activity.MainActivity">
 
-    <item android:id="@+id/menu_global"
-          android:title="@string/menu_global"
-          android:orderInCategory="200"
-          android:checkable="true"
-          app:showAsAction="never"/>
-
-    <item android:id="@+id/menu_show_hook_success"
-          android:title="@string/menu_hook_success"
-          android:orderInCategory="300"
-          android:checkable="true"
-          app:showAsAction="never"/>
-
-    <item android:id="@+id/menu_hide_icon"
-          android:title="@string/menu_hide_icon"
-          android:orderInCategory="400"
-          android:checkable="true"
-          app:showAsAction="never"/>
-
-    <item android:id="@+id/menu_auto_skip"
-          android:title="@string/menu_auto_skip"
-          android:orderInCategory="500"
-          android:checkable="true"
-          app:showAsAction="never"/>
-
-    <item android:id="@+id/menu_color"
-          android:title="@string/menu_theme_colors"
-          android:orderInCategory="600"
-          app:showAsAction="never"/>
-
-    <item android:id="@+id/menu_background"
-          android:title="@string/menu_background_settings"
-          android:orderInCategory="700"
-          app:showAsAction="never"/>
-
-    <item android:id="@+id/menu_minimize"
-          android:title="@string/menu_minimize"
-          android:orderInCategory="800"
-          app:showAsAction="never"/>
-
-    <item
-            android:id="@+id/menu_qq_group"
-            android:title="@string/join_qq_group"
-            android:orderInCategory="900"/>
-
     <item android:id="@+id/menu_language_settings"
+          android:orderInCategory="1"
           android:title="@string/language_settings">
         <menu>
             <group android:id="@+id/menu_group_language"
@@ -62,6 +19,58 @@
             </group>
         </menu>
     </item>
+
+    <item android:title="@string/menu_theme_settings"
+          android:orderInCategory="2">
+        <menu>
+            <item android:id="@+id/menu_color"
+                  android:title="@string/menu_theme_colors"
+                  app:showAsAction="never"/>
+
+            <item android:id="@+id/menu_background"
+                  android:title="@string/menu_background_settings"
+                  app:showAsAction="never"/>
+        </menu>
+    </item>
+
+    <item android:title="@string/menu_module_settings"
+          android:orderInCategory="3">
+        <menu>
+            <item android:id="@+id/menu_global"
+                  android:title="@string/menu_global"
+                  android:orderInCategory="200"
+                  android:checkable="true"
+                  app:showAsAction="never"/>
+
+            <item android:id="@+id/menu_show_hook_success"
+                  android:title="@string/menu_hook_success"
+                  android:orderInCategory="300"
+                  android:checkable="true"
+                  app:showAsAction="never"/>
+
+            <item android:id="@+id/menu_hide_icon"
+                  android:title="@string/menu_hide_icon"
+                  android:orderInCategory="400"
+                  android:checkable="true"
+                  app:showAsAction="never"/>
+
+            <item android:id="@+id/menu_auto_skip"
+                  android:title="@string/menu_auto_skip"
+                  android:orderInCategory="500"
+                  android:checkable="true"
+                  app:showAsAction="never"/>
+        </menu>
+    </item>
+
+    <item android:id="@+id/menu_minimize"
+          android:title="@string/menu_minimize"
+          android:orderInCategory="800"
+          app:showAsAction="never"/>
+
+    <item
+            android:id="@+id/menu_qq_group"
+            android:title="@string/join_qq_group"
+            android:orderInCategory="900"/>
 
     <item
         android:id="@+id/menu_search"

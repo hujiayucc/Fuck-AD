@@ -6,7 +6,6 @@
     <string name="main_version">模块版本：%1$s (%2$s)</string>
     <string name="main_hot_version">热修复版本: %1$s (%2$s)</string>
     <string name="menu_hook_success">Hook提示</string>
-    <string name="wait_loading">请等待数据加载完成</string>
     <string name="language_settings">语言设置</string>
     <string name="language_default">跟随系统</string>
     <string name="language_english">English</string>
@@ -22,7 +21,7 @@
     <string name="menu_open_all">全部开启</string>
     <string name="menu_close_all">全部关闭</string>
     <string name="menu_invert_selection">反选</string>
-    <string name="menu_open_application">打开 %1$s</string>
+    <string name="menu_open_application">启动</string>
     <string name="failed_to_open_application">%1$s 启动失败</string>
     <string name="menu_hide_icon">隐藏图标</string>
     <string name="popup_cancel">取消</string>
@@ -41,4 +40,6 @@
     <string name="accessibility_description">自动跳过广告无障碍服务</string>
     <string name="accessibility_notification">已自动跳过：%1$s\n自动跳过广告无障碍服务</string>
     <string name="latest_version">已经是最新版</string>
+    <string name="menu_module_settings">模块设置</string>
+    <string name="menu_theme_settings">主题设置</string>
 </resources>

@@ -40,17 +40,17 @@ class SkipServiceImpl(private val service: SkipService) {
     private var notification: Notification? = null
     private var localeID = 0
     private val textRegx1 = Regex("^[0-9]+[\\ss]*跳过[广告]*\$")
-    private val textRegx2 = Regex("^[点击]*跳过[广告]*[\\ss]{0,}[0-9]+\$")
+    private val textRegx2 = Regex("^[点击]*跳过[广告]*[\\ss]*[0-9]+\$")
     private val textRegx3 = Regex("跳过*[(（][0-9]*[)）]+\$")
     private var eventTime: Long = 0
     private var time: Long = 0
 
     init {
         createNotificationChannel()
-        if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
-            notification = createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
+        notification = if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
+            createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
         } else {
-            notification = createNotification(context.getString(R.string.close_accessibilityservice))
+            createNotification(context.getString(R.string.close_accessibilityservice))
         }
         service.startForeground(1, notification)
         checkLanguage()
@@ -116,10 +116,10 @@ class SkipServiceImpl(private val service: SkipService) {
 
     fun refresh() {
         checkLanguage()
-        if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
-            notification = createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
+        notification = if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
+            createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
         } else {
-            notification = createNotification(context.getString(R.string.close_accessibilityservice))
+            createNotification(context.getString(R.string.close_accessibilityservice))
         }
         service.startForeground(1, notification)
     }

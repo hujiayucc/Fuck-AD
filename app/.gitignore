@@ -1,3 +1,5 @@
 /build
-/release/
-/debug/
+/release
+/debug
+/src/main/resources
+/src/main/assets

@@ -60,7 +60,7 @@ object HookEntry : IYukiHookXposedInit {
     private fun load(packageParam: PackageParam) {
         if (packageParam.packageName == "com.google.android.webview") return
         // Hook成功提示
-        if (packageParam.prefs.get(hookTip))
+        if (packageParam.prefs.get(hookTip) && packageParam.isFirstApplication)
             HookTip.show(packageParam)
         // 加载应用专属规则
         val hooker = HookerList.fromPackageName(packageParam.packageName)
@@ -69,9 +69,7 @@ object HookEntry : IYukiHookXposedInit {
             if (hooker["stop"] as Boolean) return
         }
 
-        val jiagu = Jiagu.values()
-
-        for (type in jiagu) {
+        for (type in Jiagu.values()) {
             if (type.packageName.toClassOrNull(packageParam.appClassLoader) != null) {
                 Log.d(type.type)
                 packageParam.findClass(type.packageName).hook {

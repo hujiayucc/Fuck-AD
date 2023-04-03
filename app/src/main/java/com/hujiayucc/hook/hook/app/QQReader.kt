@@ -12,15 +12,13 @@ object QQReader: YukiBaseHooker() {
                 method { name = "onCreate" }
                 beforeHook {
                     val activity = instance<Activity>()
-                    activity.runOnUiThread {
-                        val intent = Intent(
-                            activity.applicationContext,
-                            "com.qq.reader.activity.MainActivity".toClass(appClassLoader)
-                        )
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        activity.applicationContext.startActivity(intent)
-                        activity.finish()
-                    }
+                    val intent = Intent(
+                        activity.applicationContext,
+                        "com.qq.reader.activity.MainActivity".toClass(appClassLoader)
+                    )
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    activity.applicationContext.startActivity(intent)
+                    activity.finish()
                 }
             }
         }.ignoredHookClassNotFoundFailure()
