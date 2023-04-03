@@ -9,6 +9,11 @@ object Google : YukiBaseHooker() {
         "com.google.android.gms.internal.ads.zzbdl",
         "com.google.android.gms.internal.ads.zzbfk"
     )
+    private val nullReplaceList = arrayOf(
+        "com.google.android.gms.internal.ads.zzxl",
+        "com.google.android.gms.ads.MobileAds",
+        "com.google.android.gms.ads.MobileAdsInitProvider",
+    )
 
     override fun onHook() {
         for (clazz in list) {
@@ -19,12 +24,13 @@ object Google : YukiBaseHooker() {
                 }
             }.ignoredHookClassNotFoundFailure()
         }
-
-        findClass("com.google.android.gms.internal.ads.zzxl").hook {
-            injectMember {
-                allMembers(type = MembersType.ALL)
-                replaceTo(null)
-            }
-        }.ignoredHookClassNotFoundFailure()
+        for (clazz in nullReplaceList) {
+            findClass(clazz).hook {
+                injectMember {
+                    allMembers(type = MembersType.ALL)
+                    replaceTo(null)
+                }
+            }.ignoredHookClassNotFoundFailure()
+        }
     }
 }
