@@ -1,7 +1,7 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
 
-<img width="160" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/icon.png" alt="logo">
+<img width="160" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/imgs/icon.png" alt="logo">
 
 # Fuck AD
 
@@ -46,3 +46,16 @@ As the name suggests, this is an Xposed plugin to remove ads.
 - 番茄小说（Live ads）
 - 堆糖（Splash ads, in-app feed ads）
 - 酷安 （Feed ADs）
+
+### Contribute
+
+---
+
+#### WeChat/Alipay/QQ
+
+<div align="center" style="padding: 0">
+<img width="40%" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/imgs/WeChat.png" alt="logo">
+<img width="40%" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/imgs/Alipay.jpg" alt="logo">
+<img width="40%" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/imgs/QQ.png" alt="logo">
+<img width="40%" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/imgs/wallet.png" alt="logo">
+</div>

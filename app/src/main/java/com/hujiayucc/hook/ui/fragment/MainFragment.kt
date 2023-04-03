@@ -70,8 +70,8 @@ class MainFragment : Fragment() {
             info.switchCheck.isChecked = !info.switchCheck.isChecked
         }
         registerForContextMenu(listView)
-        listView.setOnTouchListener { v, event ->
-            listView.setOnItemLongClickListener { parent, view, position, id ->
+        listView.setOnTouchListener { _, event ->
+            listView.setOnItemLongClickListener { _, view, position, _ ->
                 this.position = position
                 listView.showContextMenu(event.x, view.y)
                 true

@@ -458,6 +458,16 @@ class MainActivity : AppCompatActivity() {
                 false
             }
 
+            R.id.menu_github -> {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/hujiayucc/Fuck-AD"))
+                    startActivity(intent)
+                } catch (e : Exception) {
+                    e.printStackTrace()
+                }
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
