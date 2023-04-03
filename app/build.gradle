@@ -15,8 +15,8 @@ android {
         minSdk 28
         targetSdk 33
         // 别问，问就是2020对我来说很重要
-        versionCode verCode.nextInt(50000)//2021
-        versionName "1.2.2.1"
+        versionCode 2022
+        versionName "1.2.3"
         def hotVersionCode = 1850
         def hotVersionName = "1.2.0.3"
 
