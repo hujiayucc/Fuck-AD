@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -76,12 +75,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private var alertimageView: ImageView? = null
     private var menu: Menu? = null
-    override fun attachBaseContext(newBase: Context?) {
-        super.attachBaseContext(newBase)
-        runCatching {
-            HotFixUtils().doHotFix(newBase!!.classLoader)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         localeID = modulePrefs.get(localeId)
