@@ -7,12 +7,16 @@
           android:orderInCategory="1"
           android:title="@string/language_settings">
         <menu>
-            <item android:id="@+id/menu_language_defualt"
-                  android:title="@string/language_default"/>
-            <item android:id="@+id/menu_language_en"
-                  android:title="@string/language_english"/>
-            <item android:id="@+id/menu_language_zh"
-                  android:title="@string/language_chinese_zh"/>
+            <group android:id="@+id/menu_group_language"
+                   android:checkableBehavior="single"
+                   android:checkable="true">
+                <item android:id="@+id/menu_language_defualt"
+                      android:title="@string/language_default"/>
+                <item android:id="@+id/menu_language_en"
+                      android:title="@string/language_english"/>
+                <item android:id="@+id/menu_language_zh"
+                      android:title="@string/language_chinese_zh"/>
+            </group>
         </menu>
     </item>
 

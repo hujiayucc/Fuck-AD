@@ -21,7 +21,7 @@
     <string name="menu_open_all">Open All</string>
     <string name="menu_close_all">Close All</string>
     <string name="menu_invert_selection">Invert Selection</string>
-    <string name="menu_open_application">Open %1$s</string>
+    <string name="menu_open_application">Open</string>
     <string name="failed_to_open_application">Failed to open %1$s</string>
     <string name="menu_hide_icon">Hide Icon</string>
     <string name="popup_cancel">Cancel</string>

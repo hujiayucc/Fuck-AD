@@ -21,7 +21,7 @@
     <string name="menu_open_all">全部开启</string>
     <string name="menu_close_all">全部关闭</string>
     <string name="menu_invert_selection">反选</string>
-    <string name="menu_open_application">打开 %1$s</string>
+    <string name="menu_open_application">启动</string>
     <string name="failed_to_open_application">%1$s 启动失败</string>
     <string name="menu_hide_icon">隐藏图标</string>
     <string name="popup_cancel">取消</string>
