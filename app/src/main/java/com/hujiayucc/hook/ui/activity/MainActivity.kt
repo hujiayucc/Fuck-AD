@@ -53,6 +53,7 @@ import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
 import com.hujiayucc.hook.utils.Data.isLauncherIconShowing
 import com.hujiayucc.hook.utils.Data.localeId
 import com.hujiayucc.hook.utils.Data.runService
+import com.hujiayucc.hook.utils.Data.setSpan
 import com.hujiayucc.hook.utils.Data.stopService
 import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.utils.Data.updateConfig
@@ -172,12 +173,7 @@ class MainActivity : AppCompatActivity() {
                 // 标签页已经选中，并且再次被选中时触发
                 val fragment = fragmentList[viewPager.currentItem]
                 val listView = fragment.listView
-                Thread {
-                    while (listView.firstVisiblePosition != 0) {
-                        runOnUiThread { listView.setSelection(listView.firstVisiblePosition - 1) }
-                        Thread.sleep(10)
-                    }
-                }.start()
+                listView.smoothScrollToPosition(0)
             }
         })
         updateConfig(modulePrefs.all())
@@ -252,12 +248,16 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
         menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
         menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
+
         val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
         when (localeID) {
             0 -> group?.subMenu?.findItem(R.id.menu_language_defualt)?.isChecked = true
             1 -> group?.subMenu?.findItem(R.id.menu_language_en)?.isChecked = true
             2 -> group?.subMenu?.findItem(R.id.menu_language_zh)?.isChecked = true
         }
+        menu.findItem(R.id.menu_language_settings).subMenu?.setHeaderTitle(getString(R.string.language_settings).setSpan(getColor(R.color.theme)))
+        menu.findItem(R.id.menu_theme_settings).subMenu?.setHeaderTitle(getString(R.string.menu_theme_settings).setSpan(getColor(R.color.theme)))
+        menu.findItem(R.id.menu_module_settings).subMenu?.setHeaderTitle(getString(R.string.menu_module_settings).setSpan(getColor(R.color.theme)))
         this.menu = menu
         return true
     }

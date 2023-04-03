@@ -6,8 +6,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.provider.Settings
+import android.text.Spannable
+import android.text.SpannableString
 import android.text.TextUtils
+import android.text.style.ForegroundColorSpan
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
@@ -252,5 +256,31 @@ object Data {
         } catch (e : JSONException) {
             value
         }
+    }
+
+    /** 设置文本颜色 */
+    fun String.setSpan(color: Int): SpannableString {
+        val spannable = SpannableString(this)
+        val colors = if (color != 0) color else Color.BLACK
+        spannable.setSpan(
+            ForegroundColorSpan(colors),
+            0,
+            length,
+            Spannable.SPAN_EXCLUSIVE_INCLUSIVE
+        )
+        return spannable
+    }
+
+    /** 设置文本颜色 */
+    fun CharSequence.setSpan(color: Int): SpannableString {
+        val spannable = SpannableString(this)
+        val colors = if (color != 0) color else Color.BLACK
+        spannable.setSpan(
+            ForegroundColorSpan(colors),
+            0,
+            length,
+            Spannable.SPAN_EXCLUSIVE_INCLUSIVE
+        )
+        return spannable
     }
 }

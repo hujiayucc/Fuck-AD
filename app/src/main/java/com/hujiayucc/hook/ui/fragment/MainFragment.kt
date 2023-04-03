@@ -20,6 +20,7 @@ import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
 import com.hujiayucc.hook.utils.AppInfo
 import com.hujiayucc.hook.utils.Data
+import com.hujiayucc.hook.utils.Data.setSpan
 import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
@@ -82,8 +83,8 @@ class MainFragment : Fragment() {
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
         MenuInflater(appContext).inflate(R.menu.menu_app, menu)
         menu.setHeaderView(TextView(appContext))
-        menu.setHeaderTitle(list[position].app_name)
-        menu.setHeaderIcon(list[position].app_icon)
+        menu.setHeaderTitle(list[position].app_name
+            .setSpan(appContext.getColor(R.color.theme)))
     }
 
     override fun onDestroy() {

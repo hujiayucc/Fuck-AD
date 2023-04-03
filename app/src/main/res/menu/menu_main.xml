@@ -20,7 +20,8 @@
         </menu>
     </item>
 
-    <item android:title="@string/menu_theme_settings"
+    <item android:id="@+id/menu_theme_settings"
+          android:title="@string/menu_theme_settings"
           android:orderInCategory="2">
         <menu>
             <item android:id="@+id/menu_color"
@@ -33,7 +34,8 @@
         </menu>
     </item>
 
-    <item android:title="@string/menu_module_settings"
+    <item android:id="@+id/menu_module_settings"
+          android:title="@string/menu_module_settings"
           android:orderInCategory="3">
         <menu>
             <item android:id="@+id/menu_global"
