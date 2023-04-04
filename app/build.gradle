@@ -16,7 +16,7 @@ android {
         targetSdk 33
         // 别问，问就是2020对我来说很重要
         versionCode 2022
-        versionName "1.2.3"
+        versionName "1.2.3.1"
         def hotVersionCode = 1850
         def hotVersionName = "1.2.0.3"
 
@@ -50,6 +50,8 @@ android {
             minifyEnabled true
             // 开启资源压缩
             shrinkResources true
+            //noinspection GrDeprecatedAPIUsage
+            zipAlignEnabled true
             versionNameSuffix "-release"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -58,6 +60,8 @@ android {
             minifyEnabled true
             // 开启资源压缩
             shrinkResources true
+            //noinspection GrDeprecatedAPIUsage
+            zipAlignEnabled true
             versionNameSuffix "-debug"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
