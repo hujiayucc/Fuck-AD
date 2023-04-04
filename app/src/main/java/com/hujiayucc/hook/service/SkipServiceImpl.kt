@@ -204,7 +204,6 @@ class SkipServiceImpl(private val service: SkipService) {
     /** 自动查找启动广告的 “跳过” 控件 */
     private fun findSkipButtonByText(nodeInfo: AccessibilityNodeInfo): Boolean {
         var list = nodeInfo.findAccessibilityNodeInfosByText("跳过")
-        var result = false
         if (list.isNotEmpty()) {
             for (node in list) {
                 val text = node.text.trim().replace(Regex("[\nsS秒]", RegexOption.MULTILINE),"")
@@ -214,30 +213,46 @@ class SkipServiceImpl(private val service: SkipService) {
                         if (time != eventTime && eventTime - time > 800) {
                             skip(node)
                             time = eventTime
-                            result = true
-                        }
-                    }
-                }
-            }
-        } else {
-            list = nodeInfo.findAccessibilityNodeInfosByText("知道了")
-            if (list.isNotEmpty()) {
-                for (node in list) {
-                    val text = node.text.trim()
-                    val className = node.className.toString().toLowerCase(Locale.getDefault())
-                    if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
-                        if (text == "我知道了" || text == "我知道了") {
-                            if (time != eventTime && eventTime - time > 800) {
-                                skip(node)
-                                time = eventTime
-                                result = true
-                            }
+                            return true
                         }
                     }
                 }
             }
         }
-        return result
+
+        list = nodeInfo.findAccessibilityNodeInfosByText("知道了")
+        if (list.isNotEmpty()) {
+            for (node in list) {
+                val text = node.text.trim()
+                val className = node.className.toString().toLowerCase(Locale.getDefault())
+                if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
+                    if (text == "我知道了" || text == "知道了") {
+                        if (time != eventTime && eventTime - time > 800) {
+                            skip(node)
+                            time = eventTime
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+
+        list = nodeInfo.findAccessibilityNodeInfosByText("签到")
+        if (list.isNotEmpty()) {
+            for (node in list) {
+                val text = node.text.trim()
+                val className = node.className.toString().toLowerCase(Locale.getDefault())
+                if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
+                    if (text == "签到") {
+                        if (time != eventTime && eventTime - time > 800) {
+                            skip(node)
+                            time = eventTime
+                        }
+                    }
+                }
+            }
+        }
+        return false
     }
 
     private fun skip(node: AccessibilityNodeInfo): Boolean {
