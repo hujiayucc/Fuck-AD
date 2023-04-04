@@ -61,7 +61,6 @@ class MainFragment : Fragment() {
                 }
                 showList(list)
             }
-            refresh.isRefreshing = false
         }
         isSystem = requireArguments().getBoolean("system")
         loadAppList(isSystem)
@@ -137,6 +136,7 @@ class MainFragment : Fragment() {
     }
 
     private fun loadAppList(showSysApp: Boolean) {
+        refresh.isRefreshing = true
         if (list.isEmpty()) {
             progressBar.progress = 0
             refresh.visibility = View.GONE
@@ -203,6 +203,7 @@ class MainFragment : Fragment() {
         }.start()
         val adapter = ListViewAdapter(appContext, list, appContext.modulePrefs)
         activity?.runOnUiThread {
+            refresh.isRefreshing = false
             listView.adapter = adapter
             progressBar.visibility = View.GONE
             refresh.visibility = View.VISIBLE

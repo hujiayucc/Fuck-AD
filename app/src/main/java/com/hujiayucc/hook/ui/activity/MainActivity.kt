@@ -166,7 +166,8 @@ class MainActivity : AppCompatActivity() {
                 // 标签页已经选中，并且再次被选中时触发
                 val fragment = fragmentList[viewPager.currentItem]
                 val listView = fragment.listView
-                listView.smoothScrollToPosition(0)
+                if (listView.firstVisiblePosition != 0) listView.smoothScrollToPosition(0)
+                else listView.smoothScrollToPosition(listView.adapter.count)
             }
         })
         updateConfig(modulePrefs.all())
@@ -175,14 +176,19 @@ class MainActivity : AppCompatActivity() {
     fun search(text: String) {
         val fragment = fragmentList[tabLayout.selectedTabPosition]
         val list: ArrayList<AppInfo> = ArrayList()
+        val texts = text.toLowerCase(Locale.CHINESE)
         if (searchText.isEmpty()) {
             for (app in fragment.list) {
-                if (app.app_name.contains(text) or app.app_package.contains(text))
+                val appName = app.app_name.toString().toLowerCase(Locale.CHINESE)
+                val appPackage = app.app_package.toLowerCase(Locale.CHINESE)
+                if (appName.contains(texts) or appPackage.contains(texts))
                     list.add(app)
             }
         } else {
             for (app in fragment.list) {
-                if (app.app_name.contains(text) or app.app_package.contains(text))
+                val appName = app.app_name.toString().toLowerCase(Locale.CHINESE)
+                val appPackage = app.app_package.toLowerCase(Locale.CHINESE)
+                if (appName.contains(texts) or appPackage.contains(texts))
                     list.add(app)
             }
             fragment.searchList.clear()
@@ -308,6 +314,12 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.menu_search -> {
+                val refresh1 = fragmentList[0].refresh.isRefreshing
+                val refresh2 = fragmentList[1].refresh.isRefreshing
+                if (refresh1 || refresh2) {
+                    Toast.makeText(applicationContext, getString(R.string.wait_to_load_app), Toast.LENGTH_SHORT).show()
+                    return false
+                }
                 val inputMethodManager: InputMethodManager =
                     getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 binding.search.visibility = View.VISIBLE

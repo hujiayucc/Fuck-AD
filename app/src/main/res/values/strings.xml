@@ -43,4 +43,5 @@
     <string name="menu_module_settings">Module Settings</string>
     <string name="menu_theme_settings">Theme Settings</string>
     <string name="github">GitHub</string>
+    <string name="wait_to_load_app">Please wait for the app to load</string>
 </resources>
