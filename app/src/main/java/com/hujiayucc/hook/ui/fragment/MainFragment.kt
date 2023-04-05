@@ -83,7 +83,7 @@ class MainFragment : Fragment() {
         MenuInflater(appContext).inflate(R.menu.menu_app, menu)
         menu.setHeaderView(TextView(appContext))
         menu.setHeaderTitle(list[position].app_name
-            .setSpan(appContext.getColor(R.color.theme)))
+            .setSpan(resources.getColor(R.color.theme)))
     }
 
     override fun onDestroy() {

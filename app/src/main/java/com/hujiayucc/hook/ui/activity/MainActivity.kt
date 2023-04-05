@@ -260,9 +260,9 @@ class MainActivity : AppCompatActivity() {
             1 -> group?.subMenu?.findItem(R.id.menu_language_en)?.isChecked = true
             2 -> group?.subMenu?.findItem(R.id.menu_language_zh)?.isChecked = true
         }
-        menu.findItem(R.id.menu_language_settings).subMenu?.setHeaderTitle(getString(R.string.language_settings).setSpan(getColor(R.color.theme)))
-        menu.findItem(R.id.menu_theme_settings).subMenu?.setHeaderTitle(getString(R.string.menu_theme_settings).setSpan(getColor(R.color.theme)))
-        menu.findItem(R.id.menu_module_settings).subMenu?.setHeaderTitle(getString(R.string.menu_module_settings).setSpan(getColor(R.color.theme)))
+        menu.findItem(R.id.menu_language_settings).subMenu?.setHeaderTitle(getString(R.string.language_settings).setSpan(resources.getColor(R.color.theme)))
+        menu.findItem(R.id.menu_theme_settings).subMenu?.setHeaderTitle(getString(R.string.menu_theme_settings).setSpan(resources.getColor(R.color.theme)))
+        menu.findItem(R.id.menu_module_settings).subMenu?.setHeaderTitle(getString(R.string.menu_module_settings).setSpan(resources.getColor(R.color.theme)))
         this.menu = menu
         return true
     }
