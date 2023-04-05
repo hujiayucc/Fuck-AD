@@ -12,10 +12,10 @@ android {
     def verCode = new Random()
     defaultConfig {
         applicationId "com.hujiayucc.hook"
-        minSdk 28
+        minSdk 27
         targetSdk 33
-        versionCode 2022
-        versionName "1.2.3"
+        versionCode 2222
+        versionName "1.2.4"
         def hotVersionCode = 2023
         def hotVersionName = "1.2.3.1"
 
