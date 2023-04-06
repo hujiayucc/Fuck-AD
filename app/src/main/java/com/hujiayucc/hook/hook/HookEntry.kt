@@ -24,7 +24,7 @@ import com.hujiayucc.hook.utils.Log
 
 /** Hook入口 */
 @InjectYukiHookWithXposed
-object HookEntry : IYukiHookXposedInit {
+class HookEntry : IYukiHookXposedInit {
     override fun onHook() = YukiHookAPI.encase {
         if (YukiHookAPI.Status.isModuleActive && packageName != BuildConfig.APPLICATION_ID) {
             if (prefs.get(global)) {

@@ -1,3 +1,4 @@
+//file:noinspection GroovyAssignabilityCheck
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -14,7 +15,7 @@ android {
         applicationId "com.hujiayucc.hook"
         minSdk 27
         targetSdk 33
-        versionCode 2222
+        versionCode verCode.nextInt(5000)//2222
         versionName "1.2.4"
         def hotVersionCode = 2023
         def hotVersionName = "1.2.3.1"
@@ -32,6 +33,11 @@ android {
         buildConfigField "String", "CHANNEL_ID", '"auto_skip1"'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags ''
+            }
+        }
     }
 
     android.applicationVariants.configureEach {
@@ -78,6 +84,13 @@ android {
     packagingOptions {
         resources {
             excludes += ['META-INF/*.version', 'kotlin']
+        }
+    }
+    //noinspection GroovyMissingReturnStatement
+    externalNativeBuild {
+        cmake {
+            path file('src/main/native/CMakeLists.txt')
+            version '3.22.1'
         }
     }
 
