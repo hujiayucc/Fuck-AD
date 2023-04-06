@@ -86,8 +86,9 @@ android {
             excludes += ['META-INF/*.version', 'kotlin']
         }
     }
-    //noinspection GroovyMissingReturnStatement
+
     externalNativeBuild {
+        //noinspection GroovyMissingReturnStatement
         cmake {
             path file('src/main/native/CMakeLists.txt')
             version '3.22.1'
