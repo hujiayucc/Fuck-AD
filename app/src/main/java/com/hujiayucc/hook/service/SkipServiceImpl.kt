@@ -296,5 +296,8 @@ class SkipServiceImpl(private val service: SkipService) {
 
     companion object {
         private var show = false
+        init {
+            System.loadLibrary("fuck_ad")
+        }
     }
 }

@@ -1,18 +1,11 @@
 package com.hujiayucc.hook.ui.activity
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ActivityManager
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Process
@@ -21,15 +14,12 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.KeyEvent
-import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
@@ -38,9 +28,8 @@ import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
 import com.hujiayucc.hook.BuildConfig.*
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.databinding.ActivityMainBinding
-import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
+import com.hujiayucc.hook.ui.base.BaseActivity
 import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.utils.*
 import com.hujiayucc.hook.utils.Data.QQ_GROUP
@@ -50,14 +39,11 @@ import com.hujiayucc.hook.utils.Data.global
 import com.hujiayucc.hook.utils.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.utils.Data.hookTip
 import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
-import com.hujiayucc.hook.utils.Data.isLauncherIconShowing
 import com.hujiayucc.hook.utils.Data.localeId
 import com.hujiayucc.hook.utils.Data.runService
-import com.hujiayucc.hook.utils.Data.setSpan
 import com.hujiayucc.hook.utils.Data.stopService
 import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.utils.Data.updateConfig
-import com.hujiayucc.hook.utils.Update.updateHotFix
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
 import java.io.FileOutputStream
@@ -65,48 +51,21 @@ import java.util.*
 
 
 @Suppress("DEPRECATION")
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
+class MainActivity : BaseActivity() {
     private lateinit var tabLayout: TabLayout
     private lateinit var viewPager: ViewPager
     private val fragmentList = ArrayList<MainFragment>()
     private lateinit var adapter: ViewPagerAdapter
-    private var localeID = 0
     private lateinit var imageView: ImageView
     private var alertimageView: ImageView? = null
-    private var menu: Menu? = null
-
-    override fun attachBaseContext(newBase: Context?) {
-        runCatching { newBase?.classLoader?.let { HotFixUtils().doHotFix(it) } }
-        super.attachBaseContext(newBase)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        localeID = modulePrefs.get(localeId)
-        if (localeID != 0) checkLanguage(Language.fromId(localeID))
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         initView()
-        // 检查是否已经授权该权限
-        if (checkSelfPermission(Manifest.permission.CHANGE_CONFIGURATION) != PackageManager.PERMISSION_GRANTED) {
-            // 请求授权该权限
-            requestPermissions(arrayOf(Manifest.permission.CHANGE_CONFIGURATION), 2001)
-        }
-        // 适配 Android13 通知权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val notificationManager = applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            if (!notificationManager.areNotificationsEnabled()) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS),2000)
-            }
-        }
     }
 
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
     private fun initView() {
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
         tabLayout = binding.tabLayout
         viewPager = binding.viewPager
         initBackGround()
@@ -201,82 +160,6 @@ class MainActivity : AppCompatActivity() {
             fragment.searchList.addAll(list)
         }
         fragment.showList(list)
-    }
-
-    private fun checkUpdate(show: Boolean) {
-        Thread {
-            val info = Update.checkUpdate()
-            var hotFix = false
-            if (info != null) {
-                if (info.getInt("hotFixVersion") > HOT_VERSION) {
-                    runOnUiThread {
-                        AlertDialog.Builder(this)
-                            .setTitle("发现热更新")
-                            .setMessage("${info.getString("hotFixName")}\n\n${info.getString("updateLog")}")
-                            .setPositiveButton("升级") { dialog, _ ->
-                                dialog?.dismiss()
-                                kotlin.runCatching {
-                                    updateHotFix(info)
-                                }
-                            }.setNegativeButton("关闭") { dialog, _ -> dialog?.dismiss() }.setCancelable(false).show()
-                    }
-                    hotFix = true
-                }
-
-                if (info.getInt("versionCode") > VERSION_CODE) {
-                    val url = Uri.parse(info.getString("url"))
-                    val intent = Intent(Intent.ACTION_VIEW, url)
-                    runOnUiThread {
-                        binding.mainStatus.text = getString(R.string.has_update)
-                        binding.mainActiveStatus.setOnClickListener {
-                            startActivity(intent)
-                        }
-                    }
-                } else {
-                    runOnUiThread {
-                        if (show && !hotFix) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } else runOnUiThread {
-                Toast.makeText(
-                    applicationContext,
-                    getString(R.string.check_update_failed),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }.start()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(global)
-        menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(hookTip)
-        menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
-        menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
-
-        val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
-        when (localeID) {
-            0 -> group?.subMenu?.findItem(R.id.menu_language_defualt)?.isChecked = true
-            1 -> group?.subMenu?.findItem(R.id.menu_language_en)?.isChecked = true
-            2 -> group?.subMenu?.findItem(R.id.menu_language_zh)?.isChecked = true
-        }
-        menu.findItem(R.id.menu_language_settings).subMenu?.setHeaderTitle(getString(R.string.language_settings).setSpan(resources.getColor(R.color.theme)))
-        menu.findItem(R.id.menu_theme_settings).subMenu?.setHeaderTitle(getString(R.string.menu_theme_settings).setSpan(resources.getColor(R.color.theme)))
-        menu.findItem(R.id.menu_module_settings).subMenu?.setHeaderTitle(getString(R.string.menu_module_settings).setSpan(resources.getColor(R.color.theme)))
-        this.menu = menu
-        return true
-    }
-
-    override fun onStart() {
-        super.onStart()
-        checkUpdate(false)
-        val isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
-        menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
-        if (isChecked) {
-            intent = Intent(applicationContext, SkipService::class.java)
-            startService(intent)
-        }
-        updateConfig(modulePrefs.all())
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -409,14 +292,14 @@ class MainActivity : AppCompatActivity() {
                             e.printStackTrace()
                         }
                         dialog.dismiss()
-                        recreate()
+                        super.recreate()
                     }
                     .setNegativeButton(getString(R.string.alert_reset)) { dialog, _ ->
                         try {
                             val file = File(filesDir, filename)
                             if (file.exists())
                                 file.delete()
-                            recreate()
+                            super.recreate()
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -506,7 +389,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     @SuppressLint("ResourceType")
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
@@ -523,54 +405,6 @@ class MainActivity : AppCompatActivity() {
 
             else -> super.onKeyDown(keyCode, event)
         }
-    }
-
-
-    override fun finish() {
-        val intent = Intent(Intent.ACTION_MAIN)
-        intent.addCategory(Intent.CATEGORY_HOME)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivity(intent)
-        excludeFromRecent(true)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        excludeFromRecent(false)
-    }
-
-    /** 隐藏最近任务列表视图 */
-    private fun excludeFromRecent(exclude: Boolean) {
-        try {
-            val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-            for (appTask in manager.appTasks) {
-                if (appTask.taskInfo.id == taskId) {
-                    appTask.setExcludeFromRecents(exclude)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun checkLanguage(language: Locale) {
-        val configuration = resources.configuration
-        configuration.setLocale(language)
-        resources.updateConfiguration(configuration, resources.displayMetrics)
-        val locale = resources.configuration.locale
-        if (Language.fromId(localeID) != locale) recreate()
-    }
-
-    override fun recreate() {
-        super.finish()
-        val intent = Intent(applicationContext, this::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        applicationContext.startActivity(intent)
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        recreate()
     }
 
     companion object {

@@ -6,5 +6,9 @@
         <language minSize="76" name="Kotlin" />
       </Languages>
     </inspection_tool>
+    <inspection_tool class="MissingOverrideAnnotation" enabled="false" level="INFORMATION" enabled_by_default="false">
+      <option name="ignoreObjectMethods" value="true" />
+      <option name="ignoreAnonymousClassMethods" value="false" />
+    </inspection_tool>
   </profile>
 </component>

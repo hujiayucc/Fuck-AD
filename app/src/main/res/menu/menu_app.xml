@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <group>
-        <item android:id="@+id/menu_open_application"
-              android:title="@string/menu_open_application"/>
+    <item android:id="@+id/menu_open_application"
+        android:title="@string/menu_open_application"/>
 
-        <item android:id="@+id/menu_open_all"
-              android:title="@string/menu_open_all"/>
+    <item android:id="@+id/menu_open_all"
+        android:title="@string/menu_open_all"/>
 
-        <item android:id="@+id/menu_close_all"
-              android:title="@string/menu_close_all"/>
+    <item android:id="@+id/menu_close_all"
+        android:title="@string/menu_close_all"/>
 
-        <item android:id="@+id/menu_invert_selection"
-              android:title="@string/menu_invert_selection"/>
-    </group>
+    <item android:id="@+id/menu_invert_selection"
+        android:title="@string/menu_invert_selection"/>
 </menu>

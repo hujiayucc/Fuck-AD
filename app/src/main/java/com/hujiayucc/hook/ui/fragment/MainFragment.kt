@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.*
 import android.widget.*
@@ -39,9 +40,8 @@ class MainFragment : Fragment() {
     private var isSystem: Boolean = false
     private var position = 0
 
-    @SuppressLint("InflateParams")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.fragment_main, null, true)
+        return inflater.inflate(R.layout.fragment_main,null,true)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -82,57 +82,17 @@ class MainFragment : Fragment() {
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
         MenuInflater(appContext).inflate(R.menu.menu_app, menu)
         menu.setHeaderView(TextView(appContext))
-        menu.setHeaderTitle(list[position].app_name
-            .setSpan(resources.getColor(R.color.theme)))
+        menu.setHeaderTitle(list[position].app_name.setSpan(resources.getColor(R.color.theme)))
+        menu.getItem(0).title = resources.getString(R.string.menu_open_application)
+        menu.getItem(1).title = resources.getString(R.string.menu_open_all)
+        menu.getItem(2).title = resources.getString(R.string.menu_close_all)
+        menu.getItem(3).title = resources.getString(R.string.menu_invert_selection)
+        setMenu(menu)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterForContextMenu(listView)
-    }
-
-    override fun onContextItemSelected(item: MenuItem): Boolean {
-        val menuInfo = item.menuInfo as AdapterContextMenuInfo
-        val info = list[menuInfo.position]
-        when (item.itemId) {
-            R.id.menu_open_application -> {
-                try {
-                    val intent: Intent? = appContext.packageManager
-                        .getLaunchIntentForPackage(info.app_package)
-                    appContext.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        appContext, getString(R.string.failed_to_open_application)
-                            .format(info.app_name), Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-
-            R.id.menu_open_all -> {
-                for (app in list) {
-                    activity?.modulePrefs?.putBoolean(app.app_package, true)
-                }
-                showList(list)
-            }
-
-            R.id.menu_close_all -> {
-                for (app in list) {
-                    activity?.modulePrefs?.putBoolean(app.app_package, false)
-                }
-                showList(list)
-            }
-
-            R.id.menu_invert_selection -> {
-                for (app in list) {
-                    val isChecked = !activity?.modulePrefs?.getBoolean(app.app_package, true)!!
-                    activity?.modulePrefs?.putBoolean(app.app_package, isChecked)
-                }
-                showList(list)
-            }
-
-            else -> return false
-        }
-        return true
     }
 
     private fun loadAppList(showSysApp: Boolean) {
@@ -149,8 +109,7 @@ class MainFragment : Fragment() {
                     var i = 0
                     progressBar.max = apps.size
                     for (info in apps) {
-                        if (!info.packageName.equals(BuildConfig.APPLICATION_ID) &&
-                            !info.sourceDir.equals("/system/app/HybridPlatform/HybridPlatform.apk")) {
+                        if (!info.packageName.equals(BuildConfig.APPLICATION_ID)) {
                             val icon = info.loadIcon(appContext.packageManager)
                             val label = appContext.packageManager.getApplicationLabel(info)
                             val appinfo = AppInfo(icon, label, info.packageName)
@@ -182,7 +141,7 @@ class MainFragment : Fragment() {
                 val isCheckList: ArrayList<AppInfo> = ArrayList()
                 val notCheckList: ArrayList<AppInfo> = ArrayList()
                 for (app in list) {
-                    val isChecked = requireActivity().modulePrefs.getBoolean(app.app_package, true)
+                    val isChecked = appContext.modulePrefs.getBoolean(app.app_package, true)
                     if (isChecked) isCheckList.add(app)
                     else notCheckList.add(app)
                 }
@@ -209,5 +168,43 @@ class MainFragment : Fragment() {
             refresh.visibility = View.VISIBLE
         }
         Log.d("加载完毕 共${list.size}个应用")
+    }
+
+    fun setMenu(menu: ContextMenu) {
+        menu.getItem(0).setOnMenuItemClickListener {
+            try {
+                val intent: Intent? = appContext.packageManager
+                    .getLaunchIntentForPackage(list[position].app_package)
+                appContext.startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    appContext, getString(R.string.failed_to_open_application)
+                        .format(list[position].app_name), Toast.LENGTH_SHORT
+                ).show()
+            }
+            true
+        }
+        menu.getItem(1).setOnMenuItemClickListener {
+            for (app in list) {
+                appContext.modulePrefs.putBoolean(app.app_package, true)
+            }
+            showList(list)
+            true
+        }
+        menu.getItem(2).setOnMenuItemClickListener {
+            for (app in list) {
+                appContext.modulePrefs.putBoolean(app.app_package, false)
+            }
+            showList(list)
+            true
+        }
+        menu.getItem(3).setOnMenuItemClickListener {
+            for (app in list) {
+                val isChecked = !appContext.modulePrefs.getBoolean(app.app_package, true)
+                activity?.modulePrefs?.putBoolean(app.app_package, isChecked)
+            }
+            showList(list)
+            true
+        }
     }
 }

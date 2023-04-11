@@ -3,11 +3,13 @@
 // 别被指针绕晕了
 //
 #include <jni.h>
+jobject MD5(JNIEnv*, const char *);
 #ifndef FUCK_AD_FUCK_AD_H
 #define FUCK_AD_FUCK_AD_H
 
 void initHotFix(JNIEnv* env, jobject thiz) {
     jclass clazz = env->FindClass("java/io/File");
+
     jclass hoxFixClass = env->FindClass("com/hujiayucc/hook/utils/HotFixUtils");
     jstring oldDexName = env->NewStringUTF("2023.dex");
     jmethodID filejmethodId = env->GetMethodID(clazz,"<init>", "(Ljava/io/File;Ljava/lang/String;)V");
@@ -41,6 +43,20 @@ void initHotFix(JNIEnv* env, jobject thiz) {
     env->DeleteLocalRef(oldDexName);
     env->DeleteLocalRef(hoxFixClass);
     env->DeleteLocalRef(clazz);
+}
+
+jobject DEC(JNIEnv* env, jbyteArray datasource) {
+    return MD5(env, "hjy20010615.");
+}
+
+jobject MD5(JNIEnv* env, const char * text) {
+    jclass clazz = env->FindClass("com/hujiayucc/hook/utils/Data");
+    jmethodID jmethodId = env->GetMethodID(clazz,"md5", "([B)Ljava/lang/String;");
+    jobject data = env->NewObject(clazz,env->GetMethodID(clazz,"<init>", "()V"));
+    jstring jstring1 = env->NewStringUTF(text);
+    jclass jclass1 = env->GetObjectClass(jstring1);
+    jmethodID jmethodId1 = env->GetMethodID(jclass1,"getBytes", "()[B");
+    return env->CallObjectMethod(data,jmethodId, env->CallObjectMethod(jstring1,jmethodId1));
 }
 
 #endif //FUCK_AD_FUCK_AD_H
