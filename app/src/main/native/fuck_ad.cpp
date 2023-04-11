@@ -100,3 +100,12 @@ Java_com_hujiayucc_hook_service_SkipService_onInterrupt(JNIEnv *env, jobject thi
     env->DeleteLocalRef(serviceImpl);
     env->DeleteLocalRef(clazz);
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_hujiayucc_hook_ui_activity_MainActivity_onCreate(JNIEnv *env, jobject thiz,jobject saved_instance_state) {
+    jclass clazz = env->GetSuperclass(env->GetObjectClass(thiz));
+    jmethodID jmethodId = env->GetMethodID(clazz,"onCreate", "(Landroid/os/Bundle;)V");
+    env->CallNonvirtualVoidMethod(thiz,clazz,jmethodId,saved_instance_state);
+    env->CallVoidMethod(thiz,env->GetMethodID(clazz,"initView", "()V"));
+    env->DeleteLocalRef(clazz);
+}
