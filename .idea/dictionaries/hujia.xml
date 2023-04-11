@@ -3,11 +3,14 @@
     <words>
       <w>alertimage</w>
       <w>filejmethod</w>
+      <w>filejmethodid</w>
       <w>jboolean</w>
       <w>jclass</w>
+      <w>jfield</w>
       <w>jmethod</w>
       <w>jstring</w>
       <w>landroid</w>
+      <w>lcom</w>
       <w>ljava</w>
     </words>
   </dictionary>

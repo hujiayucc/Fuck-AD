@@ -8,9 +8,8 @@ import com.hujiayucc.hook.utils.*
 import java.util.*
 
 
-@Suppress("DEPRECATION")
+@SuppressLint("MissingSuperCall")
 class MainActivity : BaseActivity() {
-    @SuppressLint("MissingSuperCall")
     external override fun onCreate(savedInstanceState: Bundle?)
 
     companion object {
