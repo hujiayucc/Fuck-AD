@@ -320,6 +320,7 @@ open class BaseActivity: AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (modulePrefs.getLong("deviceQQ", 0) == 0L) return false
         return when (item.itemId) {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
