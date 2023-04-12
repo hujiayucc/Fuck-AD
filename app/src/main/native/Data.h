@@ -7,6 +7,7 @@ using namespace std;
 #define FUCK_AD_DATA_H
 
 namespace Data {
+    string KEY = "XYHook";
     string init = "<init>";
     string Void_Sig = "()V";
     string File = "java/io/File";

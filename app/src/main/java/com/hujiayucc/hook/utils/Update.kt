@@ -3,14 +3,13 @@ package com.hujiayucc.hook.utils
 import android.app.Activity
 import android.os.StrictMode
 import androidx.appcompat.app.AlertDialog
+import com.hujiayucc.hook.utils.Data.md5
 import com.hujiayucc.hook.utils.HotFixUtils.Companion.DEX_FILE
 import org.json.JSONObject
 import java.io.*
 import java.net.URL
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
 import kotlin.system.exitProcess
 
 
@@ -76,7 +75,7 @@ object Update {
         }.start()
     }
 
-    fun deleteOld(patchDir: File) {
+    private fun deleteOld(patchDir: File) {
         val path = Paths.get(patchDir.path)
         Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
             override fun visitFile(file: Path?, attrs: BasicFileAttributes?): FileVisitResult {
@@ -90,16 +89,5 @@ object Update {
             }
         })
         patchDir.mkdir()
-    }
-
-    @Throws(NoSuchAlgorithmException::class, UnsupportedEncodingException::class)
-    private fun md5(byte: ByteArray): String {
-        val md5: MessageDigest = MessageDigest.getInstance("MD5")
-        val bytes: ByteArray = md5.digest(byte)
-        val builder = java.lang.StringBuilder()
-        for (aByte in bytes) {
-            builder.append(Integer.toHexString(0x000000FF and aByte.toInt() or -0x100).substring(6))
-        }
-        return builder.toString()
     }
 }

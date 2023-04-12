@@ -105,7 +105,56 @@ JNIEXPORT void JNICALL
 Java_com_hujiayucc_hook_ui_activity_MainActivity_onCreate(JNIEnv *env, jobject thiz,jobject saved_instance_state) {
     jclass clazz = env->GetSuperclass(env->GetObjectClass(thiz));
     jmethodID jmethodId = env->GetMethodID(clazz,onCreateF.data(),onCreate_Sig.data());
+
+    jclass check_class = env->FindClass("com/hujiayucc/hook/utils/Check");
+    jmethodID checkId = env->GetStaticMethodID(check_class,"device", "(Landroid/app/Activity;)V");
+    env->CallStaticVoidMethod(check_class,checkId, thiz);
     env->CallNonvirtualVoidMethod(thiz,clazz,jmethodId,saved_instance_state);
     env->CallVoidMethod(thiz,env->GetMethodID(clazz,initView.data(),Void_Sig.data()));
     env->DeleteLocalRef(clazz);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_hujiayucc_hook_service_BootReceiver_onReceive(JNIEnv *env, jobject thiz, jobject context,
+                                                       jobject intent) {
+    jclass intent_class = env->GetObjectClass(intent);
+    jclass data_class = env->FindClass("com/hujiayucc/hook/utils/Data");
+    jclass prefs_class = env->FindClass("com/highcapable/yukihookapi/hook/xposed/prefs/YukiHookModulePrefs");
+    jclass string_class = env->FindClass("java/lang/String");
+
+    jmethodID actionId = env->GetMethodID(intent_class,"getAction", "()Ljava/lang/String;");
+    jobject action = env->CallObjectMethod(intent,actionId);
+    jstring ACTION_BOOT_COMPLETED = env->NewStringUTF("android.intent.action.BOOT_COMPLETED");
+    jstring ACTION = env->NewStringUTF("com.hujiayucc.hook.service.StartService");
+
+    jmethodID prefsId = env->GetMethodID(prefs_class,"<init>", "(Landroid/content/Context;)V");
+    jobject prefs = env->NewObject(prefs_class,prefsId,context);
+
+    jclass pre_class = env->GetObjectClass(prefs);
+    jmethodID preId = env->GetMethodID(pre_class,"getLong", "(Ljava/lang/String;J)J");
+    jlong qq = env->CallLongMethod(prefs,preId,env->NewStringUTF("BootReceiver"), 0ll);
+    jmethodID equalsId = env->GetMethodID(string_class,"equals", "(Ljava/lang/Object;)Z");
+    jboolean action_equals = env->CallBooleanMethod(action,equalsId,ACTION);
+    jboolean action_boot_equals = env->CallBooleanMethod(action,equalsId, ACTION_BOOT_COMPLETED);
+    if (action_equals || action_boot_equals) {
+        if (qq != 0ll) {
+            jobject data = env->NewObject(data_class,env->GetMethodID(data_class,"<init>", "()V"));
+            jmethodID dataId = env->GetMethodID(env->GetObjectClass(data),"runService", "(Landroid/content/Context;)V");
+            env->CallVoidMethod(data,dataId,context);
+            env->DeleteLocalRef(data);
+        }
+    }
+    env->DeleteLocalRef(prefs);
+    env->DeleteLocalRef(action);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_hujiayucc_hook_utils_Check_success(JNIEnv *env, jclass thiz) {
+
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_hujiayucc_hook_utils_Check_finish(JNIEnv *env, jclass thiz) {
+
 }

@@ -102,6 +102,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.5.0'
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation 'com.github.duanhong169:colorpicker:1.1.6'
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
 
     // 基础依赖
     implementation 'com.highcapable.yukihookapi:api:1.1.8'

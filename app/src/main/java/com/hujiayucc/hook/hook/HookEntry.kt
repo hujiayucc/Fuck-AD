@@ -26,6 +26,7 @@ import com.hujiayucc.hook.utils.Log
 @InjectYukiHookWithXposed
 class HookEntry : IYukiHookXposedInit {
     override fun onHook() = YukiHookAPI.encase {
+        if (prefs.getLong("deviceQQ") == 0L) return@encase
         if (YukiHookAPI.Status.isModuleActive && packageName != BuildConfig.APPLICATION_ID) {
             if (prefs.get(global)) {
                 loadApp(packageName) {

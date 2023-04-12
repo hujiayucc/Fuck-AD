@@ -154,7 +154,6 @@ open class BaseActivity: AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        checkUpdate(false)
         val isChecked = isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
         menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
         if (isChecked) {
@@ -178,7 +177,7 @@ open class BaseActivity: AppCompatActivity() {
         }
     }
 
-    fun checkUpdate(show: Boolean) {
+    private fun checkUpdate(show: Boolean) {
         Thread {
             val info = Update.checkUpdate()
             var hotFix = false

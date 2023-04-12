@@ -17,7 +17,7 @@ import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Com
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.FragmentMainBinding
-import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
+import com.hujiayucc.hook.ui.activity.MainActivity.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
 import com.hujiayucc.hook.utils.AppInfo
 import com.hujiayucc.hook.utils.Data

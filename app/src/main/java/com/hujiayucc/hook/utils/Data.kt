@@ -42,7 +42,6 @@ object Data {
     val themes: PrefsData<Int> = PrefsData("theme", -25412)
     val background: PrefsData<String> = PrefsData("background", "")
     var skipCount = 0
-    val deviceQQ: PrefsData<Long?> = PrefsData("deviceQQ", null)
 
     /**
      * 隐藏或显示启动器图标
@@ -289,11 +288,11 @@ object Data {
     }
 
     /** MD5加密 */
-    fun md5(bytes: ByteArray): String? {
+    fun md5(bytes: ByteArray): String {
         val md5: MessageDigest = try {
             MessageDigest.getInstance("MD5")
         } catch (e: NoSuchAlgorithmException) {
-            return null
+            return ""
         }
         val byte = md5.digest(bytes)
         val builder = StringBuilder()
@@ -306,5 +305,4 @@ object Data {
     /** 获取Android ID/设备ID */
     val Context.deviceId: String @SuppressLint("HardwareIds")
     get() = Settings.Secure.getString(applicationContext.contentResolver, Settings.Secure.ANDROID_ID)
-
 }
