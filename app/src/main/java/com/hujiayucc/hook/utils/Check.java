@@ -186,9 +186,10 @@ public class Check {
         StrictMode.setThreadPolicy(policy);
         Context context = activity.getApplicationContext();
         MediaType type = MediaType.parse("application/json; charset=utf-8");
+        String id = Data.INSTANCE.getDeviceId(context);
         Map<String, Object> map = new HashMap<>();
         map.put("qq",qq);
-        map.put("id", Data.INSTANCE.getDeviceId(context));
+        map.put("id", id);
         JSONObject json = new JSONObject(map);
         RequestBody body = RequestBody.create(type,json.toString());
         OkHttpClient client = new OkHttpClient();
@@ -199,11 +200,19 @@ public class Check {
             Response response = client.newCall(request).execute();
             assert response.body() != null;
             JSONObject jsonObject = new JSONObject(new String(response.body().bytes()));
-            if (jsonObject.getInt("code") == 200 &&
-                    jsonObject.getString("message").equals("success")) {
+            int code = jsonObject.getInt("code");
+            if (code == 200 && jsonObject.getString("message").equals("success") ||
+                    code == 201 && jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
                 prefs.putLong("deviceQQ",qq);
                 dialog.dismiss();
                 success();
+            } else if (code == 201 && !jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
+                activity.runOnUiThread(() -> {
+                    new AlertDialog.Builder(activity)
+                            .setMessage("该QQ已被其他设备绑定，如你是QQ主人或需要换绑请联系作者。")
+                            .setPositiveButton("关闭",((dialog1, which) -> dialog1.dismiss()))
+                            .show();
+                });
             } else {
                 finish();
                 activity.runOnUiThread(() -> {
