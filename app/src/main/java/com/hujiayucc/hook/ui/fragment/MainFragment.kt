@@ -82,7 +82,8 @@ class MainFragment : Fragment() {
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
         MenuInflater(appContext).inflate(R.menu.menu_app, menu)
         menu.setHeaderView(TextView(appContext))
-        menu.setHeaderTitle(list[position].app_name.setSpan(resources.getColor(R.color.theme)))
+        if (searchText.isEmpty()) menu.setHeaderTitle(list[position].app_name.setSpan(resources.getColor(R.color.theme)))
+        else menu.setHeaderTitle(searchList[position].app_name.setSpan(resources.getColor(R.color.theme)))
         menu.getItem(0).title = resources.getString(R.string.menu_open_application)
         menu.getItem(1).title = resources.getString(R.string.menu_open_all)
         menu.getItem(2).title = resources.getString(R.string.menu_close_all)
@@ -171,6 +172,7 @@ class MainFragment : Fragment() {
     }
 
     fun setMenu(menu: ContextMenu) {
+        val list = if (searchText.isEmpty()) list else searchList
         menu.getItem(0).setOnMenuItemClickListener {
             try {
                 val intent: Intent? = appContext.packageManager

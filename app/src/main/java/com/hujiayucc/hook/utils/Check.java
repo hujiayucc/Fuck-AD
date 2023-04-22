@@ -16,7 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
 import com.highcapable.yukihookapi.hook.factory.YukiHookFactoryKt;
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs;
+import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge;
 import com.hujiayucc.hook.R;
 
 import org.json.JSONException;
@@ -44,7 +44,7 @@ public class Check {
 
     public static void device(Activity activity) {
         Context context = activity.getApplication().getApplicationContext();
-        YukiHookModulePrefs prefs = YukiHookFactoryKt.getModulePrefs(context);
+        YukiHookPrefsBridge prefs = YukiHookFactoryKt.getModulePrefs(context);
         AtomicLong qq = new AtomicLong(prefs.getLong("deviceQQ", 0));
         if (qq.get() == 0) {
             EditText editText = new EditText(context);
@@ -84,7 +84,7 @@ public class Check {
         }
     }
 
-    private static void a(Activity activity, long qq, YukiHookModulePrefs prefs) {
+    private static void a(Activity activity, long qq, YukiHookPrefsBridge prefs) {
         Context context = activity.getApplicationContext();
         String id = Data.INSTANCE.getDeviceId(context);
         OkHttpClient client = new OkHttpClient();
@@ -181,14 +181,14 @@ public class Check {
         }
     }
 
-    private static void b(Activity activity, AlertDialog dialog, long qq, YukiHookModulePrefs prefs) {
+    private static void b(Activity activity, AlertDialog dialog, long qq, YukiHookPrefsBridge prefs) {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         Context context = activity.getApplicationContext();
         MediaType type = MediaType.parse("application/json; charset=utf-8");
         String id = Data.INSTANCE.getDeviceId(context);
         Map<String, Object> map = new HashMap<>();
-        map.put("qq",qq);
+        map.put("qq", qq);
         map.put("id", id);
         JSONObject json = new JSONObject(map);
         RequestBody body = RequestBody.create(type,json.toString());
@@ -207,12 +207,10 @@ public class Check {
                 dialog.dismiss();
                 success();
             } else if (code == 201 && !jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
-                activity.runOnUiThread(() -> {
-                    new AlertDialog.Builder(activity)
-                            .setMessage("该QQ已被其他设备绑定，如你是QQ主人或需要换绑请联系作者。")
-                            .setPositiveButton("关闭",((dialog1, which) -> dialog1.dismiss()))
-                            .show();
-                });
+                activity.runOnUiThread(() -> new AlertDialog.Builder(activity)
+                        .setMessage("该QQ已被其他设备绑定，如你是QQ主人或需要换绑请联系作者。")
+                        .setPositiveButton("关闭",((dialog1, which) -> dialog1.dismiss()))
+                        .show());
             } else {
                 finish();
                 activity.runOnUiThread(() -> {

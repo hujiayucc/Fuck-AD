@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs
+import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.AppChildBinding
@@ -16,7 +16,7 @@ import com.hujiayucc.hook.utils.Data.updateConfig
 class ListViewAdapter(
     private val appContext: Context,
     private val appList: List<AppInfo>,
-    private val modulePrefs: YukiHookModulePrefs,
+    private val modulePrefs: YukiHookPrefsBridge,
 ) : BaseAdapter() {
     private lateinit var binding: AppChildBinding
     override fun getCount(): Int {
@@ -38,7 +38,9 @@ class ListViewAdapter(
         val info = getItem(position)
         info.switchCheck = binding.switchCheck
         info.switchCheck.setOnCheckedChangeListener { _, isChecked ->
-            modulePrefs.put(PrefsData(info.app_package, false), isChecked)
+            modulePrefs.edit {
+                put(PrefsData(info.app_package, false), isChecked)
+            }
             appContext.updateConfig(modulePrefs.all())
         }
         if (info.app_icon != null) binding.appIcon.setImageDrawable(info.app_icon)

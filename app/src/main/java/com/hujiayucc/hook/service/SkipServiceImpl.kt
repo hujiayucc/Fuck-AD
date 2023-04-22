@@ -71,6 +71,11 @@ class SkipServiceImpl(private val service: SkipService) {
         "com.hujiayucc.hook"
     )
 
+    private val blackList2 = arrayOf(
+        "com.yaerxing.fkst",
+        "com.tencent.wemeet.app"
+    )
+
     private fun success() {
         skipCount++
         if (context.getConfig().getBoolean(Data.hookTip.key, true))
@@ -235,6 +240,10 @@ class SkipServiceImpl(private val service: SkipService) {
                     }
                 }
             }
+        }
+
+        for (name in blackList2) {
+            if (name.equals(nodeInfo.packageName)) return false
         }
 
         list = nodeInfo.findAccessibilityNodeInfosByText("签到")

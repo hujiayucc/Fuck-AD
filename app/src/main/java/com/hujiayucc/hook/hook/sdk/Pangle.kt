@@ -38,5 +38,12 @@ object Pangle : YukiBaseHooker() {
                 replaceTo(null)
             }
         }.ignoredHookClassNotFoundFailure()
+
+        findClass("com.dragon.read.reader.ad.readflow.ui.ReadFlowDynamicAdLine").hook {
+            injectMember {
+                allMembers()
+                replaceTo(null)
+            }
+        }.ignoredHookClassNotFoundFailure()
     }
 }

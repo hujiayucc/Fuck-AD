@@ -4,6 +4,9 @@
       <w>alertimage</w>
       <w>filejmethod</w>
       <w>filejmethodid</w>
+      <w>fkst</w>
+      <w>gsww</w>
+      <w>gushiwen</w>
       <w>jboolean</w>
       <w>jclass</w>
       <w>jfield</w>
@@ -13,6 +16,8 @@
       <w>lcom</w>
       <w>ljava</w>
       <w>mqqopensdkapi</w>
+      <w>wemeet</w>
+      <w>yaerxing</w>
     </words>
   </dictionary>
 </component>

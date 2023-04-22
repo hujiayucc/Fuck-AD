@@ -22,7 +22,9 @@ enum class HookerList(val packageName: String, val hooker: YukiBaseHooker, val s
     /** 追书小说阅读 */
     ZSRead("com.zhuishuxiaoshuo.bbzz.app", com.hujiayucc.hook.hook.app.ZSRead,true),
     /** 米游社 */
-    MiYoHyper("com.mihoyo.hyperion", com.hujiayucc.hook.hook.app.MiYoHyper,true);
+    MiYoHyper("com.mihoyo.hyperion", com.hujiayucc.hook.hook.app.MiYoHyper,true),
+    /** 古诗文网 */
+    GSWW("org.gushiwen.gushiwen", com.hujiayucc.hook.hook.app.GSWW,false);
 
     companion object {
         /** 通过包名获取对应Hooker */

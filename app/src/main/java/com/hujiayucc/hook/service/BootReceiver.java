@@ -5,7 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import com.highcapable.yukihookapi.hook.factory.YukiHookFactoryKt;
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookModulePrefs;
+import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge;
 import com.hujiayucc.hook.utils.Data;
 
 public class BootReceiver extends BroadcastReceiver {
@@ -20,7 +20,7 @@ public class BootReceiver extends BroadcastReceiver {
         switch (intent.getAction()) {
             case ACTION:
             case Intent.ACTION_BOOT_COMPLETED: {
-                YukiHookModulePrefs prefs = YukiHookFactoryKt.getModulePrefs(context);
+                YukiHookPrefsBridge prefs = YukiHookFactoryKt.prefs(context,"");
                 if (prefs.getLong("qq",0) != 0) Data.INSTANCE.runService(context);
             }
         }
