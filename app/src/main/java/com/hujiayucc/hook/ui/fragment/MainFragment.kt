@@ -13,6 +13,7 @@ import android.widget.AdapterView.OnItemClickListener
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.highcapable.yukihookapi.hook.factory.modulePrefs
+import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
@@ -29,7 +30,7 @@ import java.text.Collator
 import java.util.*
 
 
-@Suppress("NAME_SHADOWING", "DEPRECATION")
+@Suppress("DEPRECATION")
 class MainFragment : Fragment() {
     private lateinit var binding: FragmentMainBinding
     lateinit var listView: ListView
@@ -50,7 +51,7 @@ class MainFragment : Fragment() {
         listView = binding.list
         progressBar = binding.progress
         refresh = binding.refresh
-        refresh.setColorSchemeColors(appContext.modulePrefs.get(themes))
+        refresh.setColorSchemeColors(appContext.prefs().get(themes))
         refresh.setOnRefreshListener {
             if (searchText.isEmpty()) {
                 loadAppList(isSystem)
@@ -136,13 +137,13 @@ class MainFragment : Fragment() {
 
     fun showList(list: ArrayList<AppInfo>) {
         Thread {
-            val instance = Collator.getInstance(Language.fromId(appContext.modulePrefs.get(Data.localeId)))
+            val instance = Collator.getInstance(Language.fromId(appContext.prefs().get(Data.localeId)))
             try {
                 /** 排序 */
                 val isCheckList: ArrayList<AppInfo> = ArrayList()
                 val notCheckList: ArrayList<AppInfo> = ArrayList()
                 for (app in list) {
-                    val isChecked = appContext.modulePrefs.getBoolean(app.app_package, true)
+                    val isChecked = appContext.prefs().getBoolean(app.app_package, true)
                     if (isChecked) isCheckList.add(app)
                     else notCheckList.add(app)
                 }
@@ -161,7 +162,7 @@ class MainFragment : Fragment() {
                 e.printStackTrace()
             }
         }.start()
-        val adapter = ListViewAdapter(appContext, list, appContext.modulePrefs)
+        val adapter = ListViewAdapter(appContext, list, appContext.prefs())
         activity?.runOnUiThread {
             refresh.isRefreshing = false
             listView.adapter = adapter
@@ -188,22 +189,22 @@ class MainFragment : Fragment() {
         }
         menu.getItem(1).setOnMenuItemClickListener {
             for (app in list) {
-                appContext.modulePrefs.putBoolean(app.app_package, true)
+                appContext.prefs().edit { putBoolean(app.app_package, true) }
             }
             showList(list)
             true
         }
         menu.getItem(2).setOnMenuItemClickListener {
             for (app in list) {
-                appContext.modulePrefs.putBoolean(app.app_package, false)
+                appContext.prefs().edit { putBoolean(app.app_package, false) }
             }
             showList(list)
             true
         }
         menu.getItem(3).setOnMenuItemClickListener {
             for (app in list) {
-                val isChecked = !appContext.modulePrefs.getBoolean(app.app_package, true)
-                activity?.modulePrefs?.putBoolean(app.app_package, isChecked)
+                val isChecked = !appContext.prefs().getBoolean(app.app_package, true)
+                activity?.prefs()?.edit { putBoolean(app.app_package, isChecked) }
             }
             showList(list)
             true

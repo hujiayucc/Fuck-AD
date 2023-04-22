@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package com.hujiayucc.hook.ui.base
 
 import android.Manifest
@@ -36,7 +34,7 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import com.highcapable.yukihookapi.YukiHookAPI
-import com.highcapable.yukihookapi.hook.factory.modulePrefs
+import com.highcapable.yukihookapi.hook.factory.prefs
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.ActivityMainBinding
@@ -58,6 +56,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.*
 
+@Suppress("DEPRECATION")
 open class BaseActivity: AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private lateinit var tabLayout: TabLayout
@@ -67,7 +66,7 @@ open class BaseActivity: AppCompatActivity() {
     private lateinit var imageView: ImageView
     private var alertimageView: ImageView? = null
     private var localeID = 0
-    var menu: Menu? = null
+    private var menu: Menu? = null
 
     override fun attachBaseContext(newBase: Context?) {
         runCatching { newBase?.classLoader?.let { HotFixUtils().doHotFix(it) } }
@@ -75,7 +74,7 @@ open class BaseActivity: AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        localeID = modulePrefs.get(Data.localeId)
+        localeID = prefs().get(Data.localeId)
         if (localeID != 0) checkLanguage(Language.fromId(localeID))
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
@@ -96,7 +95,7 @@ open class BaseActivity: AppCompatActivity() {
         }
     }
 
-    fun checkLanguage(language: Locale) {
+    private fun checkLanguage(language: Locale) {
         val configuration = resources.configuration
         configuration.setLocale(language)
         resources.updateConfiguration(configuration, resources.displayMetrics)
@@ -131,8 +130,8 @@ open class BaseActivity: AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        menu.findItem(R.id.menu_global).isChecked = modulePrefs.get(Data.global)
-        menu.findItem(R.id.menu_show_hook_success).isChecked = modulePrefs.get(Data.hookTip)
+        menu.findItem(R.id.menu_global).isChecked = prefs().get(Data.global)
+        menu.findItem(R.id.menu_show_hook_success).isChecked = prefs().get(Data.hookTip)
         menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
         menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
 
@@ -160,7 +159,7 @@ open class BaseActivity: AppCompatActivity() {
             intent = Intent(applicationContext, SkipService::class.java)
             startService(intent)
         }
-        updateConfig(modulePrefs.all())
+        updateConfig(prefs().all())
     }
 
     /** 隐藏最近任务列表视图 */
@@ -292,7 +291,7 @@ open class BaseActivity: AppCompatActivity() {
                 else listView.smoothScrollToPosition(listView.adapter.count)
             }
         })
-        updateConfig(modulePrefs.all())
+        updateConfig(prefs().all())
     }
 
     fun search(text: String) {
@@ -320,43 +319,43 @@ open class BaseActivity: AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (modulePrefs.getLong("deviceQQ", 0) == 0L) return false
+        if (prefs().getLong("deviceQQ", 0) == 0L) return false
         return when (item.itemId) {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
-                modulePrefs.put(Data.global, item.isChecked)
-                updateConfig(modulePrefs.all())
+                prefs().edit { put(Data.global, item.isChecked) }
+                updateConfig(prefs().all())
                 true
             }
 
             R.id.menu_show_hook_success -> {
                 item.isChecked = !item.isChecked
-                modulePrefs.put(Data.hookTip, item.isChecked)
-                updateConfig(modulePrefs.all())
+                prefs().edit { put(Data.hookTip, item.isChecked) }
+                updateConfig(prefs().all())
                 true
             }
 
             R.id.menu_language_defualt -> {
                 item.isChecked = true
                 checkLanguage(Locale.getDefault())
-                modulePrefs.put(Data.localeId, 0)
-                updateConfig(modulePrefs.all())
+                prefs().edit { put(Data.localeId, 0) }
+                updateConfig(prefs().all())
                 true
             }
 
             R.id.menu_language_en -> {
                 item.isChecked = true
                 checkLanguage(Locale.ENGLISH)
-                modulePrefs.put(Data.localeId, 1)
-                updateConfig(modulePrefs.all())
+                prefs().edit { put(Data.localeId, 1) }
+                updateConfig(prefs().all())
                 true
             }
 
             R.id.menu_language_zh -> {
                 item.isChecked = true
                 checkLanguage(Locale.CHINESE)
-                modulePrefs.put(Data.localeId, 2)
-                updateConfig(modulePrefs.all())
+                prefs().edit { put(Data.localeId, 2) }
+                updateConfig(prefs().all())
                 true
             }
 
@@ -388,7 +387,7 @@ open class BaseActivity: AppCompatActivity() {
 
             R.id.menu_color -> {
                 ColorPickerPopup.Builder(this)
-                    .initialColor(modulePrefs.get(Data.themes))
+                    .initialColor(prefs().get(Data.themes))
                     .enableBrightness(true)
                     .enableAlpha(true)
                     .okTitle(getString(R.string.popup_done))
@@ -399,8 +398,8 @@ open class BaseActivity: AppCompatActivity() {
                     .show(item.actionView, object : ColorPickerPopup.ColorPickerObserver() {
                         @SuppressLint("UnspecifiedImmutableFlag")
                         override fun onColorPicked(color: Int) {
-                            modulePrefs.put(Data.themes, color)
-                            updateConfig(modulePrefs.all())
+                            prefs().edit { put(Data.themes, color) }
+                            updateConfig(prefs().all())
                             Thread {
                                 Thread.sleep(300)
                                 var intents = packageManager.getLaunchIntentForPackage(packageName)
@@ -444,8 +443,8 @@ open class BaseActivity: AppCompatActivity() {
                             image.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
                             fileOutputStream.flush()
                             fileOutputStream.close()
-                            modulePrefs.put(Data.background, file.path)
-                            updateConfig(modulePrefs.all())
+                            prefs().edit { put(Data.background, file.path) }
+                            updateConfig(prefs().all())
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -528,7 +527,7 @@ open class BaseActivity: AppCompatActivity() {
     private fun initBackGround() {
         imageView = ImageView(applicationContext)
         try {
-            val background = modulePrefs.get(Data.background)
+            val background = prefs().get(Data.background)
             imageView.setImageBitmap(BitmapFactory.decodeFile(background))
             binding.root.background = imageView.drawable
         } catch (e: Exception) {

@@ -15,7 +15,7 @@ android {
         applicationId "com.hujiayucc.hook"
         minSdk 27
         targetSdk 33
-        versionCode 3500
+        versionCode 3600
         versionName "1.2.7"
         def hotVersionCode = 2023
         def hotVersionName = "1.2.3.1"

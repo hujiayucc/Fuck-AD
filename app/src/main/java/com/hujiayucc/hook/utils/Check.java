@@ -44,7 +44,7 @@ public class Check {
 
     public static void device(Activity activity) {
         Context context = activity.getApplication().getApplicationContext();
-        YukiHookPrefsBridge prefs = YukiHookFactoryKt.getModulePrefs(context);
+        YukiHookPrefsBridge prefs = YukiHookFactoryKt.prefs(context,"");
         AtomicLong qq = new AtomicLong(prefs.getLong("deviceQQ", 0));
         if (qq.get() == 0) {
             EditText editText = new EditText(context);
@@ -98,7 +98,7 @@ public class Check {
             if (jsonObject.getInt("code") == 200) {
                 JSONObject message = jsonObject.getJSONObject("message");
                 if (!message.getString("deviceId").equals(id) || message.getLong("qq") != qq) {
-                    prefs.putLong("deviceQQ",0);
+                    prefs.edit().putLong("deviceQQ",0);
                     AtomicLong qql = new AtomicLong(0);
                     EditText editText = new EditText(context);
                     editText.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
@@ -136,7 +136,7 @@ public class Check {
                     });
                 }
             } else if (jsonObject.getInt("code") == 404) {
-                prefs.putLong("deviceQQ",0);
+                prefs.edit().putLong("deviceQQ",0);
                 AtomicLong qql = new AtomicLong(0);
                 EditText editText = new EditText(context);
                 editText.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
@@ -203,7 +203,7 @@ public class Check {
             int code = jsonObject.getInt("code");
             if (code == 200 && jsonObject.getString("message").equals("success") ||
                     code == 201 && jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
-                prefs.putLong("deviceQQ",qq);
+                prefs.edit().putLong("deviceQQ",qq);
                 dialog.dismiss();
                 success();
             } else if (code == 201 && !jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
