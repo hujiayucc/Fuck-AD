@@ -56,7 +56,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.*
 
-@Suppress("DEPRECATION")
+
 open class BaseActivity: AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private lateinit var tabLayout: TabLayout
@@ -95,6 +95,7 @@ open class BaseActivity: AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun checkLanguage(language: Locale) {
         val configuration = resources.configuration
         configuration.setLocale(language)
@@ -128,6 +129,7 @@ open class BaseActivity: AppCompatActivity() {
         excludeFromRecent(false)
     }
 
+    @Suppress("DEPRECATION")
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
         menu.findItem(R.id.menu_global).isChecked = prefs().get(Data.global)
@@ -163,6 +165,7 @@ open class BaseActivity: AppCompatActivity() {
     }
 
     /** 隐藏最近任务列表视图 */
+    @Suppress("DEPRECATION")
     private fun excludeFromRecent(exclude: Boolean) {
         try {
             val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
@@ -220,6 +223,7 @@ open class BaseActivity: AppCompatActivity() {
         }.start()
     }
 
+    @Suppress("DEPRECATION")
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
     fun initView() {
         tabLayout = binding.tabLayout
@@ -271,6 +275,7 @@ open class BaseActivity: AppCompatActivity() {
             }
         })
 
+        @Suppress("DEPRECATION")
         tabLayout.setOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 // 当前选中的标签页
@@ -297,18 +302,18 @@ open class BaseActivity: AppCompatActivity() {
     fun search(text: String) {
         val fragment = fragmentList[tabLayout.selectedTabPosition]
         val list: ArrayList<AppInfo> = ArrayList()
-        val texts = text.toLowerCase(Locale.CHINESE)
+        val texts = text.lowercase(Locale.CHINESE)
         if (MainActivity.searchText.isEmpty()) {
             for (app in fragment.list) {
-                val appName = app.app_name.toString().toLowerCase(Locale.CHINESE)
-                val appPackage = app.app_package.toLowerCase(Locale.CHINESE)
+                val appName = app.app_name.toString().lowercase(Locale.CHINESE)
+                val appPackage = app.app_package.lowercase(Locale.CHINESE)
                 if (appName.contains(texts) or appPackage.contains(texts))
                     list.add(app)
             }
         } else {
             for (app in fragment.list) {
-                val appName = app.app_name.toString().toLowerCase(Locale.CHINESE)
-                val appPackage = app.app_package.toLowerCase(Locale.CHINESE)
+                val appName = app.app_name.toString().lowercase(Locale.CHINESE)
+                val appPackage = app.app_package.lowercase(Locale.CHINESE)
                 if (appName.contains(texts) or appPackage.contains(texts))
                     list.add(app)
             }
@@ -318,21 +323,20 @@ open class BaseActivity: AppCompatActivity() {
         fragment.showList(list)
     }
 
+    @Suppress("DEPRECATION")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (prefs().getLong("deviceQQ", 0) == 0L) return false
-        return when (item.itemId) {
+        when (item.itemId) {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
                 prefs().edit { put(Data.global, item.isChecked) }
                 updateConfig(prefs().all())
-                true
             }
 
             R.id.menu_show_hook_success -> {
                 item.isChecked = !item.isChecked
                 prefs().edit { put(Data.hookTip, item.isChecked) }
                 updateConfig(prefs().all())
-                true
             }
 
             R.id.menu_language_defualt -> {
@@ -340,7 +344,6 @@ open class BaseActivity: AppCompatActivity() {
                 checkLanguage(Locale.getDefault())
                 prefs().edit { put(Data.localeId, 0) }
                 updateConfig(prefs().all())
-                true
             }
 
             R.id.menu_language_en -> {
@@ -348,7 +351,6 @@ open class BaseActivity: AppCompatActivity() {
                 checkLanguage(Locale.ENGLISH)
                 prefs().edit { put(Data.localeId, 1) }
                 updateConfig(prefs().all())
-                true
             }
 
             R.id.menu_language_zh -> {
@@ -356,7 +358,6 @@ open class BaseActivity: AppCompatActivity() {
                 checkLanguage(Locale.CHINESE)
                 prefs().edit { put(Data.localeId, 2) }
                 updateConfig(prefs().all())
-                true
             }
 
             R.id.menu_search -> {
@@ -371,7 +372,6 @@ open class BaseActivity: AppCompatActivity() {
                 binding.search.visibility = View.VISIBLE
                 binding.search.requestFocus()
                 inputMethodManager.showSoftInput(binding.search, InputMethodManager.SHOW_IMPLICIT)
-                true
             }
 
             R.id.menu_qq_group -> {
@@ -382,7 +382,6 @@ open class BaseActivity: AppCompatActivity() {
                 } catch (e: Exception) {
                     Toast.makeText(applicationContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
                 }
-                true
             }
 
             R.id.menu_color -> {
@@ -412,13 +411,11 @@ open class BaseActivity: AppCompatActivity() {
                             }.start()
                         }
                     })
-                true
             }
 
             R.id.menu_hide_icon -> {
                 hideOrShowLauncherIcon(!item.isChecked)
                 super.finish()
-                true
             }
 
             R.id.menu_background -> {
@@ -471,7 +468,6 @@ open class BaseActivity: AppCompatActivity() {
                     startActivityForResult(intent, 2)
                     return@setOnClickListener
                 }
-                true
             }
 
             R.id.menu_auto_skip -> {
@@ -489,7 +485,6 @@ open class BaseActivity: AppCompatActivity() {
                     menu?.findItem(R.id.menu_auto_skip)?.isChecked = applicationContext
                         .isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
                 },200)
-                true
             }
 
             R.id.menu_minimize -> {
@@ -506,7 +501,6 @@ open class BaseActivity: AppCompatActivity() {
                 } catch (e : Exception) {
                     e.printStackTrace()
                 }
-                false
             }
 
             R.id.menu_github -> {
@@ -516,11 +510,12 @@ open class BaseActivity: AppCompatActivity() {
                 } catch (e : Exception) {
                     e.printStackTrace()
                 }
-                true
             }
 
-            else -> super.onOptionsItemSelected(item)
+            else -> return super.onOptionsItemSelected(item)
         }
+        prefs().edit().apply()
+        return true
     }
 
     @SuppressLint("ResourceAsColor")

@@ -12,7 +12,6 @@ import android.widget.AdapterView.AdapterContextMenuInfo
 import android.widget.AdapterView.OnItemClickListener
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import com.highcapable.yukihookapi.hook.factory.modulePrefs
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
@@ -30,7 +29,6 @@ import java.text.Collator
 import java.util.*
 
 
-@Suppress("DEPRECATION")
 class MainFragment : Fragment() {
     private lateinit var binding: FragmentMainBinding
     lateinit var listView: ListView
@@ -83,6 +81,7 @@ class MainFragment : Fragment() {
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
         MenuInflater(appContext).inflate(R.menu.menu_app, menu)
         menu.setHeaderView(TextView(appContext))
+        @Suppress("DEPRECATION")
         if (searchText.isEmpty()) menu.setHeaderTitle(list[position].app_name.setSpan(resources.getColor(R.color.theme)))
         else menu.setHeaderTitle(searchList[position].app_name.setSpan(resources.getColor(R.color.theme)))
         menu.getItem(0).title = resources.getString(R.string.menu_open_application)
@@ -97,6 +96,7 @@ class MainFragment : Fragment() {
         unregisterForContextMenu(listView)
     }
 
+    @Suppress("DEPRECATION")
     private fun loadAppList(showSysApp: Boolean) {
         refresh.isRefreshing = true
         if (list.isEmpty()) {
@@ -105,9 +105,7 @@ class MainFragment : Fragment() {
             binding.progress.visibility = View.VISIBLE
             Thread {
                 try {
-                    val apps =
-                        appContext.packageManager.getInstalledApplications(
-                            PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
+                    val apps = appContext.packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
                     var i = 0
                     progressBar.max = apps.size
                     for (info in apps) {

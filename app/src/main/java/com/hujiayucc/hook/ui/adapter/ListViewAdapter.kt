@@ -1,6 +1,5 @@
 package com.hujiayucc.hook.ui.adapter
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -31,7 +30,6 @@ class ListViewAdapter(
         return position.toLong()
     }
 
-    @SuppressLint("ViewHolder", "InflateParams", "UseSwitchCompatOrMaterialCode")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val view = LayoutInflater.from(appContext).inflate(R.layout.app_child, null)
         binding = AppChildBinding.bind(view)
@@ -40,6 +38,7 @@ class ListViewAdapter(
         info.switchCheck.setOnCheckedChangeListener { _, isChecked ->
             modulePrefs.edit {
                 put(PrefsData(info.app_package, false), isChecked)
+                apply()
             }
             appContext.updateConfig(modulePrefs.all())
         }

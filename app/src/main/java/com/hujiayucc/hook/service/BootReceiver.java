@@ -12,7 +12,7 @@ public class BootReceiver extends BroadcastReceiver {
     static {
         System.loadLibrary("fuck_ad");
     }
-    private native void onSuccess();
+
     private static final String ACTION = "com.hujiayucc.hook.service.StartService";
 
     @Override

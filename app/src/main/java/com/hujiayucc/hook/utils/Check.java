@@ -33,15 +33,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-@SuppressWarnings("deprecation")
+//@SuppressWarnings("deprecation")
 public class Check {
-    static {
-        System.loadLibrary("fuck_ad");
-    }
-
-    private static native void success();
-    private static native void finish();
-
     public static void device(Activity activity) {
         Context context = activity.getApplication().getApplicationContext();
         YukiHookPrefsBridge prefs = YukiHookFactoryKt.prefs(context,"");
@@ -99,6 +92,7 @@ public class Check {
                 JSONObject message = jsonObject.getJSONObject("message");
                 if (!message.getString("deviceId").equals(id) || message.getLong("qq") != qq) {
                     prefs.edit().putLong("deviceQQ",0);
+                    prefs.edit().apply();
                     AtomicLong qql = new AtomicLong(0);
                     EditText editText = new EditText(context);
                     editText.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
@@ -137,6 +131,7 @@ public class Check {
                 }
             } else if (jsonObject.getInt("code") == 404) {
                 prefs.edit().putLong("deviceQQ",0);
+                prefs.edit().apply();
                 AtomicLong qql = new AtomicLong(0);
                 EditText editText = new EditText(context);
                 editText.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
@@ -191,6 +186,7 @@ public class Check {
         map.put("qq", qq);
         map.put("id", id);
         JSONObject json = new JSONObject(map);
+        //noinspection deprecation
         RequestBody body = RequestBody.create(type,json.toString());
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url("https://fkad.hujiayucc.cn/info")
@@ -204,15 +200,14 @@ public class Check {
             if (code == 200 && jsonObject.getString("message").equals("success") ||
                     code == 201 && jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
                 prefs.edit().putLong("deviceQQ",qq);
+                prefs.edit().apply();
                 dialog.dismiss();
-                success();
             } else if (code == 201 && !jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
                 activity.runOnUiThread(() -> new AlertDialog.Builder(activity)
                         .setMessage("该QQ已被其他设备绑定，如你是QQ主人或需要换绑请联系作者。")
                         .setPositiveButton("关闭",((dialog1, which) -> dialog1.dismiss()))
                         .show());
             } else {
-                finish();
                 activity.runOnUiThread(() -> {
                     try {
                         new AlertDialog.Builder(activity)

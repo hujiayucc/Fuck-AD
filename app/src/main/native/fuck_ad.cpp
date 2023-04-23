@@ -113,19 +113,3 @@ Java_com_hujiayucc_hook_ui_activity_MainActivity_onCreate(JNIEnv *env, jobject t
     env->CallVoidMethod(thiz,env->GetMethodID(clazz,initView.data(),Void_Sig.data()));
     env->DeleteLocalRef(clazz);
 }
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_hujiayucc_hook_service_BootReceiver_onSuccess(JNIEnv *env, jobject thiz) {
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_hujiayucc_hook_utils_Check_success(JNIEnv *env, jclass thiz) {
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_hujiayucc_hook_utils_Check_finish(JNIEnv *env, jclass thiz) {
-
-}
