@@ -33,7 +33,6 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-//@SuppressWarnings("deprecation")
 public class Check {
     public static void device(Activity activity) {
         Context context = activity.getApplication().getApplicationContext();
@@ -54,7 +53,6 @@ public class Check {
             alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener((v -> {
                 if (editText.getText().length() < 6) return;
                 qq.set(Long.parseLong(editText.getText().toString()));
-                Toast.makeText(context, "请等待服务器响应", Toast.LENGTH_SHORT).show();
                 new Thread(() -> b(activity,alertDialog,qq.get(),prefs)).start();
             }));
 

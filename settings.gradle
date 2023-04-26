@@ -2,10 +2,6 @@ import org.gradle.api.initialization.resolve.RepositoriesMode
 
 pluginManagement {
     repositories {
-        maven { url 'https://maven.aliyun.com/repository/central' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -14,18 +10,14 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven { url 'https://maven.aliyun.com/repository/central' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         google()
         mavenCentral()
+        //noinspection JcenterRepositoryObsolete
+        jcenter()
         // ❗若你的 Plugin 版本过低，作为 Xposed 模块使用务必添加，其它情况可选
         maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
         // ❗作为 Xposed 模块使用务必添加，其它情况可选
         maven { url "https://api.xposed.info/" }
-        // 穿山甲
-        maven { url 'https://artifact.bytedance.com/repository/pangle' }
     }
 }
 rootProject.name = "Fuck AD"

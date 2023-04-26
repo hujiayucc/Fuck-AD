@@ -105,7 +105,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
 
     // 基础依赖
-    implementation 'com.highcapable.yukihookapi:api:1.1.10'
+    implementation 'com.highcapable.yukihookapi:api:1.1.11'
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
     compileOnly 'de.robv.android.xposed:api:82'
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
