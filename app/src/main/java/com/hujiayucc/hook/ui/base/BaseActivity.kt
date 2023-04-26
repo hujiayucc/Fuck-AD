@@ -35,6 +35,7 @@ import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.prefs
+import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.base.ModuleAppCompatActivity
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.ActivityMainBinding
@@ -57,7 +58,7 @@ import java.io.FileOutputStream
 import java.util.*
 
 
-open class BaseActivity: AppCompatActivity() {
+open class BaseActivity: ModuleAppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private lateinit var tabLayout: TabLayout
     private lateinit var viewPager: ViewPager

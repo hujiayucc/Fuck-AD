@@ -44,6 +44,7 @@ class SkipServiceImpl(private val service: SkipService) {
     private val textRegx3 = Regex("跳过*[(（][0-9]*[)）]+\$")
     private var eventTime: Long = 0
     private var time: Long = 0
+    private var id: String = ""
 
     init {
         createNotificationChannel()
@@ -187,20 +188,25 @@ class SkipServiceImpl(private val service: SkipService) {
 
     private fun findSkipButtonById(nodeInfo: AccessibilityNodeInfo) : Boolean {
         val id = FindId.fromPackageName(packageName.toString()) ?: return false
-        val list = nodeInfo.findAccessibilityNodeInfosByViewId(id["id"].toString())
-        if (list.isNotEmpty()) {
-            val waitTime = id["wait"] as Long
-            Thread.sleep(waitTime)
-            for (node in list) {
-                Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${node.viewIdResourceName}")
-                if (time != eventTime && eventTime - time > 800) {
-                    skip(node)
+        for (name in id["id"] as Array<*>) {
+            val list = nodeInfo.findAccessibilityNodeInfosByViewId(name.toString())
+            if (list.isNotEmpty()) {
+                val waitTime = id["wait"] as Long
+                Thread.sleep(waitTime)
+                for (node in list) {
+                    Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${this.id}")
+                    if (this.id == node.viewIdResourceName) {
+                        if (time != eventTime && eventTime - time > 800) {
+                            skip(node)
+                        }
+                    } else {
+                        this.id = node.viewIdResourceName
+                        skip(node)
+                    }
                     time = eventTime
                 }
-
-                Log.d("${eventTime - time}")
+                return true
             }
-            return true
         }
         return false
     }

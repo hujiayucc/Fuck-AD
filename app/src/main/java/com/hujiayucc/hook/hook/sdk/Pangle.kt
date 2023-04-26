@@ -1,7 +1,12 @@
 package com.hujiayucc.hook.hook.sdk
 
+import android.widget.TextView
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.MembersType
+import com.highcapable.yukihookapi.hook.factory.listOfClasses
+import com.highcapable.yukihookapi.hook.factory.onLoadClass
+import com.highcapable.yukihookapi.hook.type.android.TextViewClass
+import com.hujiayucc.hook.utils.Log
+import de.robv.android.xposed.XposedBridge
 
 
 /** 穿山甲广告 */
@@ -11,7 +16,7 @@ object Pangle : YukiBaseHooker() {
             injectMember {
                 method { name = "getSdkInfo" }
                 replaceTo(null)
-            }
+            }.ignoredAllFailure()
         }.ignoredHookClassNotFoundFailure()
 
         findClass("com.bytedance.sdk.openadsdk.TTAdSdk").hook {
@@ -27,23 +32,23 @@ object Pangle : YukiBaseHooker() {
 
         findClass("com.bytedance.sdk.openadsdk.AdSlot").hook {
             injectMember {
-                allMembers(type = MembersType.ALL)
-                afterHook { }
-            }
+                allMembers()
+                replaceTo(null)
+            }.ignoredAllFailure()
         }.ignoredHookClassNotFoundFailure()
 
         findClass("com.bytedance.sdk.openadsdk.AdSlot.Builder").hook {
             injectMember {
-                allMembers(type = MembersType.ALL)
+                allMembers()
                 replaceTo(null)
-            }
+            }.ignoredAllFailure()
         }.ignoredHookClassNotFoundFailure()
 
         findClass("com.dragon.read.reader.ad.readflow.ui.ReadFlowDynamicAdLine").hook {
             injectMember {
                 allMembers()
                 replaceTo(null)
-            }
+            }.ignoredAllFailure()
         }.ignoredHookClassNotFoundFailure()
     }
 }
