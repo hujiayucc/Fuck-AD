@@ -15,19 +15,9 @@ android {
         applicationId "com.hujiayucc.hook"
         minSdk 23
         targetSdk 33
-        versionCode verCode.nextInt(50000)//4600
-        versionName "1.2.9.1"
-        def hotVersionCode = 2023
-        def hotVersionName = "1.2.3.1"
+        versionCode 5200
+        versionName "1.3.0"
 
-        // 一劳永逸，好吧我承认我是懒
-        if (hotVersionCode > versionCode) {
-            buildConfigField "int", "HOT_VERSION", "$hotVersionCode"
-            buildConfigField "String", "HOT_NAME", "\"$hotVersionName\""
-        } else {
-            buildConfigField "int", "HOT_VERSION", "$versionCode"
-            buildConfigField "String", "HOT_NAME", "\"$versionName\""
-        }
         buildConfigField "String", "SERVICE_NAME", '"com.hujiayucc.hook.service.SkipService"'
         buildConfigField "String", "TAG", '"Fuck AD"'
         buildConfigField "String", "CHANNEL_ID", '"auto_skip1"'
