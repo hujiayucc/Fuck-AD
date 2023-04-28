@@ -48,17 +48,19 @@ class SkipServiceImpl(private val service: SkipService) {
     private var id: String = ""
 
     init {
-        createNotificationChannel()
-        notification = if (appContext.isAccessibilitySettingsOn(SERVICE_NAME)) {
-            createNotification(appContext.getString(R.string.accessibility_notification).format(skipCount))
-        } else {
-            createNotification(appContext.getString(R.string.close_accessibilityservice))
+        runCatching {
+            createNotificationChannel()
+            notification = if (appContext.isAccessibilitySettingsOn(SERVICE_NAME)) {
+                createNotification(appContext.getString(R.string.accessibility_notification).format(skipCount))
+            } else {
+                createNotification(appContext.getString(R.string.close_accessibilityservice))
+            }
+            service.startForeground(1, notification)
+            checkLanguage()
+            if (appContext.isAccessibilitySettingsOn(SERVICE_NAME) && !show)
+                Toast.makeText(appContext, appContext.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
+            show = true
         }
-        service.startForeground(1, notification)
-        checkLanguage()
-        if (appContext.isAccessibilitySettingsOn(SERVICE_NAME) && !show)
-            Toast.makeText(appContext, appContext.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
-        show = true
     }
 
     private val blackLIst = arrayOf(

@@ -13,7 +13,7 @@ android {
     def verCode = new Random()
     defaultConfig {
         applicationId "com.hujiayucc.hook"
-        minSdk 23
+        minSdk 24
         targetSdk 33
         versionCode 5200
         versionName "1.3.0"
@@ -73,7 +73,7 @@ android {
     }
     packagingOptions {
         resources {
-            excludes += ['META-INF/*.version', 'kotlin', 'kotlin/**', 'okhttp3', 'okhttp3/**']
+            excludes += ['META-INF/*.version', 'kotlin', 'kotlin/**', 'okhttp3', 'okhttp3/**', 'kotlin-tooling-metadata.json']
         }
     }
 

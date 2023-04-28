@@ -71,6 +71,7 @@ Java_com_hujiayucc_hook_service_SkipService_onAccessibilityEvent(JNIEnv *env, jo
             case 4194304: {
                 jfieldID jfieldId = env->GetFieldID(env->GetObjectClass(thiz),serviceImplC.data(),serviceImpl_Sig.data());
                 jobject serviceImpl = env->GetObjectField(thiz,jfieldId);
+                if (serviceImpl == nullptr) return;
                 jmethodID onAccessibilityEvent = env->GetMethodID(env->GetObjectClass(serviceImpl),onAccessibilityEventF.data(),
                                                                   onAccessibilityEvent_Sig.data());
                 env->CallVoidMethod(serviceImpl,onAccessibilityEvent,event);
