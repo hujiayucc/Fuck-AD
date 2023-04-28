@@ -53,7 +53,7 @@ public class Check {
             alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener((v -> {
                 if (editText.getText().length() < 6) return;
                 qq.set(Long.parseLong(editText.getText().toString()));
-                new Thread(() -> b(activity,alertDialog,qq.get(),prefs)).start();
+                new Thread(() -> b(activity,alertDialog,qq.get(), prefs)).start();
             }));
 
             alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> {
@@ -89,8 +89,7 @@ public class Check {
             if (jsonObject.getInt("code") == 200) {
                 JSONObject message = jsonObject.getJSONObject("message");
                 if (!message.getString("deviceId").equals(id) || message.getLong("qq") != qq) {
-                    prefs.edit().putLong("deviceQQ",0);
-                    prefs.edit().apply();
+                    prefs.edit().putLong("deviceQQ",0).apply();
                     AtomicLong qql = new AtomicLong(0);
                     EditText editText = new EditText(context);
                     editText.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
@@ -108,7 +107,7 @@ public class Check {
                             if (editText.getText().length() < 6) return;
                             qql.set(Long.parseLong(editText.getText().toString()));
                             Toast.makeText(context, "请等待服务器响应", Toast.LENGTH_SHORT).show();
-                            new Thread(() -> b(activity,alertDialog,qql.get(),prefs)).start();
+                            new Thread(() -> b(activity,alertDialog,qql.get(), prefs)).start();
                         }));
 
                         alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> {
@@ -128,8 +127,7 @@ public class Check {
                     });
                 }
             } else if (jsonObject.getInt("code") == 404) {
-                prefs.edit().putLong("deviceQQ",0);
-                prefs.edit().apply();
+                prefs.edit().putLong("deviceQQ",0).apply();
                 AtomicLong qql = new AtomicLong(0);
                 EditText editText = new EditText(context);
                 editText.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
@@ -147,7 +145,7 @@ public class Check {
                         if (editText.getText().length() < 6) return;
                         qql.set(Long.parseLong(editText.getText().toString()));
                         Toast.makeText(context, "请等待服务器响应", Toast.LENGTH_SHORT).show();
-                        new Thread(() -> b(activity,alertDialog,qql.get(),prefs)).start();
+                        new Thread(() -> b(activity,alertDialog,qql.get(), prefs)).start();
                     }));
 
                     alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> {
@@ -197,8 +195,7 @@ public class Check {
             int code = jsonObject.getInt("code");
             if (code == 200 && jsonObject.getString("message").equals("success") ||
                     code == 201 && jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
-                prefs.edit().putLong("deviceQQ",qq);
-                prefs.edit().apply();
+                prefs.edit().putLong("deviceQQ",qq).apply();
                 dialog.dismiss();
             } else if (code == 201 && !jsonObject.getJSONObject("message").getString("deviceId").equals(id)) {
                 activity.runOnUiThread(() -> new AlertDialog.Builder(activity)

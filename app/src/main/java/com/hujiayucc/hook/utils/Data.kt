@@ -19,8 +19,6 @@ import com.hujiayucc.hook.service.SkipService
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.*
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -142,56 +140,60 @@ object Data {
     }
 
     private fun Context.openService() {
+        val cmd = ArrayList<String>()
         if (checkRoot()) {
-            val cmd = ArrayList<String>()
-            cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
-            if (runAsRoot(cmd)) {
-                if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
-                    // 防止关闭其他正在运行的无障碍服务
-                    val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).trim()
-                    if (list.isNotEmpty()) {
-                        Settings.Secure.putString(contentResolver,
-                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"${list}:com.hujiayucc.hook/$SERVICE_NAME")
-                    } else {
-                        Settings.Secure.putString(contentResolver,
-                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"com.hujiayucc.hook/$SERVICE_NAME")
+            try {
+                cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
+                if (runAsRoot(cmd)) {
+                    if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
+                        // 防止关闭其他正在运行的无障碍服务
+                        val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).trim()
+                        if (list.isNotEmpty()) {
+                            Settings.Secure.putString(contentResolver,
+                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"${list}:com.hujiayucc.hook/$SERVICE_NAME")
+                        } else {
+                            Settings.Secure.putString(contentResolver,
+                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"com.hujiayucc.hook/$SERVICE_NAME")
+                        }
+                        Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
                     }
-                    Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
-                } else {
-                    cmd.clear()
-                    cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/$SERVICE_NAME")
-                    cmd.add("settings put secure accessibility_enabled 1")
-                    runAsRoot(cmd)
                 }
+            } catch (e : Exception) {
+                cmd.clear()
+                cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/$SERVICE_NAME")
+                cmd.add("settings put secure accessibility_enabled 1")
+                runAsRoot(cmd)
             }
         }
     }
 
     private fun Context.closeService() {
+        val cmd = ArrayList<String>()
         if (checkRoot()) {
-            val cmd = ArrayList<String>()
-            cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
-            if (runAsRoot(cmd)) {
-                if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
-                    // 防止关闭其他正在运行的无障碍服务
-                    val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-                        .replace("com.hujiayucc.hook/$SERVICE_NAME:","")
-                        .replace(":com.hujiayucc.hook/$SERVICE_NAME","")
-                        .replace("com.hujiayucc.hook/$SERVICE_NAME","").trim()
-                    if (list.isNotEmpty()) {
-                        Settings.Secure.putString(contentResolver,
-                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,list)
-                        Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
-                    } else {
-                        cmd.clear()
-                        cmd.add("settings delete secure enabled_accessibility_services")
-                        runAsRoot(cmd)
+            try {
+                cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
+                if (runAsRoot(cmd)) {
+                    if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
+                        // 防止关闭其他正在运行的无障碍服务
+                        val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+                            .replace("com.hujiayucc.hook/$SERVICE_NAME:","")
+                            .replace(":com.hujiayucc.hook/$SERVICE_NAME","")
+                            .replace("com.hujiayucc.hook/$SERVICE_NAME","").trim()
+                        if (list.isNotEmpty()) {
+                            Settings.Secure.putString(contentResolver,
+                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,list)
+                            Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
+                        } else {
+                            cmd.clear()
+                            cmd.add("settings delete secure enabled_accessibility_services")
+                            runAsRoot(cmd)
+                        }
                     }
-                } else {
-                    cmd.clear()
-                    cmd.add("settings delete secure enabled_accessibility_services")
-                    runAsRoot(cmd)
                 }
+            } catch (e : Exception) {
+                cmd.clear()
+                cmd.add("settings delete secure enabled_accessibility_services")
+                runAsRoot(cmd)
             }
         }
     }
@@ -285,21 +287,6 @@ object Data {
             Spannable.SPAN_EXCLUSIVE_INCLUSIVE
         )
         return spannable
-    }
-
-    /** MD5加密 */
-    fun md5(bytes: ByteArray): String {
-        val md5: MessageDigest = try {
-            MessageDigest.getInstance("MD5")
-        } catch (e: NoSuchAlgorithmException) {
-            return ""
-        }
-        val byte = md5.digest(bytes)
-        val builder = StringBuilder()
-        for (aByte in byte) {
-            builder.append(Integer.toHexString(0x000000FF and aByte.toInt() or -0x100).substring(6))
-        }
-        return builder.toString().lowercase(Locale.getDefault())
     }
 
     /** 获取Android ID/设备ID */

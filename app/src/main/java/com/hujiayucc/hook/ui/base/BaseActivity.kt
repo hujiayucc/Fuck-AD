@@ -1,9 +1,11 @@
 package com.hujiayucc.hook.ui.base
 
 import android.Manifest
+import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.NotificationManager
+import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,6 +17,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.os.Process
 import android.provider.MediaStore
 import android.provider.Settings
@@ -23,9 +26,11 @@ import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -51,7 +56,8 @@ import com.hujiayucc.hook.utils.Data.runService
 import com.hujiayucc.hook.utils.Data.setSpan
 import com.hujiayucc.hook.utils.Data.stopService
 import com.hujiayucc.hook.utils.Data.updateConfig
-import com.hujiayucc.hook.utils.Update.updateHotFix
+import com.hujiayucc.hook.utils.FormatJson.formatJson
+import org.json.JSONObject
 import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
 import java.io.FileOutputStream
@@ -68,11 +74,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
     private var alertimageView: ImageView? = null
     private var localeID = 0
     private var menu: Menu? = null
-
-    override fun attachBaseContext(newBase: Context?) {
-        runCatching { newBase?.classLoader?.let { HotFixUtils().doHotFix(it) } }
-        super.attachBaseContext(newBase)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         localeID = prefs().get(Data.localeId)
@@ -162,7 +163,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
             intent = Intent(applicationContext, SkipService::class.java)
             startService(intent)
         }
-        updateConfig(prefs().all())
     }
 
     /** 隐藏最近任务列表视图 */
@@ -185,21 +185,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
             val info = Update.checkUpdate()
             var hotFix = false
             if (info != null) {
-                if (info.getInt("hotFixVersion") > BuildConfig.HOT_VERSION) {
-                    runOnUiThread {
-                        AlertDialog.Builder(this)
-                            .setTitle("发现热更新")
-                            .setMessage("${info.getString("hotFixName")}\n\n${info.getString("updateLog")}")
-                            .setPositiveButton("升级") { dialog, _ ->
-                                dialog?.dismiss()
-                                kotlin.runCatching {
-                                    updateHotFix(info)
-                                }
-                            }.setNegativeButton("关闭") { dialog, _ -> dialog?.dismiss() }.setCancelable(false).show()
-                    }
-                    hotFix = true
-                }
-
                 if (info.getInt("versionCode") > BuildConfig.VERSION_CODE) {
                     val url = Uri.parse(info.getString("url"))
                     val intent = Intent(Intent.ACTION_VIEW, url)
@@ -250,12 +235,12 @@ open class BaseActivity: ModuleAppCompatActivity() {
         if (YukiHookAPI.Status.isModuleActive) {
             binding.mainImgStatus.setImageResource(R.drawable.ic_success)
             binding.mainStatus.text = getString(R.string.is_active)
+            binding.mainFramework.visibility = View.VISIBLE
+            binding.mainFramework.text = getString(R.string.main_framework).format(YukiHookAPI.Status.Executor.name, "API ${YukiHookAPI.Status.Executor.apiLevel}")
         }
         binding.mainActiveStatus.background = getDrawable(R.drawable.bg_header)
         binding.mainVersion.text = getString(R.string.main_version)
             .format(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
-        binding.mainHotVersion.text = getString(R.string.main_hot_version)
-            .format(BuildConfig.HOT_NAME, BuildConfig.HOT_VERSION)
         binding.mainActiveStatus.setOnClickListener {
             checkUpdate(true)
         }
@@ -297,7 +282,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 else listView.smoothScrollToPosition(listView.adapter.count)
             }
         })
-        updateConfig(prefs().all())
     }
 
     fun search(text: String) {
@@ -327,17 +311,24 @@ open class BaseActivity: ModuleAppCompatActivity() {
     @Suppress("DEPRECATION")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (prefs().getLong("deviceQQ", 0) == 0L) return false
-        when (item.itemId) {
+        val refresh1 = fragmentList[0].refresh.isRefreshing
+        val refresh2 = fragmentList[1].refresh.isRefreshing
+        if (refresh1 || refresh2) {
+            Toast.makeText(applicationContext, resources.getString(R.string.wait_to_load_app), Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return when (item.itemId) {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
                 prefs().edit { put(Data.global, item.isChecked) }
-                updateConfig(prefs().all())
+                true
             }
 
             R.id.menu_show_hook_success -> {
                 item.isChecked = !item.isChecked
                 prefs().edit { put(Data.hookTip, item.isChecked) }
                 updateConfig(prefs().all())
+                true
             }
 
             R.id.menu_language_defualt -> {
@@ -345,6 +336,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 checkLanguage(Locale.getDefault())
                 prefs().edit { put(Data.localeId, 0) }
                 updateConfig(prefs().all())
+                true
             }
 
             R.id.menu_language_en -> {
@@ -352,6 +344,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 checkLanguage(Locale.ENGLISH)
                 prefs().edit { put(Data.localeId, 1) }
                 updateConfig(prefs().all())
+                true
             }
 
             R.id.menu_language_zh -> {
@@ -359,20 +352,16 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 checkLanguage(Locale.CHINESE)
                 prefs().edit { put(Data.localeId, 2) }
                 updateConfig(prefs().all())
+                true
             }
 
             R.id.menu_search -> {
-                val refresh1 = fragmentList[0].refresh.isRefreshing
-                val refresh2 = fragmentList[1].refresh.isRefreshing
-                if (refresh1 || refresh2) {
-                    Toast.makeText(applicationContext, resources.getString(R.string.wait_to_load_app), Toast.LENGTH_SHORT).show()
-                    return false
-                }
                 val inputMethodManager: InputMethodManager =
                     getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 binding.search.visibility = View.VISIBLE
                 binding.search.requestFocus()
                 inputMethodManager.showSoftInput(binding.search, InputMethodManager.SHOW_IMPLICIT)
+                true
             }
 
             R.id.menu_qq_group -> {
@@ -383,6 +372,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 } catch (e: Exception) {
                     Toast.makeText(applicationContext, getString(R.string.failed_to_open_qq), Toast.LENGTH_SHORT).show()
                 }
+                true
             }
 
             R.id.menu_color -> {
@@ -399,7 +389,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
                         @SuppressLint("UnspecifiedImmutableFlag")
                         override fun onColorPicked(color: Int) {
                             prefs().edit { put(Data.themes, color) }
-                            updateConfig(prefs().all())
                             Thread {
                                 Thread.sleep(300)
                                 var intents = packageManager.getLaunchIntentForPackage(packageName)
@@ -412,11 +401,13 @@ open class BaseActivity: ModuleAppCompatActivity() {
                             }.start()
                         }
                     })
+                true
             }
 
             R.id.menu_hide_icon -> {
                 hideOrShowLauncherIcon(!item.isChecked)
                 super.finish()
+                true
             }
 
             R.id.menu_background -> {
@@ -442,7 +433,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
                             fileOutputStream.flush()
                             fileOutputStream.close()
                             prefs().edit { put(Data.background, file.path) }
-                            updateConfig(prefs().all())
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -469,6 +459,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
                     startActivityForResult(intent, 2)
                     return@setOnClickListener
                 }
+                true
             }
 
             R.id.menu_auto_skip -> {
@@ -486,22 +477,39 @@ open class BaseActivity: ModuleAppCompatActivity() {
                     menu?.findItem(R.id.menu_auto_skip)?.isChecked = applicationContext
                         .isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
                 },200)
+                true
             }
 
             R.id.menu_minimize -> {
                 try {
-                    super.finishAndRemoveTask()
-                    if (!applicationContext.isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME) &&
-                        menu?.findItem(R.id.menu_auto_skip)?.isChecked == true
-                    ) {
-                        applicationContext.runService()
-                    }
-                    Handler().postDelayed({
+                    val dialog = ProgressDialog(this)
+                    dialog.setCancelable(false)
+                    dialog.setMessage(getString(R.string.saving_configs))
+                    dialog.create()
+                    dialog.show()
+                    Thread {
+                        val config = File(filesDir, "config.json")
+                        val inputStream = config.inputStream()
+                        val byte = ByteArray(config.length().toInt())
+                        inputStream.read(byte)
+                        inputStream.close()
+                        val outputStream = FileOutputStream(config)
+                        outputStream.write(JSONObject(String(byte)).formatJson())
+                        outputStream.flush()
+                        outputStream.close()
+                        super.finishAndRemoveTask()
+                        if (!applicationContext.isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME) &&
+                            menu?.findItem(R.id.menu_auto_skip)?.isChecked == true
+                        ) {
+                            applicationContext.runService()
+                        }
+                        Looper.prepare()
                         Process.killProcess(Process.myPid())
-                    },200)
+                    }.start()
                 } catch (e : Exception) {
-                    e.printStackTrace()
+                    Log.i("minimize")
                 }
+                true
             }
 
             R.id.menu_github -> {
@@ -511,12 +519,11 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 } catch (e : Exception) {
                     e.printStackTrace()
                 }
+                true
             }
 
             else -> return super.onOptionsItemSelected(item)
         }
-        prefs().edit().apply()
-        return true
     }
 
     @SuppressLint("ResourceAsColor")

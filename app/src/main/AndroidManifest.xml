@@ -4,9 +4,7 @@
 
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission
-            android:name="android.permission.QUERY_ALL_PACKAGES"
-            tools:ignore="QueryAllPackagesPermission"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" tools:ignore="ProtectedPermissions"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -29,8 +27,7 @@
             android:networkSecurityConfig="@xml/network_security_config"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
-            android:theme="@style/Theme.XYHook"
-            tools:targetApi="33">
+            android:theme="@style/Theme.XYHook">
         <!-- 设置为 Xposed 模块 -->
         <meta-data
                 android:name="xposedmodule"
@@ -40,10 +37,13 @@
                 android:value="@string/description"/>
         <meta-data
                 android:name="xposedminversion"
-                android:value="93"/>
+                android:value="54"/>
         <meta-data
                 android:name="xposedscope"
                 android:resource="@array/xposed_scope" />
+        <meta-data
+            android:name="xposedsharedprefs"
+            android:value="true"/>
 
         <activity
                 android:name="com.hujiayucc.hook.ui.activity.MainActivity"

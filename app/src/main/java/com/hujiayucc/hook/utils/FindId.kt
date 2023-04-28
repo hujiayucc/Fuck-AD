@@ -25,7 +25,8 @@ enum class FindId(val packageName: String, val id: Array<String>, val wait: Long
     ZhiHu("com.zhihu.android", arrayOf("com.zhihu.android:id/btn_skip"),0),
     XYST("com.fenbi.android.solar", arrayOf("com.fenbi.android.solar:id/btn_skip"),0),
     Dragon("com.dragon.read", arrayOf("com.dragon.read:id/dqt"),0),
-    DragonFM("com.xs.fm", arrayOf("com.xs.fm:id/ck9"),0);
+    DragonFM("com.xs.fm", arrayOf("com.xs.fm:id/ck9"),0),
+    XiMaLaYa("com.ximalaya.ting.android", arrayOf("com.ximalaya.ting.android:id/main_ad_broadside_close"),200);
 
     companion object {
         /** 通过包名获取对应id */

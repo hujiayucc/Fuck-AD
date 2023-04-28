@@ -17,6 +17,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import com.highcapable.yukihookapi.hook.factory.prefs
+import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig.CHANNEL_ID
 import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
 import com.hujiayucc.hook.R
@@ -36,7 +38,6 @@ import java.util.*
 @Suppress("DEPRECATION")
 class SkipServiceImpl(private val service: SkipService) {
     private var packageName: CharSequence? = null
-    private val context = service.applicationContext
     private var notification: Notification? = null
     private var localeID = 0
     private val textRegx1 = Regex("^[0-9]+[\\ss]*跳过[广告]*\$")
@@ -48,15 +49,15 @@ class SkipServiceImpl(private val service: SkipService) {
 
     init {
         createNotificationChannel()
-        notification = if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
-            createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
+        notification = if (appContext.isAccessibilitySettingsOn(SERVICE_NAME)) {
+            createNotification(appContext.getString(R.string.accessibility_notification).format(skipCount))
         } else {
-            createNotification(context.getString(R.string.close_accessibilityservice))
+            createNotification(appContext.getString(R.string.close_accessibilityservice))
         }
         service.startForeground(1, notification)
         checkLanguage()
-        if (context.isAccessibilitySettingsOn(SERVICE_NAME) && !show)
-            Toast.makeText(context, context.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
+        if (appContext.isAccessibilitySettingsOn(SERVICE_NAME) && !show)
+            Toast.makeText(appContext, appContext.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
         show = true
     }
 
@@ -79,8 +80,8 @@ class SkipServiceImpl(private val service: SkipService) {
 
     private fun success() {
         skipCount++
-        if (context.getConfig().getBoolean(Data.hookTip.key, true))
-            Toast.makeText(context, context.getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
+        if (appContext.getConfig().getBoolean(Data.hookTip.key, true))
+            Toast.makeText(appContext, appContext.getString(R.string.tip_skip_success), Toast.LENGTH_SHORT).show()
         refresh()
     }
 
@@ -92,7 +93,7 @@ class SkipServiceImpl(private val service: SkipService) {
                 if (name == packageName) return
             }
 
-            if (!context.getConfig().getBoolean(packageName.toString(), true)) return
+            if (!appContext.getConfig().getBoolean(packageName.toString(), true)) return
 
             try {
                 val source = event.source?.findAccessibilityNodeInfosByText("跳")
@@ -122,32 +123,32 @@ class SkipServiceImpl(private val service: SkipService) {
 
     fun refresh() {
         checkLanguage()
-        notification = if (context.isAccessibilitySettingsOn(SERVICE_NAME)) {
-            createNotification(context.getString(R.string.accessibility_notification).format(skipCount))
+        notification = if (appContext.isAccessibilitySettingsOn(SERVICE_NAME)) {
+            createNotification(appContext.getString(R.string.accessibility_notification).format(skipCount))
         } else {
-            createNotification(context.getString(R.string.close_accessibilityservice))
+            createNotification(appContext.getString(R.string.close_accessibilityservice))
         }
         service.startForeground(1, notification)
     }
 
     fun onInterrupt() {
-        notification = createNotification(context.getString(R.string.close_accessibilityservice))
-        Toast.makeText(context, context.getString(R.string.close_accessibilityservice), Toast.LENGTH_SHORT).show()
+        notification = createNotification(appContext.getString(R.string.close_accessibilityservice))
+        Toast.makeText(appContext, appContext.getString(R.string.close_accessibilityservice), Toast.LENGTH_SHORT).show()
         service.startForeground(1, notification)
     }
 
 
     /** 创建常驻通知 */
     private fun createNotification(text: String): Notification {
-        val notificationIntent = Intent(context, MainActivity::class.java)
+        val notificationIntent = Intent(appContext, MainActivity::class.java)
         notificationIntent.action = Intent.ACTION_MAIN
         notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER)
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, notificationIntent,
+            appContext, 0, notificationIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle(context.getString(R.string.app_name))
+        return NotificationCompat.Builder(appContext, CHANNEL_ID)
+            .setContentTitle(appContext.getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -157,7 +158,7 @@ class SkipServiceImpl(private val service: SkipService) {
     }
 
     private fun checkLanguage() {
-        localeID = context.getConfig().getInt(Data.localeId.key, 0)
+        localeID = appContext.getConfig().getInt(Data.localeId.key, 0)
         val configuration = service.resources.configuration
         configuration.setLocale(Language.fromId(localeID))
         service.resources.updateConfiguration(configuration, service.resources.displayMetrics)
@@ -167,9 +168,9 @@ class SkipServiceImpl(private val service: SkipService) {
 
     /** 创建通知渠道 */
     private fun createNotificationChannel() {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (notificationManager.getNotificationChannel(CHANNEL_ID) != null) return
-        val channelName = context.getString(R.string.app_name)
+        val channelName = appContext.getString(R.string.app_name)
         val descriptionText = "常驻通知"
         val channel = NotificationChannel(
             CHANNEL_ID,

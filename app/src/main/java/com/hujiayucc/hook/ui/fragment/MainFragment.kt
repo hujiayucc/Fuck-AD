@@ -23,10 +23,12 @@ import com.hujiayucc.hook.utils.AppInfo
 import com.hujiayucc.hook.utils.Data
 import com.hujiayucc.hook.utils.Data.setSpan
 import com.hujiayucc.hook.utils.Data.themes
+import com.hujiayucc.hook.utils.Data.updateConfig
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
 import java.text.Collator
 import java.util.*
+import kotlin.collections.HashMap
 
 
 class MainFragment : Fragment() {
@@ -134,6 +136,7 @@ class MainFragment : Fragment() {
     }
 
     fun showList(list: ArrayList<AppInfo>) {
+        val map = HashMap<String, Boolean>()
         Thread {
             val instance = Collator.getInstance(Language.fromId(appContext.prefs().get(Data.localeId)))
             try {
@@ -144,6 +147,7 @@ class MainFragment : Fragment() {
                     val isChecked = appContext.prefs().getBoolean(app.app_package, true)
                     if (isChecked) isCheckList.add(app)
                     else notCheckList.add(app)
+                    map.put(app.app_package, isChecked)
                 }
                 isCheckList.sortWith { o1, o2 ->
                     instance.compare(o1.app_name, o2.app_name)
@@ -159,8 +163,9 @@ class MainFragment : Fragment() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+            appContext.updateConfig(map)
         }.start()
-        val adapter = ListViewAdapter(appContext, list, appContext.prefs())
+        val adapter = ListViewAdapter(list)
         activity?.runOnUiThread {
             refresh.isRefreshing = false
             listView.adapter = adapter
@@ -202,7 +207,7 @@ class MainFragment : Fragment() {
         menu.getItem(3).setOnMenuItemClickListener {
             for (app in list) {
                 val isChecked = !appContext.prefs().getBoolean(app.app_package, true)
-                activity?.prefs()?.edit { putBoolean(app.app_package, isChecked) }
+                appContext.prefs().edit { putBoolean(app.app_package, isChecked) }
             }
             showList(list)
             true

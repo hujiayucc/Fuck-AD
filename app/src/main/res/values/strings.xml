@@ -4,7 +4,7 @@
     <string name="not_active">Not Active</string>
     <string name="is_active">Activated</string>
     <string name="main_version">Version: %1$s (%2$s)</string>
-    <string name="main_hot_version">HotFix Version: %1$s (%2$s)</string>
+    <string name="main_framework">Framework: %1$s %2$s</string>
     <string name="menu_hook_success">Hook Tip</string>
     <string name="language_settings">Language Settings</string>
     <string name="language_default">Default</string>
@@ -44,4 +44,5 @@
     <string name="menu_theme_settings">Theme Settings</string>
     <string name="github">GitHub</string>
     <string name="wait_to_load_app">Please wait for the app to load</string>
+    <string name="saving_configs">Saving Configs</string>
 </resources>

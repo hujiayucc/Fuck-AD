@@ -4,9 +4,10 @@
 //
 
 #include <jni.h>
-#include "fuck_ad.h"
 #include <string>
 #include "Data.h"
+
+using namespace Data;
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -28,8 +29,6 @@ Java_com_hujiayucc_hook_application_XYApplication_onCreate(JNIEnv* env,jobject t
     env->DeleteLocalRef(filter);
     env->DeleteLocalRef(intent);
     env->DeleteLocalRef(bootReceiver);
-    // 加载热更新
-    initHotFix(env,thiz);
 }
 
 extern "C"
