@@ -49,6 +49,7 @@ import com.hujiayucc.hook.ui.activity.MainActivity
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.utils.*
+import com.hujiayucc.hook.utils.Data.checkRoot
 import com.hujiayucc.hook.utils.Data.hideOrShowLauncherIcon
 import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
 import com.hujiayucc.hook.utils.Data.isLauncherIconShowing
@@ -463,7 +464,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
             }
 
             R.id.menu_auto_skip -> {
-                if (Data.checkRoot()) {
+                if (checkRoot()) {
                     if (!applicationContext.isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)) {
                         applicationContext.runService()
                     } else {
@@ -474,9 +475,9 @@ open class BaseActivity: ModuleAppCompatActivity() {
                     startActivity(intent)
                 }
                 Handler().postDelayed({
-                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = applicationContext
-                        .isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
-                },200)
+                    val isChecked = isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
+                    menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
+                },500)
                 true
             }
 

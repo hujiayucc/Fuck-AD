@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.hook.entity
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
+import com.hujiayucc.hook.hook.app.DSXYS
 
 enum class HookerList(val packageName: String, val hooker: YukiBaseHooker, val stop: Boolean) {
     /** 堆糖 */
@@ -24,7 +25,9 @@ enum class HookerList(val packageName: String, val hooker: YukiBaseHooker, val s
     /** 米游社 */
     MiYoHyper("com.mihoyo.hyperion", com.hujiayucc.hook.hook.app.MiYoHyper,true),
     /** 古诗文网 */
-    GSWW("org.gushiwen.gushiwen", com.hujiayucc.hook.hook.app.GSWW,false);
+    GSWW("org.gushiwen.gushiwen", com.hujiayucc.hook.hook.app.GSWW,false),
+    /** 大师兄影视 */
+    DSXYS("com.dogal.kenhuangzhe.geh.dashixiong", com.hujiayucc.hook.hook.app.DSXYS,true);
 
     companion object {
         /** 通过包名获取对应Hooker */

@@ -1,6 +1,5 @@
 package com.hujiayucc.hook.utils
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
@@ -28,8 +27,6 @@ object Data {
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     private var process: Process? = null
     private var os: DataOutputStream? = null
-    private var isRoot: Boolean = false
-    private var result: BufferedReader? = null
 
     const val QQ_GROUP = "mqqopensdkapi://bizAgent/qm/qr?url=https%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Fk%3DrrPSIlmQfYaZAlZuYH058gxUzEEKY00y%26jump_from%3D%26auth%3D%26app_name%3D%26authSig%3D2YtvxFdMkwUaQfxU%2FSjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At%26source_id%3D3_40001"
     /** 获取项目编译完成的时间戳 (当前本地时间) */
@@ -96,28 +93,15 @@ object Data {
 
     /** 判断是否具有ROOT权限 */
     fun checkRoot(): Boolean {
-        if (isRoot) return true
-        try {
-            if (process == null) {
-                process = Runtime.getRuntime().exec("su\n")
-                os = DataOutputStream(process?.outputStream)
-            }
-            os?.writeBytes("cat /system/build.prop | grep ro.build.id\n")
+        return try {
+            process = Runtime.getRuntime().exec("su")
+            os = DataOutputStream(process?.outputStream)
+            os?.writeBytes("id\n")
             os?.flush()
-            result = BufferedReader(InputStreamReader(process?.inputStream))
-            var temp: String
-            while (result!!.readLine().also { temp = it }.isNotEmpty()) {
-                if (temp.contains("ro.build.id")) {
-                    isRoot = true
-                    return true
-                }
-            }
-            return false
+            BufferedReader(InputStreamReader(process?.inputStream)).readLine().contains("uid=0")
         } catch (e : Exception) {
-            process = null
-            os = null
             e.printStackTrace()
-            return false
+            false
         }
     }
 
@@ -132,82 +116,39 @@ object Data {
             Thread.sleep(200)
             true
         } catch (e : Exception) {
-            isRoot = false
             process = null
             e.printStackTrace()
             false
         }
     }
 
-    private fun Context.openService() {
-        val cmd = ArrayList<String>()
+    private fun openService() {
         if (checkRoot()) {
-            try {
-                cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
-                if (runAsRoot(cmd)) {
-                    if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
-                        // 防止关闭其他正在运行的无障碍服务
-                        val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).trim()
-                        if (list.isNotEmpty()) {
-                            Settings.Secure.putString(contentResolver,
-                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"${list}:com.hujiayucc.hook/$SERVICE_NAME")
-                        } else {
-                            Settings.Secure.putString(contentResolver,
-                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,"com.hujiayucc.hook/$SERVICE_NAME")
-                        }
-                        Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
-                    }
-                }
-            } catch (e : Exception) {
-                cmd.clear()
-                cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/$SERVICE_NAME")
-                cmd.add("settings put secure accessibility_enabled 1")
-                runAsRoot(cmd)
-            }
+            val cmd = ArrayList<String>()
+            cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/$SERVICE_NAME")
+            cmd.add("settings put secure accessibility_enabled 1")
+            runAsRoot(cmd)
         }
     }
 
-    private fun Context.closeService() {
-        val cmd = ArrayList<String>()
+    private fun closeService() {
         if (checkRoot()) {
-            try {
-                cmd.add("pm grant com.hujiayucc.hook android.permission.WRITE_SECURE_SETTINGS")
-                if (runAsRoot(cmd)) {
-                    if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
-                        // 防止关闭其他正在运行的无障碍服务
-                        val list = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-                            .replace("com.hujiayucc.hook/$SERVICE_NAME:","")
-                            .replace(":com.hujiayucc.hook/$SERVICE_NAME","")
-                            .replace("com.hujiayucc.hook/$SERVICE_NAME","").trim()
-                        if (list.isNotEmpty()) {
-                            Settings.Secure.putString(contentResolver,
-                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,list)
-                            Settings.Secure.putString(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
-                        } else {
-                            cmd.clear()
-                            cmd.add("settings delete secure enabled_accessibility_services")
-                            runAsRoot(cmd)
-                        }
-                    }
-                }
-            } catch (e : Exception) {
-                cmd.clear()
-                cmd.add("settings delete secure enabled_accessibility_services")
-                runAsRoot(cmd)
-            }
+            val cmd = ArrayList<String>()
+            cmd.add("settings delete secure enabled_accessibility_services")
+            runAsRoot(cmd)
         }
     }
 
     fun Context.runService() {
         val intent = Intent(applicationContext, SkipService::class.java)
         applicationContext.startService(intent)
-        applicationContext.openService()
+        openService()
     }
 
     fun Context.stopService() {
         val intent = Intent(applicationContext, SkipService::class.java)
         applicationContext.stopService(intent)
-        applicationContext.closeService()
+        closeService()
     }
 
     fun Context.updateConfig(map: Map<String, Any?>) {
