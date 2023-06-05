@@ -312,9 +312,9 @@ open class BaseActivity: ModuleAppCompatActivity() {
     @Suppress("DEPRECATION")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (prefs().getLong("deviceQQ", 0) == 0L) return false
-        val refresh1 = fragmentList[0].refresh.isRefreshing
-        val refresh2 = fragmentList[1].refresh.isRefreshing
-        if (refresh1 || refresh2) {
+        val loaded1 = fragmentList[0].loaded
+        val loaded2 = fragmentList[1].loaded
+        if (!loaded1 || !loaded2) {
             Toast.makeText(applicationContext, resources.getString(R.string.wait_to_load_app), Toast.LENGTH_SHORT).show()
             return false
         }

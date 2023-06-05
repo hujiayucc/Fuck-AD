@@ -6,17 +6,19 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.*
 import android.widget.*
 import android.widget.AdapterView.AdapterContextMenuInfo
 import android.widget.AdapterView.OnItemClickListener
 import androidx.fragment.app.Fragment
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.FragmentMainBinding
+import com.hujiayucc.hook.ui.activity.MainActivity
 import com.hujiayucc.hook.ui.activity.MainActivity.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
 import com.hujiayucc.hook.utils.AppInfo
@@ -35,11 +37,11 @@ class MainFragment : Fragment() {
     private lateinit var binding: FragmentMainBinding
     lateinit var listView: ListView
     private lateinit var progressBar: ProgressBar
-    lateinit var refresh: SwipeRefreshLayout
     val list = ArrayList<AppInfo>()
     var searchList = ArrayList<AppInfo>()
     private var isSystem: Boolean = false
     private var position = 0
+    var loaded = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_main,null,true)
@@ -50,24 +52,32 @@ class MainFragment : Fragment() {
         binding = FragmentMainBinding.bind(view)
         listView = binding.list
         progressBar = binding.progress
-        refresh = binding.refresh
-        refresh.setColorSchemeColors(appContext.prefs().get(themes))
-        refresh.setOnRefreshListener {
-            if (searchText.isEmpty()) {
-                loadAppList(isSystem)
-            } else {
-                val list: ArrayList<AppInfo> = ArrayList()
-                for (app in this.list) {
-                    if (app.app_name.contains(searchText) or app.app_package.contains(searchText)) list.add(app)
-                }
-                showList(list)
-            }
-        }
         isSystem = requireArguments().getBoolean("system")
         loadAppList(isSystem)
         listView.onItemClickListener = OnItemClickListener { _, _, position, _ ->
             val info = listView.adapter.getItem(position) as AppInfo
             info.switchCheck.isChecked = !info.switchCheck.isChecked
+            val list: ArrayList<AppInfo> = ArrayList()
+            val texts = searchText.lowercase(Locale.CHINESE)
+            if (searchText.isEmpty()) {
+                for (app in this.list) {
+                    val appName = app.app_name.toString().lowercase(Locale.CHINESE)
+                    val appPackage = app.app_package.lowercase(Locale.CHINESE)
+                    if (appName.contains(texts) or appPackage.contains(texts))
+                        list.add(app)
+                }
+            } else {
+                for (app in this.list) {
+                    val appName = app.app_name.toString().lowercase(Locale.CHINESE)
+                    val appPackage = app.app_package.lowercase(Locale.CHINESE)
+                    if (appName.contains(texts) or appPackage.contains(texts))
+                        list.add(app)
+                }
+                searchList.clear()
+                searchList.addAll(list)
+            }
+            showList(list)
+            listView.setSelection(position-1)
         }
         registerForContextMenu(listView)
         listView.setOnTouchListener { _, event ->
@@ -100,10 +110,8 @@ class MainFragment : Fragment() {
 
     @Suppress("DEPRECATION")
     private fun loadAppList(showSysApp: Boolean) {
-        refresh.isRefreshing = true
         if (list.isEmpty()) {
             progressBar.progress = 0
-            refresh.visibility = View.GONE
             binding.progress.visibility = View.VISIBLE
             Thread {
                 try {
@@ -167,12 +175,11 @@ class MainFragment : Fragment() {
         }.start()
         val adapter = ListViewAdapter(list)
         activity?.runOnUiThread {
-            refresh.isRefreshing = false
             listView.adapter = adapter
             progressBar.visibility = View.GONE
-            refresh.visibility = View.VISIBLE
         }
         Log.d("加载完毕 共${list.size}个应用")
+        loaded = true
     }
 
     fun setMenu(menu: ContextMenu) {

@@ -6,7 +6,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fitsSystemWindows="true"
-        android:background="@color/black"
         tools:context=".ui.activity.MainActivity"
         android:orientation="vertical">
 
@@ -31,90 +30,90 @@
                     android:focusable="true"
                     android:visibility="gone"/>
         </com.google.android.material.appbar.MaterialToolbar>
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <LinearLayout
-        android:id="@+id/main_active_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="15dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginRight="15dp"
-        android:layout_marginBottom="5dp"
-        android:background="@drawable/bg_header"
-        android:elevation="0dp"
-        android:gravity="center">
-
-        <androidx.constraintlayout.utils.widget.ImageFilterView
-            android:id="@+id/main_img_status"
-            android:layout_width="25dp"
-            android:layout_height="25dp"
-            android:layout_marginStart="25dp"
-            android:layout_marginEnd="5dp"
-            android:src="@drawable/ic_warn"
-            app:tint="?attr/headerTextColor"
-            tools:ignore="ContentDescription,ImageContrastCheck" />
 
         <LinearLayout
+            android:id="@+id/main_active_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingLeft="20dp"
-            android:paddingTop="10dp"
-            android:paddingRight="20dp"
-            android:paddingBottom="10dp">
+            android:layout_marginLeft="15dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginRight="15dp"
+            android:layout_marginBottom="5dp"
+            android:background="@drawable/bg_header"
+            android:elevation="0dp"
+            android:gravity="center">
+
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:id="@+id/main_img_status"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:layout_marginStart="25dp"
+                android:layout_marginEnd="5dp"
+                android:src="@drawable/ic_warn"
+                app:tint="?attr/headerTextColor"
+                tools:ignore="ContentDescription,ImageContrastCheck" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="5dp"
-                android:gravity="center|start"
-                android:orientation="vertical"
-                tools:ignore="UselessParent">
+                android:paddingLeft="20dp"
+                android:paddingTop="10dp"
+                android:paddingRight="20dp"
+                android:paddingBottom="10dp">
 
-                <TextView
-                    android:id="@+id/main_status"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="5dp"
-                    android:text="@string/not_active"
-                    android:textColor="?attr/headerTextColor"
-                    android:textSize="18sp"
-                    tools:ignore="TextContrastCheck" />
+                    android:gravity="center|start"
+                    android:orientation="vertical"
+                    tools:ignore="UselessParent">
 
-                <TextView
-                    android:id="@+id/main_framework"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="5dp"
-                    android:alpha="0.8"
-                    android:text="@string/main_framework"
-                    android:textColor="?attr/headerTextColor"
-                    android:textSize="13sp"
-                    android:visibility="gone"/>
+                    <TextView
+                        android:id="@+id/main_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="5dp"
+                        android:text="@string/not_active"
+                        android:textColor="?attr/headerTextColor"
+                        android:textSize="18sp"
+                        tools:ignore="TextContrastCheck" />
 
-                <TextView
-                    android:id="@+id/main_version"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="5dp"
-                    android:alpha="0.8"
-                    android:text="@string/main_version"
-                    android:textColor="?attr/headerTextColor"
-                    android:textSize="13sp"
-                    tools:ignore="TextContrastCheck" />
+                    <TextView
+                        android:id="@+id/main_framework"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="5dp"
+                        android:alpha="0.8"
+                        android:text="@string/main_framework"
+                        android:textColor="?attr/headerTextColor"
+                        android:textSize="13sp"
+                        android:visibility="gone"/>
 
-                <TextView
-                    android:id="@+id/main_date"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:alpha="0.8"
-                    android:text="@string/main_version"
-                    android:textColor="?attr/headerTextColor"
-                    android:textSize="13sp"
-                    tools:ignore="TextContrastCheck" />
+                    <TextView
+                        android:id="@+id/main_version"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="5dp"
+                        android:alpha="0.8"
+                        android:text="@string/main_version"
+                        android:textColor="?attr/headerTextColor"
+                        android:textSize="13sp"
+                        tools:ignore="TextContrastCheck" />
+
+                    <TextView
+                        android:id="@+id/main_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:alpha="0.8"
+                        android:text="@string/main_version"
+                        android:textColor="?attr/headerTextColor"
+                        android:textSize="13sp"
+                        tools:ignore="TextContrastCheck" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
+    </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
             android:layout_width="match_parent"

@@ -54,7 +54,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
-        android:layout_marginLeft="8dp"
         android:layout_marginStart="8dp"
         app:layout_constraintLeft_toLeftOf="@+id/ok"
         app:layout_constraintRight_toRightOf="@+id/ok"
