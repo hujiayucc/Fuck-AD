@@ -4,45 +4,41 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.*
-import android.widget.*
-import android.widget.AdapterView.AdapterContextMenuInfo
 import android.widget.AdapterView.OnItemClickListener
+import android.widget.ListView
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.FragmentMainBinding
-import com.hujiayucc.hook.ui.activity.MainActivity
-import com.hujiayucc.hook.ui.activity.MainActivity.searchText
+import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
 import com.hujiayucc.hook.utils.AppInfo
 import com.hujiayucc.hook.utils.Data
 import com.hujiayucc.hook.utils.Data.setSpan
-import com.hujiayucc.hook.utils.Data.themes
 import com.hujiayucc.hook.utils.Data.updateConfig
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
 import java.text.Collator
 import java.util.*
-import kotlin.collections.HashMap
 
 
 class MainFragment : Fragment() {
     private lateinit var binding: FragmentMainBinding
-    lateinit var listView: ListView
+    var listView: ListView? = null
     private lateinit var progressBar: ProgressBar
     val list = ArrayList<AppInfo>()
     var searchList = ArrayList<AppInfo>()
     private var isSystem: Boolean = false
     private var position = 0
-    var loaded = false
 
+    @SuppressLint("InflateParams")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_main,null,true)
     }
@@ -54,8 +50,8 @@ class MainFragment : Fragment() {
         progressBar = binding.progress
         isSystem = requireArguments().getBoolean("system")
         loadAppList(isSystem)
-        listView.onItemClickListener = OnItemClickListener { _, _, position, _ ->
-            val info = listView.adapter.getItem(position) as AppInfo
+        listView?.onItemClickListener = OnItemClickListener { _, _, position, _ ->
+            val info = listView?.adapter?.getItem(position) as AppInfo
             info.switchCheck.isChecked = !info.switchCheck.isChecked
             val list: ArrayList<AppInfo> = ArrayList()
             val texts = searchText.lowercase(Locale.CHINESE)
@@ -77,13 +73,15 @@ class MainFragment : Fragment() {
                 searchList.addAll(list)
             }
             showList(list)
-            listView.setSelection(position-1)
+            listView?.setSelection(position-1)
         }
-        registerForContextMenu(listView)
-        listView.setOnTouchListener { _, event ->
-            listView.setOnItemLongClickListener { _, view, position, _ ->
+        listView?.let {
+            registerForContextMenu(it)
+        }
+        listView?.setOnTouchListener { _, event ->
+            listView?.setOnItemLongClickListener { _, view, position, _ ->
                 this.position = position
-                listView.showContextMenu(event.x, view.y)
+                listView?.showContextMenu(event.x, view.y)
                 true
             }
             false
@@ -105,10 +103,11 @@ class MainFragment : Fragment() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterForContextMenu(listView)
+        listView?.let {
+            unregisterForContextMenu(it)
+        }
     }
 
-    @Suppress("DEPRECATION")
     private fun loadAppList(showSysApp: Boolean) {
         if (list.isEmpty()) {
             progressBar.progress = 0
@@ -175,14 +174,13 @@ class MainFragment : Fragment() {
         }.start()
         val adapter = ListViewAdapter(list)
         activity?.runOnUiThread {
-            listView.adapter = adapter
+            listView?.adapter = adapter
             progressBar.visibility = View.GONE
         }
         Log.d("加载完毕 共${list.size}个应用")
-        loaded = true
     }
 
-    fun setMenu(menu: ContextMenu) {
+    private fun setMenu(menu: ContextMenu) {
         val list = if (searchText.isEmpty()) list else searchList
         menu.getItem(0).setOnMenuItemClickListener {
             try {

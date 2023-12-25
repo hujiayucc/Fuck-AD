@@ -1,7 +1,8 @@
 package com.hujiayucc.hook.hook.app
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.MembersType
+import com.highcapable.yukihookapi.hook.factory.allConstructors
+import com.highcapable.yukihookapi.hook.factory.allMethods
 
 /** 喜马拉雅 */
 object XiMaLaYa : YukiBaseHooker() {
@@ -15,12 +16,8 @@ object XiMaLaYa : YukiBaseHooker() {
         )
 
         for (clazz in list) {
-            findClass(clazz).hook {
-                injectMember {
-                    allMembers(type = MembersType.ALL)
-                    replaceTo(null)
-                }
-            }
+            clazz.toClass().allMethods { _, method -> method.hook().replaceTo(null) }
+            clazz.toClass().allConstructors { _, constructor -> constructor.hook().replaceTo(null) }
         }
     }
 }

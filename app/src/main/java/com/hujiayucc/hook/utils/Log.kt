@@ -1,41 +1,38 @@
 package com.hujiayucc.hook.utils
 
-import com.highcapable.yukihookapi.hook.log.loggerD
-import com.highcapable.yukihookapi.hook.log.loggerE
-import com.highcapable.yukihookapi.hook.log.loggerI
-import com.highcapable.yukihookapi.hook.log.loggerW
+import com.highcapable.yukihookapi.hook.log.*
 import com.hujiayucc.hook.BuildConfig.TAG
 
 object Log {
     fun d(msg: String) {
-        loggerD(TAG, "------$msg------")
+        YLog.debug(msg = "------$msg------", tag = TAG)
     }
 
     fun e(msg: String) {
-        loggerE(TAG, "------$msg------")
+        YLog.error(msg = "------$msg------", tag = TAG)
     }
 
     fun i(msg: String) {
-        loggerI(TAG, "------$msg------")
+        YLog.info(msg = "------$msg------", tag = TAG)
     }
 
     fun w(msg: String) {
-        loggerW(TAG, "------$msg------")
+        YLog.warn(msg = "------$msg------", tag = TAG)
     }
 
     fun d(TAG: String, msg: String) {
-        loggerD(TAG, "------$msg------")
+        YLog.debug(msg = "------$msg------", tag = TAG)
     }
 
     fun e(TAG: String, msg: String) {
-        loggerE(TAG, "------$msg------")
+        YLog.error(msg = "------$msg------", tag = TAG)
     }
 
     fun i(TAG: String, msg: String) {
-        loggerI(TAG, "------$msg------")
+        YLog.info(msg = "------$msg------", tag = TAG)
     }
 
     fun w(TAG: String, msg: String) {
-        loggerW(TAG, "------$msg------")
+        YLog.warn(msg = "------$msg------", tag = TAG)
     }
 }

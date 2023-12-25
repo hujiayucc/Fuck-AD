@@ -1,48 +1,21 @@
 package com.hujiayucc.hook.hook.sdk
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
+import com.highcapable.yukihookapi.hook.factory.method
 
 
 /** 腾讯广告 */
 object Tencent : YukiBaseHooker() {
     override fun onHook() {
-        findClass("com.qq.e.comm.managers.GDTADManager").hook {
-            injectMember {
-                method { name = "isInitialized" }
-                replaceToFalse()
-            }.ignoredNoSuchMemberFailure()
+        val adManager = "com.qq.e.comm.managers.GDTADManager".toClassOrNull()
+        adManager?.method { name = "isInitialized" }?.ignored()?.hook()?.replaceToFalse()
+        adManager?.method { name = "initWith" }?.ignored()?.hook()?.replaceToFalse()
+        adManager?.method { name = "getInstance" }?.ignored()?.hook()?.replaceTo(null)
 
-            injectMember {
-                method { name = "getInstance" }
-                replaceTo(null)
-            }.ignoredNoSuchMemberFailure()
-
-            injectMember {
-                method { name = "initWith" }
-                replaceToFalse()
-            }.ignoredNoSuchMemberFailure()
-        }.ignoredHookClassNotFoundFailure()
-
-        findClass("com.qq.e.comm.constants.CustomPkgConstants").hook {
-            injectMember {
-                method { name = "getAssetPluginDir" }
-                replaceTo("")
-            }.ignoredNoSuchMemberFailure()
-
-            injectMember {
-                method { name = "getAssetPluginName" }
-                replaceTo("")
-            }.ignoredNoSuchMemberFailure()
-
-            injectMember {
-                method { name = "getADActivityName" }
-                replaceTo("")
-            }.ignoredNoSuchMemberFailure()
-
-            injectMember {
-                method { name = "getADActivityClass" }
-                replaceTo(null)
-            }.ignoredNoSuchMemberFailure()
-        }.ignoredHookClassNotFoundFailure()
+        val constants = "com.qq.e.comm.constants.CustomPkgConstants".toClassOrNull()
+        constants?.method { name = "getADActivityName" }?.ignored()?.hook()?.replaceTo("")
+        constants?.method { name = "getAssetPluginDir" }?.ignored()?.hook()?.replaceTo("")
+        constants?.method { name = "getAssetPluginName" }?.ignored()?.hook()?.replaceTo("")
+        constants?.method { name = "getADActivityClass" }?.ignored()?.hook()?.replaceTo(null)
     }
 }

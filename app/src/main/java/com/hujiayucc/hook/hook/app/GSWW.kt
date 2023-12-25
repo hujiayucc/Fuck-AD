@@ -2,17 +2,15 @@ package com.hujiayucc.hook.hook.app
 
 import android.app.Activity
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
+import com.highcapable.yukihookapi.hook.factory.method
 
 object GSWW: YukiBaseHooker() {
     override fun onHook() {
-        findClass("local.z.androidshared.vip.RewardActivity").hook {
-            injectMember {
-                method { name = "onCreate" }
-                beforeHook {
-                    val activity = instance<Activity>()
-                    activity.finish()
-                }
-            }
+        "local.z.androidshared.vip.RewardActivity".toClass().method {
+            name = "onCreate"
+        }.hook().before {
+            val activity = instance<Activity>()
+            activity.finish()
         }
     }
 }

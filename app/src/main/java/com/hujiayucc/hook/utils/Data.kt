@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.provider.Settings
 import android.text.Spannable
 import android.text.SpannableString
@@ -29,12 +30,12 @@ object Data {
     private var os: DataOutputStream? = null
 
     const val QQ_GROUP = "mqqopensdkapi://bizAgent/qm/qr?url=https%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Fk%3DrrPSIlmQfYaZAlZuYH058gxUzEEKY00y%26jump_from%3D%26auth%3D%26app_name%3D%26authSig%3D2YtvxFdMkwUaQfxU%2FSjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At%26source_id%3D3_40001"
+    const val action = "com.hujiayucc.hook.service.StartService"
     /** 获取项目编译完成的时间戳 (当前本地时间) */
     val buildTime: String = format.format(Date(YukiHookAPI.Status.compiledTimestamp))
     val global: PrefsData<Boolean> = PrefsData("global", true)
     val hookTip: PrefsData<Boolean> = PrefsData("hookTip", true)
     val localeId: PrefsData<Int> = PrefsData("locale", 0)
-    val themes: PrefsData<Int> = PrefsData("theme", -25412)
     val background: PrefsData<String> = PrefsData("background", "")
     var skipCount = 0
 
@@ -230,7 +231,11 @@ object Data {
         return spannable
     }
 
-    /** 获取Android ID/设备ID */
-    val Context.deviceId: String @SuppressLint("HardwareIds")
-    get() = Settings.Secure.getString(applicationContext.contentResolver, Settings.Secure.ANDROID_ID)
+    val Context.id: String @SuppressLint("HardwareIds")
+    get() = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+    val Context.deviceInfo: String @SuppressLint("HardwareIds") get() = JSONObject()
+        .put("phone","${Build.BRAND} ${Build.MODEL}")
+        .put("android", Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+        .toString()
 }

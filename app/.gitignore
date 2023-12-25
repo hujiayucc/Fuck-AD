@@ -1,5 +1,6 @@
 /build
-/release
 /debug
-/src/main/resources
+/release
 /src/main/assets
+/src/main/resources
+/src/main/java/com/hujiayucc/hook/utils/V1.kt

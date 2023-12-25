@@ -1,13 +1,11 @@
 package com.hujiayucc.hook.ui.adapter
 
-import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.AppChildBinding

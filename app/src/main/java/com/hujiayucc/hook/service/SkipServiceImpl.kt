@@ -1,5 +1,6 @@
 package com.hujiayucc.hook.service
 
+import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.accessibilityservice.GestureDescription.StrokeDescription
@@ -13,11 +14,13 @@ import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Point
 import android.graphics.Rect
+import android.os.Build
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import com.highcapable.yukihookapi.hook.factory.prefs
+import androidx.core.app.NotificationManagerCompat
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig.CHANNEL_ID
 import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
@@ -35,7 +38,6 @@ import com.hujiayucc.hook.utils.Log
 import java.util.*
 
 
-@Suppress("DEPRECATION")
 class SkipServiceImpl(private val service: SkipService) {
     private var packageName: CharSequence? = null
     private var notification: Notification? = null
@@ -57,9 +59,12 @@ class SkipServiceImpl(private val service: SkipService) {
             }
             service.startForeground(1, notification)
             checkLanguage()
-            if (appContext.isAccessibilitySettingsOn(SERVICE_NAME) && !show)
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 Toast.makeText(appContext, appContext.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
-            show = true
+            } else {
+                if (appContext.isAccessibilitySettingsOn(SERVICE_NAME))
+                    Toast.makeText(appContext, appContext.getString(R.string.service_open_success), Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -97,6 +102,7 @@ class SkipServiceImpl(private val service: SkipService) {
 
             if (!appContext.getConfig().getBoolean(packageName.toString(), true)) return
 
+            /*
             try {
                 val source = event.source?.findAccessibilityNodeInfosByText("跳")
                 if (source != null) {
@@ -107,6 +113,7 @@ class SkipServiceImpl(private val service: SkipService) {
             } catch (e: PackageManager.NameNotFoundException) {
                 e.printStackTrace()
             }
+             */
 
             eventTime = event.eventTime
 
@@ -130,13 +137,27 @@ class SkipServiceImpl(private val service: SkipService) {
         } else {
             createNotification(appContext.getString(R.string.close_accessibilityservice))
         }
-        service.startForeground(1, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (NotificationManagerCompat.from(service).areNotificationsEnabled()) {
+                if (ActivityCompat.checkSelfPermission(service, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+                NotificationManagerCompat.from(service).notify(1, notification!!)
+            }
+        } else {
+            service.startForeground(1, notification)
+        }
     }
 
     fun onInterrupt() {
         notification = createNotification(appContext.getString(R.string.close_accessibilityservice))
         Toast.makeText(appContext, appContext.getString(R.string.close_accessibilityservice), Toast.LENGTH_SHORT).show()
-        service.startForeground(1, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (NotificationManagerCompat.from(service).areNotificationsEnabled()) {
+                if (ActivityCompat.checkSelfPermission(service, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+                NotificationManagerCompat.from(service).notify(1, notification!!)
+            }
+        } else {
+            service.startForeground(1, notification)
+        }
     }
 
 
@@ -146,8 +167,7 @@ class SkipServiceImpl(private val service: SkipService) {
         notificationIntent.action = Intent.ACTION_MAIN
         notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER)
         val pendingIntent = PendingIntent.getActivity(
-            appContext, 0, notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            service,0, notificationIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setContentTitle(appContext.getString(R.string.app_name))
@@ -193,6 +213,7 @@ class SkipServiceImpl(private val service: SkipService) {
         val id = FindId.fromPackageName(packageName.toString()) ?: return false
         for (name in id["id"] as Array<*>) {
             val list = nodeInfo.findAccessibilityNodeInfosByViewId(name.toString())
+            var result = false
             if (list.isNotEmpty()) {
                 val waitTime = id["wait"] as Long
                 Thread.sleep(waitTime)
@@ -200,15 +221,15 @@ class SkipServiceImpl(private val service: SkipService) {
                     Log.e("当前窗口activity===> ${node.packageName}  ${node.text}  ${this.id}")
                     if (this.id == node.viewIdResourceName) {
                         if (time != eventTime && eventTime - time > 800) {
-                            skip(node)
+                            result = skip(node)
                         }
                     } else {
                         this.id = node.viewIdResourceName
-                        skip(node)
+                        result = skip(node)
                     }
                     time = eventTime
                 }
-                return true
+                return result
             }
         }
         return false
@@ -221,8 +242,8 @@ class SkipServiceImpl(private val service: SkipService) {
         if (list.isNotEmpty()) {
             for (node in list) {
                 val text = node.text.trim().replace(Regex("[\nsS秒]", RegexOption.MULTILINE),"")
-                val className = node.className.toString().toLowerCase(Locale.getDefault())
-                if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
+                val className = node.className.toString().lowercase(Locale.getDefault())
+                if (className == "android.widget.textview" || className.lowercase(Locale.getDefault()).contains("button")) {
                     if (text == "跳过" || text == "跳过广告" || textRegx1.matches(text) || textRegx2.matches(text) || textRegx3.matches(text)) {
                         if (time != eventTime && eventTime - time > 800) {
                             skip(node)
@@ -238,8 +259,8 @@ class SkipServiceImpl(private val service: SkipService) {
         if (list.isNotEmpty()) {
             for (node in list) {
                 val text = node.text.trim()
-                val className = node.className.toString().toLowerCase(Locale.getDefault())
-                if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
+                val className = node.className.toString().lowercase(Locale.getDefault())
+                if (className == "android.widget.textview" || className.lowercase(Locale.getDefault()).contains("button")) {
                     if (text == "我知道了" || text == "知道了") {
                         if (time != eventTime && eventTime - time > 800) {
                             skip(node)
@@ -259,8 +280,8 @@ class SkipServiceImpl(private val service: SkipService) {
         if (list.isNotEmpty()) {
             for (node in list) {
                 val text = node.text.trim()
-                val className = node.className.toString().toLowerCase(Locale.getDefault())
-                if (className == "android.widget.textview" || className.toLowerCase(Locale.getDefault()).contains("button")) {
+                val className = node.className.toString().lowercase(Locale.getDefault())
+                if (className == "android.widget.textview" || className.lowercase(Locale.getDefault()).contains("button")) {
                     if (text == "签到") {
                         if (time != eventTime && eventTime - time > 800) {
                             skip(node)
@@ -310,12 +331,5 @@ class SkipServiceImpl(private val service: SkipService) {
         }
 
         return service.dispatchGesture(gestureDescription, callback, null)
-    }
-
-    companion object {
-        private var show = false
-        init {
-            System.loadLibrary("fuck_ad")
-        }
     }
 }

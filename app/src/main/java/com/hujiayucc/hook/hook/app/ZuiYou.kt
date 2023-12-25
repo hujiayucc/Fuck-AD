@@ -1,7 +1,8 @@
 package com.hujiayucc.hook.hook.app
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.MembersType
+import com.highcapable.yukihookapi.hook.factory.allConstructors
+import com.highcapable.yukihookapi.hook.factory.method
 import de.robv.android.xposed.XposedHelpers
 
 
@@ -22,24 +23,16 @@ object ZuiYou : YukiBaseHooker() {
 
     override fun onHook() {
         for (clazz in list) {
-            findClass(clazz).hook {
-                injectMember {
-                    method {
-                        name = "init"
-                    }
-                    replaceTo(null)
-                }
-            }.ignoredHookClassNotFoundFailure()
+            clazz.toClass().method {
+                name = "init"
+            }.hook().replaceTo(null)
         }
 
-        findClass("cn.xiaochuankeji.tieba.background.data.ServerVideo").hook {
-            injectMember {
-                allMembers(type = MembersType.CONSTRUCTOR)
-                afterHook {
-                    val ob = instance
-                    val a = XposedHelpers.getObjectField(ob, "url")
-                    XposedHelpers.setObjectField(ob, "downloadUrl", a)
-                }
+        "cn.xiaochuankeji.tieba.background.data.ServerVideo".toClass().allConstructors { _, constructor ->
+            constructor.hook().after {
+                val ob = instance
+                val a = XposedHelpers.getObjectField(ob, "url")
+                XposedHelpers.setObjectField(ob, "downloadUrl", a)
             }
         }
     }

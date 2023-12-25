@@ -3,7 +3,6 @@
     <declare-styleable name="Base.Theme.XYHook">
         <attr name="headerTextColor" format="reference|color"/>
         <attr name="menuColor" format="reference|color"/>
-        <attr name="popupBackground" format="reference|color"/>
         <attr name="BackgroundColor" format="reference|color"/>
     </declare-styleable>
 </resources>

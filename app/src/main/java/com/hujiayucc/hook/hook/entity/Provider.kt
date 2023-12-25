@@ -1,7 +1,8 @@
 package com.hujiayucc.hook.hook.entity
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.MembersType
+import com.highcapable.yukihookapi.hook.factory.allConstructors
+import com.highcapable.yukihookapi.hook.factory.allMethods
 
 /** 禁用广告SDK Provider */
 object Provider : YukiBaseHooker() {
@@ -18,12 +19,8 @@ object Provider : YukiBaseHooker() {
 
     override fun onHook() {
         for (clazz in list) {
-            findClass(clazz).hook {
-                injectMember {
-                    allMembers(type = MembersType.ALL)
-                    replaceTo(null)
-                }.ignoredAllFailure()
-            }.ignoredHookClassNotFoundFailure()
+            clazz.toClassOrNull()?.allMethods { _, method -> method.hook().replaceTo(null) }
+            clazz.toClassOrNull()?.allConstructors { _, constructor -> constructor.hook().replaceTo(null) }
         }
     }
 }

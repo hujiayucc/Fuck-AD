@@ -32,7 +32,7 @@ enum class HookerList(val packageName: String, val hooker: YukiBaseHooker, val s
     companion object {
         /** 通过包名获取对应Hooker */
         fun fromPackageName(packageName: String): HashMap<String, Any>? {
-            return values().find { it.packageName == packageName }?.let {
+            return entries.find { it.packageName == packageName }?.let {
                 val hooker = HashMap<String, Any>()
                 hooker["hooker"] = it.hooker
                 hooker["stop"] = it.stop

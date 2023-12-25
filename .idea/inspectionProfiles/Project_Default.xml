@@ -6,23 +6,9 @@
     </inspection_tool>
     <inspection_tool class="DuplicatedCode" enabled="true" level="WEAK WARNING" enabled_by_default="true">
       <Languages>
-        <language minSize="76" name="Kotlin" />
+        <language minSize="255" name="Kotlin" />
       </Languages>
     </inspection_tool>
-    <inspection_tool class="MismatchedCollectionQueryUpdate" enabled="false" level="WARNING" enabled_by_default="false">
-      <option name="queryNames">
-        <value />
-      </option>
-      <option name="updateNames">
-        <value />
-      </option>
-      <option name="ignoredClasses">
-        <value />
-      </option>
-    </inspection_tool>
-    <inspection_tool class="MissingOverrideAnnotation" enabled="false" level="INFORMATION" enabled_by_default="false">
-      <option name="ignoreObjectMethods" value="true" />
-      <option name="ignoreAnonymousClassMethods" value="false" />
-    </inspection_tool>
+    <inspection_tool class="UnstableApiUsage" enabled="false" level="WARNING" enabled_by_default="false" />
   </profile>
 </component>

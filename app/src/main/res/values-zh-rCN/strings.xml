@@ -24,9 +24,6 @@
     <string name="menu_open_application">启动</string>
     <string name="failed_to_open_application">%1$s 启动失败</string>
     <string name="menu_hide_icon">隐藏图标</string>
-    <string name="popup_cancel">取消</string>
-    <string name="popup_done">确定</string>
-    <string name="menu_theme_colors">主题配色</string>
     <string name="menu_background_settings">背景设置</string>
     <string name="alert_choose_image_title">选择你的图片</string>
     <string name="alert_choose_image">选择图片</string>
@@ -43,6 +40,5 @@
     <string name="menu_module_settings">模块设置</string>
     <string name="menu_theme_settings">主题设置</string>
     <string name="github">GitHub</string>
-    <string name="wait_to_load_app">请等待应用加载完成</string>
     <string name="saving_configs">正在保存设置</string>
 </resources>

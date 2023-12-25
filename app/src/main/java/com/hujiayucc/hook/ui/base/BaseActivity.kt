@@ -1,12 +1,13 @@
+@file:Suppress("DEPRECATION")
+
 package com.hujiayucc.hook.ui.base
 
 import android.Manifest
-import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.ActivityManager
 import android.app.NotificationManager
 import android.app.ProgressDialog
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -14,26 +15,22 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Process
-import android.provider.MediaStore
+import android.os.*
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
-import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
-import android.widget.ListView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager.widget.ViewPager
@@ -58,8 +55,9 @@ import com.hujiayucc.hook.utils.Data.setSpan
 import com.hujiayucc.hook.utils.Data.stopService
 import com.hujiayucc.hook.utils.Data.updateConfig
 import com.hujiayucc.hook.utils.FormatJson.formatJson
+import com.yalantis.ucrop.UCrop
+import com.yalantis.ucrop.model.AspectRatio
 import org.json.JSONObject
-import top.defaults.colorpicker.ColorPickerPopup
 import java.io.File
 import java.io.FileOutputStream
 import java.util.*
@@ -71,7 +69,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
     private lateinit var viewPager: ViewPager
     private val fragmentList = ArrayList<MainFragment>()
     private lateinit var adapter: ViewPagerAdapter
-    private lateinit var imageView: ImageView
     private var alertimageView: ImageView? = null
     private var localeID = 0
     private var menu: Menu? = null
@@ -84,21 +81,8 @@ open class BaseActivity: ModuleAppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
-        // 检查是否已经授权该权限
-        if (checkSelfPermission(Manifest.permission.CHANGE_CONFIGURATION) != PackageManager.PERMISSION_GRANTED) {
-            // 请求授权该权限
-            requestPermissions(arrayOf(Manifest.permission.CHANGE_CONFIGURATION), 2001)
-        }
-        // 适配 Android13 通知权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val notificationManager = applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            if (!notificationManager.areNotificationsEnabled()) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS),2000)
-            }
-        }
     }
 
-    @Suppress("DEPRECATION")
     private fun checkLanguage(language: Locale) {
         val configuration = resources.configuration
         configuration.setLocale(language)
@@ -132,7 +116,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
         excludeFromRecent(false)
     }
 
-    @Suppress("DEPRECATION")
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
         menu.findItem(R.id.menu_global).isChecked = prefs().get(Data.global)
@@ -167,7 +150,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
     }
 
     /** 隐藏最近任务列表视图 */
-    @Suppress("DEPRECATION")
     private fun excludeFromRecent(exclude: Boolean) {
         try {
             val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
@@ -184,7 +166,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
     private fun checkUpdate(show: Boolean) {
         Thread {
             val info = Update.checkUpdate()
-            var hotFix = false
             if (info != null) {
                 if (info.getInt("versionCode") > BuildConfig.VERSION_CODE) {
                     val url = Uri.parse(info.getString("url"))
@@ -196,8 +177,8 @@ open class BaseActivity: ModuleAppCompatActivity() {
                         }
                     }
                 } else {
-                    runOnUiThread {
-                        if (show && !hotFix) Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
+                    if (show) runOnUiThread {
+                        Toast.makeText(applicationContext, getString(R.string.latest_version), Toast.LENGTH_SHORT).show()
                     }
                 }
             } else runOnUiThread {
@@ -210,7 +191,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
         }.start()
     }
 
-    @Suppress("DEPRECATION")
     @SuppressLint("UseCompatLoadingForDrawables", "SetTextI18n")
     fun initView() {
         tabLayout = binding.tabLayout
@@ -262,7 +242,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
             }
         })
 
-        @Suppress("DEPRECATION")
         tabLayout.setOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 // 当前选中的标签页
@@ -279,8 +258,10 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 // 标签页已经选中，并且再次被选中时触发
                 val fragment = fragmentList[viewPager.currentItem]
                 val listView = fragment.listView
-                if (listView.firstVisiblePosition != 0) listView.smoothScrollToPosition(0)
-                else listView.smoothScrollToPosition(listView.adapter.count)
+                listView?.let {
+                    if (it.firstVisiblePosition != 0) it.smoothScrollToPosition(0)
+                    else it.smoothScrollToPosition(it.adapter.count)
+                }
             }
         })
     }
@@ -309,15 +290,8 @@ open class BaseActivity: ModuleAppCompatActivity() {
         fragment.showList(list)
     }
 
-    @Suppress("DEPRECATION")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (prefs().getLong("deviceQQ", 0) == 0L) return false
-        val loaded1 = fragmentList[0].loaded
-        val loaded2 = fragmentList[1].loaded
-        if (!loaded1 || !loaded2) {
-            Toast.makeText(applicationContext, resources.getString(R.string.wait_to_load_app), Toast.LENGTH_SHORT).show()
-            return false
-        }
         return when (item.itemId) {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
@@ -376,35 +350,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
                 true
             }
 
-            R.id.menu_color -> {
-                ColorPickerPopup.Builder(this)
-                    .initialColor(prefs().get(Data.themes))
-                    .enableBrightness(true)
-                    .enableAlpha(true)
-                    .okTitle(getString(R.string.popup_done))
-                    .cancelTitle(getString(R.string.popup_cancel))
-                    .showIndicator(true)
-                    .showValue(false)
-                    .build()
-                    .show(item.actionView, object : ColorPickerPopup.ColorPickerObserver() {
-                        @SuppressLint("UnspecifiedImmutableFlag")
-                        override fun onColorPicked(color: Int) {
-                            prefs().edit { put(Data.themes, color) }
-                            Thread {
-                                Thread.sleep(300)
-                                var intents = packageManager.getLaunchIntentForPackage(packageName)
-                                if (intents != null)
-                                    intents.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                else intents = Intent(applicationContext, MainActivity::class.java)
-                                startActivity(intents)
-                                //杀掉以前进程
-                                Process.killProcess(Process.myPid())
-                            }.start()
-                        }
-                    })
-                true
-            }
-
             R.id.menu_hide_icon -> {
                 hideOrShowLauncherIcon(!item.isChecked)
                 super.finish()
@@ -414,23 +359,19 @@ open class BaseActivity: ModuleAppCompatActivity() {
             R.id.menu_background -> {
                 val filename = "background.png"
                 alertimageView = ImageView(applicationContext)
-                alertimageView!!.setPadding(0, 50, 0, 0)
-                try {
-                    alertimageView!!.setImageBitmap((imageView.drawable as BitmapDrawable).bitmap)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                alertimageView?.setPadding(0, 50, 0, 0)
+                alertimageView?.setImageURI(File(filesDir, filename).toUri())
                 val dialog = AlertDialog.Builder(this)
                     .setCancelable(true)
                     .setTitle(getString(R.string.alert_choose_image_title))
-                    .setNeutralButton(getString(R.string.alert_choose_image), null)
+                    .setNeutralButton(getString(R.string.alert_choose_image),null)
                     .setPositiveButton(getString(R.string.alert_done)) { dialog, _ ->
-                        binding.root.background = alertimageView!!.drawable
+                        binding.root.background = alertimageView?.drawable
                         try {
                             val file = File(filesDir, filename)
-                            val image = (alertimageView!!.drawable as BitmapDrawable).bitmap
+                            val image = (alertimageView?.drawable as BitmapDrawable).bitmap
                             val fileOutputStream = FileOutputStream(file)
-                            image.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
+                            image.compress(Bitmap.CompressFormat.PNG,100, fileOutputStream)
                             fileOutputStream.flush()
                             fileOutputStream.close()
                             prefs().edit { put(Data.background, file.path) }
@@ -455,9 +396,11 @@ open class BaseActivity: ModuleAppCompatActivity() {
                     .create()
                 dialog.show()
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                    val intent = Intent(Intent.ACTION_PICK, null)
-                    intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
-                    startActivityForResult(intent, 2)
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    } else {
+                        openGallery()
+                    }
                     return@setOnClickListener
                 }
                 true
@@ -508,7 +451,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
                         Process.killProcess(Process.myPid())
                     }.start()
                 } catch (e : Exception) {
-                    Log.i("minimize")
+                    e.message?.let { Log.e("minimize", it) }
                 }
                 true
             }
@@ -527,9 +470,8 @@ open class BaseActivity: ModuleAppCompatActivity() {
         }
     }
 
-    @SuppressLint("ResourceAsColor")
     private fun initBackGround() {
-        imageView = ImageView(applicationContext)
+        val imageView = ImageView(applicationContext)
         try {
             val background = prefs().get(Data.background)
             imageView.setImageBitmap(BitmapFactory.decodeFile(background))
@@ -539,18 +481,52 @@ open class BaseActivity: ModuleAppCompatActivity() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 2) {
-            // 从相册返回的数据
-            if (data != null) {
-                alertimageView!!.setImageURI(data.data)
-            }
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            alertimageView?.setImageURI(it)
+            startCropActivity(uri)
         }
     }
 
-    @SuppressLint("ResourceType")
+    // 启动裁剪 Activity 的功能
+    private fun startCropActivity(inputUri: Uri) {
+        val destinationUri = Uri.fromFile(File(filesDir, "background.png"))
+        val options = UCrop.Options()
+        val aspectRatioX = resources.displayMetrics.widthPixels.toFloat()
+        val aspectRatioY = resources.displayMetrics.heightPixels.toFloat()
+        options.setAspectRatioOptions(0, AspectRatio("${aspectRatioX.toInt()}x${aspectRatioY.toInt()}", aspectRatioX, aspectRatioY))
+
+        UCrop.of(inputUri, destinationUri)
+            .withOptions(options)
+            .start(this)
+    }
+
+    private fun Uri?.cropImageLauncher() {
+        let {
+            alertimageView?.setImageURI(it)
+            binding.root.background = alertimageView?.drawable
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == UCrop.REQUEST_CROP) {
+            alertimageView?.setImageURI(File(filesDir, "background.png").toUri())
+        }
+    }
+
+    private fun openGallery() {
+        pickImageLauncher.launch("image/*")
+    }
+
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        if (isGranted) {
+            // 权限被授予，继续打开相册
+            openGallery()
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_BACK -> {

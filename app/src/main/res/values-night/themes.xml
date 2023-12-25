@@ -7,7 +7,6 @@
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="headerTextColor">@color/text</item>
         <item name="menuColor">@color/text</item>
-        <item name="popupBackground">@color/not_active</item>
         <item name="BackgroundColor">#4D000000</item>
     </style>
 

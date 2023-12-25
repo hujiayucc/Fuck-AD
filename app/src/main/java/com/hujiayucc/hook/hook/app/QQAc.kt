@@ -1,30 +1,25 @@
 package com.hujiayucc.hook.hook.app
 
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
+import com.highcapable.yukihookapi.hook.factory.method
 
 /** 腾讯动漫 */
 object QQAc: YukiBaseHooker() {
     override fun onHook() {
-        findClass("com.qq.e.comm.constants.CustomPkgConstants").hook {
-            injectMember {
-                method { name = "getAssetPluginDir" }
-                replaceTo("")
-            }
+        "com.qq.e.comm.constants.CustomPkgConstants".toClass().method {
+            name = "getAssetPluginDir"
+        }.hook().replaceTo("")
 
-            injectMember {
-                method { name = "getAssetPluginName" }
-                replaceTo("")
-            }
+        "com.qq.e.comm.constants.CustomPkgConstants".toClass().method {
+            name = "getAssetPluginName"
+        }.hook().replaceTo("")
 
-            injectMember {
-                method { name = "getADActivityName" }
-                replaceTo("")
-            }
+        "com.qq.e.comm.constants.CustomPkgConstants".toClass().method {
+            name = "getADActivityName"
+        }.hook().replaceTo("")
 
-            injectMember {
-                method { name = "getADActivityClass" }
-                replaceTo(null)
-            }
-        }.ignoredHookClassNotFoundFailure()
+        "com.qq.e.comm.constants.CustomPkgConstants".toClass().method {
+            name = "getADActivityClass"
+        }.hook().replaceTo(null)
     }
 }

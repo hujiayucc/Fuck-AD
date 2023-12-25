@@ -24,10 +24,6 @@
           android:title="@string/menu_theme_settings"
           android:orderInCategory="2">
         <menu>
-            <item android:id="@+id/menu_color"
-                  android:title="@string/menu_theme_colors"
-                  app:showAsAction="never"/>
-
             <item android:id="@+id/menu_background"
                   android:title="@string/menu_background_settings"
                   app:showAsAction="never"/>

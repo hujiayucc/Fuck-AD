@@ -1,54 +1,40 @@
 package com.hujiayucc.hook.hook.sdk
 
-import android.widget.TextView
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.listOfClasses
-import com.highcapable.yukihookapi.hook.factory.onLoadClass
-import com.highcapable.yukihookapi.hook.type.android.TextViewClass
-import com.hujiayucc.hook.utils.Log
-import de.robv.android.xposed.XposedBridge
+import com.highcapable.yukihookapi.hook.factory.allConstructors
+import com.highcapable.yukihookapi.hook.factory.allMethods
+import com.highcapable.yukihookapi.hook.factory.method
 
 
 /** 穿山甲广告 */
 object Pangle : YukiBaseHooker() {
+    private val nullReplaceList = arrayOf(
+        "com.bytedance.sdk.openadsdk.AdSlot",
+        "com.bytedance.sdk.openadsdk.AdSlot.Builder"
+    )
+
     override fun onHook() {
-        findClass("com.bytedance.sdk.openadsdk.TTAdConfig").hook {
-            injectMember {
-                method { name = "getSdkInfo" }
-                replaceTo(null)
-            }.ignoredAllFailure()
-        }.ignoredHookClassNotFoundFailure()
+        "com.bytedance.sdk.openadsdk.TTAdConfig".toClassOrNull()?.method {
+            name = "getSdkInfo"
+        }?.ignored()?.hook()?.replaceTo(null)
 
-        findClass("com.bytedance.sdk.openadsdk.TTAdSdk").hook {
-            injectMember {
-                method { name = "init" }
-                beforeHook { resultNull() }
+        "com.bytedance.sdk.openadsdk.TTAdSdk".toClassOrNull()?.method {
+            name = "init"
+        }?.ignored()?.hook()?.before { resultNull() }
+
+        "com.bytedance.sdk.openadsdk.TTAdSdk".toClassOrNull()?.method {
+            name = "isInitSuccess"
+        }?.ignored()?.hook()?.replaceToFalse()
+
+        for (name in nullReplaceList) {
+            val clazz = name.toClassOrNull() ?: continue
+            clazz.allMethods { _, method ->
+                method.hook().replaceTo(null)
             }
-            injectMember {
-                method { name = "isInitSuccess" }
-                replaceToFalse()
+
+            clazz.allConstructors { _, constructor ->
+                constructor.hook().replaceTo(null)
             }
-        }.ignoredHookClassNotFoundFailure()
-
-        findClass("com.bytedance.sdk.openadsdk.AdSlot").hook {
-            injectMember {
-                allMembers()
-                replaceTo(null)
-            }.ignoredAllFailure()
-        }.ignoredHookClassNotFoundFailure()
-
-        findClass("com.bytedance.sdk.openadsdk.AdSlot.Builder").hook {
-            injectMember {
-                allMembers()
-                replaceTo(null)
-            }.ignoredAllFailure()
-        }.ignoredHookClassNotFoundFailure()
-
-        findClass("com.dragon.read.reader.ad.readflow.ui.ReadFlowDynamicAdLine").hook {
-            injectMember {
-                allMembers()
-                replaceTo(null)
-            }.ignoredAllFailure()
-        }.ignoredHookClassNotFoundFailure()
+        }
     }
 }

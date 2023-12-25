@@ -5,7 +5,6 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentPagerAdapter
 
 
-@Suppress("DEPRECATION")
 class ViewPagerAdapter(
     fragmentManager: FragmentManager,
     private var fragmentList: List<Fragment>,
