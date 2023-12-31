@@ -3,8 +3,10 @@ package com.hujiayucc.hook.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import android.widget.Toast
 import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
-import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.R
+import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
 
 class SkipService : AccessibilityService() {
     private var serviceImpl: SkipServiceImpl? = null
@@ -12,6 +14,14 @@ class SkipService : AccessibilityService() {
         serviceImpl = SkipServiceImpl(this)
         serviceImpl?.refresh()
         return START_STICKY
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        if (isAccessibilitySettingsOn(SERVICE_NAME)) {
+            Toast.makeText(this, getString(R.string.service_open_success), Toast.LENGTH_SHORT)
+                .show()
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
