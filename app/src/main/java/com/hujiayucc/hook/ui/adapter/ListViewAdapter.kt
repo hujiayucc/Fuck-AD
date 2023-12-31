@@ -9,8 +9,7 @@ import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Com
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.AppChildBinding
-import com.hujiayucc.hook.utils.AppInfo
-import com.hujiayucc.hook.utils.Data.updateConfig
+import com.hujiayucc.hook.data.Data.updateConfig
 
 class ListViewAdapter(
     private val appList: List<AppInfo>,
@@ -35,14 +34,14 @@ class ListViewAdapter(
         info.switchCheck = binding.switchCheck
         info.switchCheck.setOnCheckedChangeListener { _, isChecked ->
             appContext.prefs().edit {
-                putBoolean(info.app_package, isChecked)
+                putBoolean(info.packageName, isChecked)
             }
             Thread{appContext.updateConfig(appContext.prefs().all())}.start()
         }
-        if (info.app_icon != null) binding.appIcon.setImageDrawable(info.app_icon)
-        binding.appName.text = info.app_name
-        binding.appPackage.text = info.app_package
-        binding.switchCheck.isChecked = appContext.prefs().get(PrefsData(info.app_package, true))
+        if (info.appIcon != null) binding.appIcon.setImageDrawable(info.appIcon)
+        binding.appName.text = info.appName
+        binding.appPackage.text = info.packageName
+        binding.switchCheck.isChecked = appContext.prefs().get(PrefsData(info.packageName, true))
         return view
     }
 }

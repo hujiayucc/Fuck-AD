@@ -18,8 +18,8 @@ import com.hujiayucc.hook.hook.sdk.Google
 import com.hujiayucc.hook.hook.sdk.KWAD
 import com.hujiayucc.hook.hook.sdk.Pangle
 import com.hujiayucc.hook.hook.sdk.Tencent
-import com.hujiayucc.hook.utils.Data.global
-import com.hujiayucc.hook.utils.Data.hookTip
+import com.hujiayucc.hook.data.Data.global
+import com.hujiayucc.hook.data.Data.hookTip
 import com.hujiayucc.hook.utils.HookTip
 import com.hujiayucc.hook.utils.Log
 

@@ -14,7 +14,7 @@ enum class Language(val id: Int, val locale: Locale) {
         /** 通过id获取对应语言 */
         fun fromId(id: Int): Locale {
             //id不存在返回 Locale.getDefault()
-            return values().find { it.id == id }?.locale ?: Locale.getDefault()
+            return entries.find { it.id == id }?.locale ?: Locale.getDefault()
         }
     }
 }

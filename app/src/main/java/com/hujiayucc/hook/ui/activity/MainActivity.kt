@@ -9,14 +9,14 @@ import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.hujiayucc.hook.author.Author
 import com.hujiayucc.hook.ui.base.BaseActivity
-import com.hujiayucc.hook.utils.V1.init
 
 
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        init(this)
+        Author(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && ContextCompat.checkSelfPermission(this, Manifest.permission.QUERY_ALL_PACKAGES) != PackageManager.PERMISSION_GRANTED)
             allAppPermission.launch(Manifest.permission.QUERY_ALL_PACKAGES)
         else initView()

@@ -13,8 +13,8 @@ android {
         minSdk = 26
         //noinspection EditedTargetSdkVersion
         targetSdk = 34
-        versionCode = 5500
-        versionName = "1.3.1.2"
+        versionCode = 5550
+        versionName = "1.3.1.3"
 
         buildConfigField("String", "SERVICE_NAME", "\"com.hujiayucc.hook.service.SkipService\"")
         buildConfigField("String", "TAG", "\"Fuck AD\"")
@@ -26,16 +26,6 @@ android {
             cmake {
                 cppFlags
             }
-        }
-    }
-
-    signingConfigs {
-        create("xy") {
-            storeFile = file("../../../Keys/hujiayucc.jks")
-
-            storePassword = "hjy20010615."
-            keyAlias = "hujiayucc"
-            keyPassword = "hjy20010615."
         }
     }
 
@@ -59,7 +49,6 @@ android {
             isZipAlignEnabled = true
             // 版本后缀
             versionNameSuffix = "-debug"
-            signingConfig = signingConfigs.getByName("xy")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -86,12 +75,12 @@ android {
 }
 
 dependencies {
-
-    implementation("com.google.android.material:material:1.5.0")
+    implementation("com.google.android.material:material:1.11.0")
     // implementation("com.github.duanhong169:colorpicker:1.1.6")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    //noinspection GradleDependency
     implementation("androidx.activity:activity-ktx:1.3.1")
-    implementation("androidx.fragment:fragment-ktx:1.3.6")
+    // implementation("androidx.fragment:fragment-ktx:1.3.6")
     implementation("com.github.yalantis:ucrop:2.2.6")
 
     // 基础依赖

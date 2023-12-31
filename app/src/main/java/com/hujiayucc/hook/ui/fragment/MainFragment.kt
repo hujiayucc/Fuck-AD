@@ -18,11 +18,11 @@ import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
+import com.hujiayucc.hook.ui.adapter.AppInfo
 import com.hujiayucc.hook.ui.adapter.ListViewAdapter
-import com.hujiayucc.hook.utils.AppInfo
-import com.hujiayucc.hook.utils.Data
-import com.hujiayucc.hook.utils.Data.setSpan
-import com.hujiayucc.hook.utils.Data.updateConfig
+import com.hujiayucc.hook.data.Data
+import com.hujiayucc.hook.data.Data.setSpan
+import com.hujiayucc.hook.data.Data.updateConfig
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
 import java.text.Collator
@@ -43,6 +43,7 @@ class MainFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_main,null,true)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding = FragmentMainBinding.bind(view)
@@ -57,15 +58,15 @@ class MainFragment : Fragment() {
             val texts = searchText.lowercase(Locale.CHINESE)
             if (searchText.isEmpty()) {
                 for (app in this.list) {
-                    val appName = app.app_name.toString().lowercase(Locale.CHINESE)
-                    val appPackage = app.app_package.lowercase(Locale.CHINESE)
+                    val appName = app.appName.toString().lowercase(Locale.CHINESE)
+                    val appPackage = app.packageName.lowercase(Locale.CHINESE)
                     if (appName.contains(texts) or appPackage.contains(texts))
                         list.add(app)
                 }
             } else {
                 for (app in this.list) {
-                    val appName = app.app_name.toString().lowercase(Locale.CHINESE)
-                    val appPackage = app.app_package.lowercase(Locale.CHINESE)
+                    val appName = app.appName.toString().lowercase(Locale.CHINESE)
+                    val appPackage = app.packageName.lowercase(Locale.CHINESE)
                     if (appName.contains(texts) or appPackage.contains(texts))
                         list.add(app)
                 }
@@ -92,8 +93,8 @@ class MainFragment : Fragment() {
         MenuInflater(appContext).inflate(R.menu.menu_app, menu)
         menu.setHeaderView(TextView(appContext))
         @Suppress("DEPRECATION")
-        if (searchText.isEmpty()) menu.setHeaderTitle(list[position].app_name.setSpan(resources.getColor(R.color.theme)))
-        else menu.setHeaderTitle(searchList[position].app_name.setSpan(resources.getColor(R.color.theme)))
+        if (searchText.isEmpty()) menu.setHeaderTitle(list[position].appName.setSpan(resources.getColor(R.color.theme)))
+        else menu.setHeaderTitle(searchList[position].appName.setSpan(resources.getColor(R.color.theme)))
         menu.getItem(0).title = resources.getString(R.string.menu_open_application)
         menu.getItem(1).title = resources.getString(R.string.menu_open_all)
         menu.getItem(2).title = resources.getString(R.string.menu_close_all)
@@ -151,16 +152,16 @@ class MainFragment : Fragment() {
                 val isCheckList: ArrayList<AppInfo> = ArrayList()
                 val notCheckList: ArrayList<AppInfo> = ArrayList()
                 for (app in list) {
-                    val isChecked = appContext.prefs().getBoolean(app.app_package, true)
+                    val isChecked = appContext.prefs().getBoolean(app.packageName, true)
                     if (isChecked) isCheckList.add(app)
                     else notCheckList.add(app)
-                    map.put(app.app_package, isChecked)
+                    map.put(app.packageName, isChecked)
                 }
                 isCheckList.sortWith { o1, o2 ->
-                    instance.compare(o1.app_name, o2.app_name)
+                    instance.compare(o1.appName, o2.appName)
                 }
                 notCheckList.sortWith { o1, o2 ->
-                    instance.compare(o1.app_name, o2.app_name)
+                    instance.compare(o1.appName, o2.appName)
                 }
                 list.clear()
                 list.addAll(isCheckList)
@@ -185,34 +186,34 @@ class MainFragment : Fragment() {
         menu.getItem(0).setOnMenuItemClickListener {
             try {
                 val intent: Intent? = appContext.packageManager
-                    .getLaunchIntentForPackage(list[position].app_package)
+                    .getLaunchIntentForPackage(list[position].packageName)
                 appContext.startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(
                     appContext, getString(R.string.failed_to_open_application)
-                        .format(list[position].app_name), Toast.LENGTH_SHORT
+                        .format(list[position].appName), Toast.LENGTH_SHORT
                 ).show()
             }
             true
         }
         menu.getItem(1).setOnMenuItemClickListener {
             for (app in list) {
-                appContext.prefs().edit { putBoolean(app.app_package, true) }
+                appContext.prefs().edit { putBoolean(app.packageName, true) }
             }
             showList(list)
             true
         }
         menu.getItem(2).setOnMenuItemClickListener {
             for (app in list) {
-                appContext.prefs().edit { putBoolean(app.app_package, false) }
+                appContext.prefs().edit { putBoolean(app.packageName, false) }
             }
             showList(list)
             true
         }
         menu.getItem(3).setOnMenuItemClickListener {
             for (app in list) {
-                val isChecked = !appContext.prefs().getBoolean(app.app_package, true)
-                appContext.prefs().edit { putBoolean(app.app_package, isChecked) }
+                val isChecked = !appContext.prefs().getBoolean(app.packageName, true)
+                appContext.prefs().edit { putBoolean(app.packageName, isChecked) }
             }
             showList(list)
             true

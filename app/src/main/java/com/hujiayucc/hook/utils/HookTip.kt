@@ -5,7 +5,7 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.factory.toClassOrNull
 import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
-import com.hujiayucc.hook.hook.app.AppShare.toClass
+import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.hook.app.DragonRead.hook
 import com.hujiayucc.hook.hook.entity.Jiagu
 
