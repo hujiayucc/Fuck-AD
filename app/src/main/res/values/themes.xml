@@ -8,6 +8,10 @@
         <item name="headerTextColor">@color/white</item>
         <item name="menuColor">@color/black</item>
         <item name="BackgroundColor">#00FFFFFF</item>
+        <!-- 边框颜色 -->
+        <item name="boxStrokeColor">?attr/colorPrimary</item>
+        <!-- 获得焦点时的边框颜色 -->
+        <item name="boxStrokeWidthFocused">?attr/colorPrimary</item>
     </style>
 
     <style name="Theme.XYHook" parent="Base.Theme.XYHook"/>

@@ -4,16 +4,23 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.highcapable.yukihookapi.hook.factory.prefs
-import com.hujiayucc.hook.utils.Data.action
-import com.hujiayucc.hook.utils.Data.runService
+import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
+import com.hujiayucc.hook.data.Data.ACTION
+import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.data.Data.runService
 
-public class BootReceiver : BroadcastReceiver() {
+class BootReceiver : BroadcastReceiver() {
 
      override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            action,
+            ACTION,
             Intent.ACTION_BOOT_COMPLETED -> {
-                if (context.prefs().getLong("deviceQQ", 0) != 0L) context.runService()
+                if (
+                    context.prefs().getLong("deviceQQ", 0) != 0L &&
+                    !context.isAccessibilitySettingsOn(SERVICE_NAME)
+                ) {
+                    context.runService()
+                }
             }
 
             else -> {}

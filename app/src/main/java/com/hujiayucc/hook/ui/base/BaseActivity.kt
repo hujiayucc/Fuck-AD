@@ -4,9 +4,7 @@ package com.hujiayucc.hook.ui.base
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.ActivityManager
-import android.app.NotificationManager
 import android.app.ProgressDialog
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,7 +13,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
-import android.os.*
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Process
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
@@ -28,7 +29,6 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
@@ -39,22 +39,27 @@ import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.base.ModuleAppCompatActivity
 import com.hujiayucc.hook.BuildConfig
+import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.service.SkipService
 import com.hujiayucc.hook.ui.activity.MainActivity
+import com.hujiayucc.hook.ui.adapter.AppInfo
 import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
 import com.hujiayucc.hook.ui.fragment.MainFragment
-import com.hujiayucc.hook.utils.*
-import com.hujiayucc.hook.utils.Data.checkRoot
-import com.hujiayucc.hook.utils.Data.hideOrShowLauncherIcon
-import com.hujiayucc.hook.utils.Data.isAccessibilitySettingsOn
-import com.hujiayucc.hook.utils.Data.isLauncherIconShowing
-import com.hujiayucc.hook.utils.Data.runService
-import com.hujiayucc.hook.utils.Data.setSpan
-import com.hujiayucc.hook.utils.Data.stopService
-import com.hujiayucc.hook.utils.Data.updateConfig
+import com.hujiayucc.hook.data.Data
+import com.hujiayucc.hook.data.Data.checkRoot
+import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
+import com.hujiayucc.hook.data.Data.isAccessibilitySettingsOn
+import com.hujiayucc.hook.data.Data.isLauncherIconShowing
+import com.hujiayucc.hook.data.Data.runService
+import com.hujiayucc.hook.data.Data.setSpan
+import com.hujiayucc.hook.data.Data.stopService
+import com.hujiayucc.hook.data.Data.updateConfig
 import com.hujiayucc.hook.utils.FormatJson.formatJson
+import com.hujiayucc.hook.utils.Language
+import com.hujiayucc.hook.utils.Log
+import com.hujiayucc.hook.utils.Update
 import com.yalantis.ucrop.UCrop
 import com.yalantis.ucrop.model.AspectRatio
 import org.json.JSONObject
@@ -121,7 +126,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
         menu.findItem(R.id.menu_global).isChecked = prefs().get(Data.global)
         menu.findItem(R.id.menu_show_hook_success).isChecked = prefs().get(Data.hookTip)
         menu.findItem(R.id.menu_hide_icon).isChecked = isLauncherIconShowing.not()
-        menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
+        menu.findItem(R.id.menu_auto_skip).isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
 
         val group = menu.findItem(R.id.menu_language_settings).subMenu?.item
         when (localeID) {
@@ -141,7 +146,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        val isChecked = isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
+        val isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
         menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
         if (isChecked) {
             intent = Intent(applicationContext, SkipService::class.java)
@@ -272,15 +277,15 @@ open class BaseActivity: ModuleAppCompatActivity() {
         val texts = text.lowercase(Locale.CHINESE)
         if (MainActivity.searchText.isEmpty()) {
             for (app in fragment.list) {
-                val appName = app.app_name.toString().lowercase(Locale.CHINESE)
-                val appPackage = app.app_package.lowercase(Locale.CHINESE)
+                val appName = app.appName.toString().lowercase(Locale.CHINESE)
+                val appPackage = app.packageName.lowercase(Locale.CHINESE)
                 if (appName.contains(texts) or appPackage.contains(texts))
                     list.add(app)
             }
         } else {
             for (app in fragment.list) {
-                val appName = app.app_name.toString().lowercase(Locale.CHINESE)
-                val appPackage = app.app_package.lowercase(Locale.CHINESE)
+                val appName = app.appName.toString().lowercase(Locale.CHINESE)
+                val appPackage = app.packageName.lowercase(Locale.CHINESE)
                 if (appName.contains(texts) or appPackage.contains(texts))
                     list.add(app)
             }
@@ -408,7 +413,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
 
             R.id.menu_auto_skip -> {
                 if (checkRoot()) {
-                    if (!applicationContext.isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)) {
+                    if (!applicationContext.isAccessibilitySettingsOn(SERVICE_NAME)) {
                         applicationContext.runService()
                     } else {
                         applicationContext.stopService()
@@ -418,7 +423,7 @@ open class BaseActivity: ModuleAppCompatActivity() {
                     startActivity(intent)
                 }
                 Handler().postDelayed({
-                    val isChecked = isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME)
+                    val isChecked = isAccessibilitySettingsOn(SERVICE_NAME)
                     menu?.findItem(R.id.menu_auto_skip)?.isChecked = isChecked
                 },500)
                 true
@@ -442,10 +447,10 @@ open class BaseActivity: ModuleAppCompatActivity() {
                         outputStream.flush()
                         outputStream.close()
                         super.finishAndRemoveTask()
-                        if (!applicationContext.isAccessibilitySettingsOn(BuildConfig.SERVICE_NAME) &&
+                        if (!isAccessibilitySettingsOn(SERVICE_NAME) &&
                             menu?.findItem(R.id.menu_auto_skip)?.isChecked == true
                         ) {
-                            applicationContext.runService()
+                            runService()
                         }
                         Looper.prepare()
                         Process.killProcess(Process.myPid())
@@ -499,13 +504,6 @@ open class BaseActivity: ModuleAppCompatActivity() {
         UCrop.of(inputUri, destinationUri)
             .withOptions(options)
             .start(this)
-    }
-
-    private fun Uri?.cropImageLauncher() {
-        let {
-            alertimageView?.setImageURI(it)
-            binding.root.background = alertimageView?.drawable
-        }
     }
 
     @Deprecated("Deprecated in Java")

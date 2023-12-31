@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.utils
+package com.hujiayucc.hook.ui.adapter
 
 import android.annotation.SuppressLint
 import android.graphics.drawable.Drawable
@@ -6,9 +6,9 @@ import android.widget.Switch
 
 @SuppressLint("UseSwitchCompatOrMaterialCode")
 class AppInfo(
-    var app_icon: Drawable? = null,
-    var app_name: CharSequence,
-    var app_package: String,
+    var appIcon: Drawable? = null,
+    var appName: CharSequence,
+    var packageName: String,
 ) {
     lateinit var switchCheck: Switch
 }

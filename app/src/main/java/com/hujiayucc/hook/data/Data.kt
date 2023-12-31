@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.utils
+package com.hujiayucc.hook.data
 
 import android.annotation.SuppressLint
 import android.content.ComponentName
@@ -16,21 +16,22 @@ import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
 import com.hujiayucc.hook.service.SkipService
+import com.hujiayucc.hook.utils.Log
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.*
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 
 
-@SuppressLint("SimpleDateFormat", "StaticFieldLeak")
+@SuppressLint("SimpleDateFormat")
 object Data {
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-    private var process: Process? = null
-    private var os: DataOutputStream? = null
 
     const val QQ_GROUP = "mqqopensdkapi://bizAgent/qm/qr?url=https%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Fk%3DrrPSIlmQfYaZAlZuYH058gxUzEEKY00y%26jump_from%3D%26auth%3D%26app_name%3D%26authSig%3D2YtvxFdMkwUaQfxU%2FSjV5zDBQMTptBWbBaFeivt3FQXrdorfW9iq4fRDljE3V3At%26source_id%3D3_40001"
-    const val action = "com.hujiayucc.hook.service.StartService"
+    const val ACTION = "com.hujiayucc.hook.service.SkipService"
     /** 获取项目编译完成的时间戳 (当前本地时间) */
     val buildTime: String = format.format(Date(YukiHookAPI.Status.compiledTimestamp))
     val global: PrefsData<Boolean> = PrefsData("global", true)
@@ -94,49 +95,54 @@ object Data {
 
     /** 判断是否具有ROOT权限 */
     fun checkRoot(): Boolean {
-        return try {
-            process = Runtime.getRuntime().exec("su")
-            os = DataOutputStream(process?.outputStream)
-            os?.writeBytes("id\n")
-            os?.flush()
-            BufferedReader(InputStreamReader(process?.inputStream)).readLine().contains("uid=0")
-        } catch (e : Exception) {
-            e.printStackTrace()
-            false
+        var process: Process? = null
+        try {
+            process = ProcessBuilder().command("su").start()
+            return true
+        } catch (e: IOException) {
+            return false
+        } finally {
+            process?.destroy()
         }
     }
 
-    private fun runAsRoot(cmd: ArrayList<String>): Boolean {
-        os?.writeBytes("clear\n")
-        os?.flush()
-        return try {
-            for (tmpCmd in cmd) {
-                os?.writeBytes("$tmpCmd\n")
+    private fun Context.openService() {
+        if (checkRoot()) {
+            var enabledServicesSetting = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            if (!enabledServicesSetting.contains("com.hujiayucc.hook/$SERVICE_NAME")) {
+                enabledServicesSetting += ":com.hujiayucc.hook/$SERVICE_NAME"
             }
-            os?.flush()
-            Thread.sleep(200)
-            true
-        } catch (e : Exception) {
-            process = null
+
+            val cmd = "settings put secure enabled_accessibility_services $enabledServicesSetting"
+            try {
+                Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun Context.closeService() {
+        var enabledServicesSetting = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )
+
+        if (enabledServicesSetting.contains("com.hujiayucc.hook/$SERVICE_NAME")) {
+            enabledServicesSetting = if (enabledServicesSetting.endsWith("com.hujiayucc.hook/$SERVICE_NAME")) {
+                enabledServicesSetting.replace("com.hujiayucc.hook/$SERVICE_NAME", "")
+            } else {
+                enabledServicesSetting.replace("com.hujiayucc.hook/$SERVICE_NAME:", "")
+            }
+
+            if (enabledServicesSetting.isBlank()) enabledServicesSetting = "\"\""
+        }
+
+        val cmd = "settings put secure enabled_accessibility_services $enabledServicesSetting"
+        try {
+            Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+        } catch (e: IOException) {
             e.printStackTrace()
-            false
-        }
-    }
-
-    private fun openService() {
-        if (checkRoot()) {
-            val cmd = ArrayList<String>()
-            cmd.add("settings put secure enabled_accessibility_services com.hujiayucc.hook/$SERVICE_NAME")
-            cmd.add("settings put secure accessibility_enabled 1")
-            runAsRoot(cmd)
-        }
-    }
-
-    private fun closeService() {
-        if (checkRoot()) {
-            val cmd = ArrayList<String>()
-            cmd.add("settings delete secure enabled_accessibility_services")
-            runAsRoot(cmd)
         }
     }
 
