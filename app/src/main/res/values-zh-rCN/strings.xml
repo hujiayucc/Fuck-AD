@@ -34,11 +34,12 @@
     <string name="tip_skip_success">成功跳过</string>
     <string name="service_open_success">服务启动成功</string>
     <string name="close_accessibilityservice">无障碍服务已关闭</string>
-    <string name="accessibility_description">自动跳过广告无障碍服务</string>
+    <string name="accessibility_description">自动跳过广告无障碍服务\n\n1.自动点击 跳过\n2.自动点击 签到</string>
     <string name="accessibility_notification">已自动跳过：%1$s\n自动跳过广告无障碍服务</string>
     <string name="latest_version">已经是最新版</string>
     <string name="menu_module_settings">模块设置</string>
     <string name="menu_theme_settings">主题设置</string>
     <string name="github">GitHub</string>
     <string name="saving_configs">正在保存设置</string>
+    <string name="accessibility_service_name">Fuck AD-自动跳过</string>
 </resources>
