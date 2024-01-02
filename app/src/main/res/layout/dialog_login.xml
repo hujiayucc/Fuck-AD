@@ -36,10 +36,30 @@
             android:layout_height="wrap_content"
             android:text="Login" />
 
-    <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/register"
+    <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Click Register" />
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+        <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/reset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Forget password?"/>
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:layout_marginStart="10dp"
+                android:text="|"/>
+
+        <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/register"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Click Register" />
+    </LinearLayout>
 </LinearLayout>

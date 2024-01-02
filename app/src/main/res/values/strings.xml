@@ -42,4 +42,12 @@
     <string name="github">GitHub</string>
     <string name="saving_configs">Saving Configs</string>
     <string name="accessibility_service_name">Fuck AD-Auto Skip</string>
+    <string name="resend_s">Resend (%1$ss)</string>
+    <string name="resend">Resend</string>
+    <string name="send_success">Send Success</string>
+    <string name="send_failed">Send Failed</string>
+    <string name="send_failed_please_try_again_later">Send failed, please try again later</string>
+    <string name="register">Register</string>
+    <string name="login">Login</string>
+    <string name="features_to_be_developed">Features to be developed</string>
 </resources>

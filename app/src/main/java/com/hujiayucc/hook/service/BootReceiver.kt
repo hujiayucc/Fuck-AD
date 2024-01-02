@@ -16,7 +16,7 @@ class BootReceiver : BroadcastReceiver() {
             ACTION,
             Intent.ACTION_BOOT_COMPLETED -> {
                 if (
-                    context.prefs().getLong("deviceQQ", 0) != 0L &&
+                    context.prefs().getString("session").isNotBlank() &&
                     !context.isAccessibilitySettingsOn(SERVICE_NAME)
                 ) {
                     context.runService()

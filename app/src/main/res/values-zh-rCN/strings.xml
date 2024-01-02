@@ -42,4 +42,12 @@
     <string name="github">GitHub</string>
     <string name="saving_configs">正在保存设置</string>
     <string name="accessibility_service_name">Fuck AD-自动跳过</string>
+    <string name="resend_s">重新发送 (%1$s秒)</string>
+    <string name="resend">重新发送</string>
+    <string name="send_success">发送成功</string>
+    <string name="send_failed">发送失败</string>
+    <string name="send_failed_please_try_again_later">发送失败，请稍后重试</string>
+    <string name="register">注册</string>
+    <string name="login">登录</string>
+    <string name="features_to_be_developed">待开发</string>
 </resources>

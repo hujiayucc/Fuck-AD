@@ -240,8 +240,14 @@ object Data {
     val Context.id: String @SuppressLint("HardwareIds")
     get() = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 
-    val Context.deviceInfo: String @SuppressLint("HardwareIds") get() = JSONObject()
-        .put("phone","${Build.BRAND} ${Build.MODEL}")
-        .put("android", Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
-        .toString()
+    val name: String @SuppressLint("HardwareIds") get() {
+        return if (Build.MODEL.startsWith(Build.MANUFACTURER)) capitalize(Build.MODEL) else capitalize(Build.MANUFACTURER) + " " + Build.MODEL
+    }
+
+    private fun capitalize(s: String): String {
+        if (s.isEmpty()) return ""
+        val first = s[0]
+        return if (Character.isUpperCase(first)) s else first.uppercaseChar().toString() + s.substring(1)
+    }
+
 }

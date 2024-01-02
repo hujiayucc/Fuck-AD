@@ -67,7 +67,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <Button
-                android:id="@+id/getVerifyCode"
+                android:id="@+id/sendVerifyCode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Get Code" />
@@ -81,10 +81,30 @@
             android:layout_marginTop="8dp"
             android:text="Register" />
 
-    <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/login"
+    <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Click Login" />
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+        <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/reset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Forget password?"/>
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:layout_marginStart="10dp"
+                android:text="|"/>
+
+        <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/login"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Click Login" />
+    </LinearLayout>
 </LinearLayout>

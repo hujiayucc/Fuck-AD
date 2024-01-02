@@ -16,7 +16,7 @@ import com.hujiayucc.hook.ui.base.BaseActivity
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Author(this)
+        Author(this, true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && ContextCompat.checkSelfPermission(this, Manifest.permission.QUERY_ALL_PACKAGES) != PackageManager.PERMISSION_GRANTED)
             allAppPermission.launch(Manifest.permission.QUERY_ALL_PACKAGES)
         else initView()

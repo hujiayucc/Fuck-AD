@@ -5,7 +5,6 @@ package com.hujiayucc.hook.ui.base
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.app.ProgressDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -26,6 +25,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -34,6 +34,7 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager.widget.ViewPager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.prefs
@@ -41,12 +42,6 @@ import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.base.ModuleApp
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.BuildConfig.SERVICE_NAME
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.databinding.ActivityMainBinding
-import com.hujiayucc.hook.service.SkipService
-import com.hujiayucc.hook.ui.activity.MainActivity
-import com.hujiayucc.hook.ui.adapter.AppInfo
-import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
-import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.checkRoot
 import com.hujiayucc.hook.data.Data.hideOrShowLauncherIcon
@@ -56,6 +51,12 @@ import com.hujiayucc.hook.data.Data.runService
 import com.hujiayucc.hook.data.Data.setSpan
 import com.hujiayucc.hook.data.Data.stopService
 import com.hujiayucc.hook.data.Data.updateConfig
+import com.hujiayucc.hook.databinding.ActivityMainBinding
+import com.hujiayucc.hook.service.SkipService
+import com.hujiayucc.hook.ui.activity.MainActivity
+import com.hujiayucc.hook.ui.adapter.AppInfo
+import com.hujiayucc.hook.ui.adapter.ViewPagerAdapter
+import com.hujiayucc.hook.ui.fragment.MainFragment
 import com.hujiayucc.hook.utils.FormatJson.formatJson
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
@@ -295,8 +296,9 @@ open class BaseActivity: ModuleAppCompatActivity() {
         fragment.showList(list)
     }
 
+    @SuppressLint("MissingInflatedId")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (prefs().getLong("deviceQQ", 0) == 0L) return false
+        if (prefs().getString("session").isBlank()) return false
         return when (item.itemId) {
             R.id.menu_global -> {
                 item.isChecked = !item.isChecked
@@ -431,11 +433,13 @@ open class BaseActivity: ModuleAppCompatActivity() {
 
             R.id.menu_minimize -> {
                 try {
-                    val dialog = ProgressDialog(this)
-                    dialog.setCancelable(false)
-                    dialog.setMessage(getString(R.string.saving_configs))
-                    dialog.create()
-                    dialog.show()
+                    val view = layoutInflater.inflate(R.layout.progress_dialog, null)
+                    view.findViewById<TextView>(R.id.progress_text).text = getString(R.string.saving_configs)
+                    MaterialAlertDialogBuilder(this)
+                        .setView(view)
+                        .setCancelable(false)
+                        .create().show()
+
                     Thread {
                         val config = File(filesDir, "config.json")
                         val inputStream = config.inputStream()
