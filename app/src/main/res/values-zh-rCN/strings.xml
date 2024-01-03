@@ -58,4 +58,6 @@
     <string name="verify_code">验证码</string>
     <string name="get_code">获取验证码</string>
     <string name="click_login">点击登录</string>
+    <string name="reset_password">重置密码</string>
+    <string name="tip">提示</string>
 </resources>

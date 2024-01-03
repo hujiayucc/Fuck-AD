@@ -58,4 +58,6 @@
     <string name="verify_code">Verify Code</string>
     <string name="get_code">Get Code</string>
     <string name="click_login">Click Login</string>
+    <string name="reset_password">Reset Password</string>
+    <string name="tip">Tip</string>
 </resources>
