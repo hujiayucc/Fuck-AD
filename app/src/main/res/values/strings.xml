@@ -50,4 +50,12 @@
     <string name="register">Register</string>
     <string name="login">Login</string>
     <string name="features_to_be_developed">Features to be developed</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="forget_password">Forget password?</string>
+    <string name="click_register">Click Register</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="verify_code">Verify Code</string>
+    <string name="get_code">Get Code</string>
+    <string name="click_login">Click Login</string>
 </resources>
