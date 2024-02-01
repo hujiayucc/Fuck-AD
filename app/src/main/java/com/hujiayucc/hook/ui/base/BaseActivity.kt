@@ -403,8 +403,8 @@ open class BaseActivity: ModuleAppCompatActivity() {
                     .create()
                 dialog.show()
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
                     } else {
                         openGallery()
                     }
