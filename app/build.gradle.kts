@@ -37,7 +37,7 @@ android {
             // 开启4k对齐
             isZipAlignEnabled = true
             // 版本后缀
-            versionNameSuffix = "-release"
+            versionNameSuffix = "-2024-happy-Chinese-new-year"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
 

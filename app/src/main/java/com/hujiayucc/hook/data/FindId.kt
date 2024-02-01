@@ -11,7 +11,7 @@ import java.io.InputStreamReader
 import java.net.URL
 
 class FindId(private val context: Context) {
-    private lateinit var rules: JSONObject
+    private var rules: JSONObject? = null
 
     init {
         Thread {
@@ -20,7 +20,7 @@ class FindId(private val context: Context) {
     }
 
     private fun findId(packageName: String): IdInfo? {
-        val groups = rules.getJSONArray(packageName) ?: return null
+        val groups = rules?.getJSONArray(packageName) ?: return null
         return groups.getRules()?.let { IdInfo(packageName, it) }
     }
 
@@ -39,8 +39,11 @@ class FindId(private val context: Context) {
                 return
             }
         }
-        rules = local
-        Log.e("加载完毕：${rules.length()}")
+
+        local.let {
+            rules = it
+            Log.e("加载完毕：${it.length()}")
+        }
     }
 
     private fun Context.initFile() {
