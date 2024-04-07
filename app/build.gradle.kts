@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.Packaging
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -13,8 +15,8 @@ android {
         minSdk = 26
         //noinspection EditedTargetSdkVersion
         targetSdk = 34
-        versionCode = 6000
-        versionName = "1.3.3"
+        versionCode = 6400
+        versionName = "1.3.4"
 
         buildConfigField("String", "SERVICE_NAME", "\"com.hujiayucc.hook.service.SkipService\"")
         buildConfigField("String", "TAG", "\"Fuck AD\"")
@@ -35,9 +37,10 @@ android {
             // 开启资源压缩
             isShrinkResources = true
             // 开启4k对齐
+            @Suppress("DEPRECATION")
             isZipAlignEnabled = true
             // 版本后缀
-            versionNameSuffix = "-2024-happy-Chinese-new-year"
+            versionNameSuffix = "-release"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
 
@@ -46,6 +49,7 @@ android {
             // 开启资源压缩
             isShrinkResources = true
             // 开启4k对齐
+            @Suppress("DEPRECATION")
             isZipAlignEnabled = true
             // 版本后缀
             versionNameSuffix = "-debug"
@@ -63,7 +67,8 @@ android {
         buildConfig = true
         viewBinding = true
     }
-    packagingOptions {
+    @Suppress("UNUSED_EXPRESSION")
+    fun Packaging.() {
         resources {
             excludes += "**/META-INF/*.version"
             excludes += "**/META-INF/services/**"

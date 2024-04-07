@@ -53,7 +53,9 @@ class MainFragment : Fragment() {
         loadAppList(isSystem)
         listView?.onItemClickListener = OnItemClickListener { _, _, position, _ ->
             val info = listView?.adapter?.getItem(position) as AppInfo
-            info.switchCheck.isChecked = !info.switchCheck.isChecked
+            info.switchCheck?.let {
+                it.isChecked = !it.isChecked
+            }
             val list: ArrayList<AppInfo> = ArrayList()
             val texts = searchText.lowercase(Locale.CHINESE)
             if (searchText.isEmpty()) {

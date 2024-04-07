@@ -10,5 +10,5 @@ class AppInfo(
     var appName: CharSequence,
     var packageName: String,
 ) {
-    lateinit var switchCheck: Switch
+    var switchCheck: Switch? = null
 }
