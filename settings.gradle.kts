@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Fuck AD"
 include(":app")
+include(":Author")

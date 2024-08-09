@@ -42,23 +42,4 @@
     <string name="github">GitHub</string>
     <string name="saving_configs">Saving Configs</string>
     <string name="accessibility_service_name">Fuck AD-Auto Skip</string>
-    <string name="resend_s">Resend (%1$ss)</string>
-    <string name="resend">Resend</string>
-    <string name="send_success">Send Success</string>
-    <string name="send_failed">Send Failed</string>
-    <string name="send_failed_please_try_again_later">Send failed, please try again later</string>
-    <string name="register">Register</string>
-    <string name="login">Login</string>
-    <string name="features_to_be_developed">Features to be developed</string>
-    <string name="email">Email</string>
-    <string name="password">Password</string>
-    <string name="forget_password">Forget password?</string>
-    <string name="click_register">Click Register</string>
-    <string name="confirm_password">Confirm Password</string>
-    <string name="verify_code">Verify Code</string>
-    <string name="get_code">Get Code</string>
-    <string name="click_login">Click Login</string>
-    <string name="reset_password">Reset Password</string>
-    <string name="tip">Tip</string>
-    <string name="reset">Reset</string>
 </resources>
