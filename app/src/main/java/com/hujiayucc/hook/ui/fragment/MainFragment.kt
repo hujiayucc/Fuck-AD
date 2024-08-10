@@ -16,6 +16,8 @@ import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication.Companion.appContext
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
+import com.hujiayucc.hook.author.Auth.Companion.baseUrl
+import com.hujiayucc.hook.author.Auth.Companion.executePost
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.AppInfo
@@ -25,6 +27,8 @@ import com.hujiayucc.hook.data.Data.setSpan
 import com.hujiayucc.hook.data.Data.updateConfig
 import com.hujiayucc.hook.utils.Language
 import com.hujiayucc.hook.utils.Log
+import org.json.JSONException
+import org.json.JSONObject
 import java.text.Collator
 import java.util.*
 
@@ -97,10 +101,12 @@ class MainFragment : Fragment() {
         @Suppress("DEPRECATION")
         if (searchText.isEmpty()) menu.setHeaderTitle(list[position].appName.setSpan(resources.getColor(R.color.theme)))
         else menu.setHeaderTitle(searchList[position].appName.setSpan(resources.getColor(R.color.theme)))
+
         menu.getItem(0).title = resources.getString(R.string.menu_open_application)
         menu.getItem(1).title = resources.getString(R.string.menu_open_all)
         menu.getItem(2).title = resources.getString(R.string.menu_close_all)
         menu.getItem(3).title = resources.getString(R.string.menu_invert_selection)
+        menu.getItem(4).title = resources.getString(R.string.menu_submit)
         setMenu(menu)
     }
 
@@ -218,6 +224,44 @@ class MainFragment : Fragment() {
                 appContext.prefs().edit { putBoolean(app.packageName, isChecked) }
             }
             showList(list)
+            true
+        }
+        menu.getItem(4).setOnMenuItemClickListener {
+            val appInfo = try {
+                appContext.packageManager.getPackageInfo(list[position].packageName, 0)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT
+                ).show()
+                null
+            }
+
+            appInfo?.let {
+                val map: Map<*, *> = mapOf(
+                    "packageName" to appInfo.packageName,
+                    "versionName" to appInfo.versionName,
+                    "versionCode" to appInfo.longVersionCode,
+                )
+
+                executePost("$baseUrl/submit", map)?.let {
+                    try {
+                        val jsonObject = JSONObject(it)
+                        activity?.runOnUiThread {
+                            Toast.makeText(
+                                appContext,
+                                jsonObject.getString("message") ?: getString(R.string.submit_failed),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (e: JSONException) {
+                        Toast.makeText(
+                            appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } ?: activity?.runOnUiThread {
+                    Toast.makeText(appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT).show()
+                }
+            }
             true
         }
     }

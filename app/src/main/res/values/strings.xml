@@ -42,4 +42,6 @@
     <string name="github">GitHub</string>
     <string name="saving_configs">Saving Configs</string>
     <string name="accessibility_service_name">Fuck AD-Auto Skip</string>
+    <string name="menu_submit">Submit</string>
+    <string name="submit_failed">Submit failed</string>
 </resources>

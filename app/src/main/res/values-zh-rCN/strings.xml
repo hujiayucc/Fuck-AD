@@ -42,6 +42,8 @@
     <string name="github">GitHub</string>
     <string name="saving_configs">正在保存设置</string>
     <string name="accessibility_service_name">Fuck AD-自动跳过</string>
+    <string name="menu_submit">提交</string>
+    <string name="submit_failed">提交失败</string>
     <string name="resend_s">重新发送 (%1$s秒)</string>
     <string name="resend">重新发送</string>
     <string name="send_success">发送成功</string>
