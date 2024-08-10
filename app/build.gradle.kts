@@ -51,6 +51,18 @@ android {
         buildConfig = true
         viewBinding = true
     }
+    applicationVariants.all {
+        outputs.all { output ->
+            val baseName = "Fuck AD_$versionName"
+            when (output) {
+                is com.android.build.gradle.internal.api.ApkVariantOutputImpl -> {
+                    output.outputFileName = "$baseName.apk"
+                    true
+                }
+                else -> {false}
+            }
+        }
+    }
 }
 
 dependencies {
