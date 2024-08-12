@@ -244,24 +244,26 @@ class MainFragment : Fragment() {
                     "versionCode" to appInfo.longVersionCode
                 )
 
-                executePost("$baseUrl/submit", map)?.let {
-                    try {
-                        val jsonObject = JSONObject(it)
-                        activity?.runOnUiThread {
+                Thread {
+                    executePost("$baseUrl/submit", map)?.let {
+                        try {
+                            val jsonObject = JSONObject(it)
+                            activity?.runOnUiThread {
+                                Toast.makeText(
+                                    appContext,
+                                    jsonObject.getString("message") ?: getString(R.string.submit_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } catch (e: JSONException) {
                             Toast.makeText(
-                                appContext,
-                                jsonObject.getString("message") ?: getString(R.string.submit_failed),
-                                Toast.LENGTH_SHORT
+                                appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT
                             ).show()
                         }
-                    } catch (e: JSONException) {
-                        Toast.makeText(
-                            appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT
-                        ).show()
+                    } ?: activity?.runOnUiThread {
+                        Toast.makeText(appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT).show()
                     }
-                } ?: activity?.runOnUiThread {
-                    Toast.makeText(appContext, getString(R.string.submit_failed), Toast.LENGTH_SHORT).show()
-                }
+                }.start()
             }
             true
         }
