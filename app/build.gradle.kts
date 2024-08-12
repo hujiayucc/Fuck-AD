@@ -13,8 +13,8 @@ android {
         minSdk = 26
         //noinspection EditedTargetSdkVersion
         targetSdk = 35
-        versionCode = 6700
-        versionName = "1.3.7"
+        versionCode = 6710
+        versionName = "1.3.7.1"
 
         buildConfigField("String", "SERVICE_NAME", "\"com.hujiayucc.hook.service.SkipService\"")
         buildConfigField("String", "TAG", "\"Fuck AD\"")
