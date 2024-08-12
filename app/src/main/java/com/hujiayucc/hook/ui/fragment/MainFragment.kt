@@ -238,9 +238,10 @@ class MainFragment : Fragment() {
 
             appInfo?.let {
                 val map: Map<*, *> = mapOf(
+                    "appName" to (appInfo.applicationInfo?.loadLabel(appContext.packageManager) ?: ""),
                     "packageName" to appInfo.packageName,
                     "versionName" to appInfo.versionName,
-                    "versionCode" to appInfo.longVersionCode,
+                    "versionCode" to appInfo.longVersionCode
                 )
 
                 executePost("$baseUrl/submit", map)?.let {
