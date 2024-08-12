@@ -15,3 +15,5 @@
 .cxx
 local.properties
 /Author/
+/Author/.idea/misc.xml
+.idea/kotlinc.xml
