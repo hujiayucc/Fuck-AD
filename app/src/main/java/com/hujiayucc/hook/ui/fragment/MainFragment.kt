@@ -18,6 +18,8 @@ import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Auth.Companion.baseUrl
 import com.hujiayucc.hook.author.Auth.Companion.executePost
+import com.hujiayucc.hook.author.Author.Companion.emailPrefs
+import com.hujiayucc.hook.author.Author.Companion.sessionPrefs
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
 import com.hujiayucc.hook.ui.adapter.AppInfo
@@ -241,7 +243,9 @@ class MainFragment : Fragment() {
                     "appName" to (appInfo.applicationInfo?.loadLabel(appContext.packageManager) ?: ""),
                     "packageName" to appInfo.packageName,
                     "versionName" to appInfo.versionName,
-                    "versionCode" to appInfo.longVersionCode
+                    "versionCode" to appInfo.longVersionCode,
+                    "email" to appContext.prefs().get(emailPrefs),
+                    "session" to appContext.prefs().get(sessionPrefs)
                 )
 
                 Thread {
