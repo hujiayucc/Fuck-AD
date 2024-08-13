@@ -19,6 +19,7 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Auth.Companion.baseUrl
 import com.hujiayucc.hook.author.Auth.Companion.executePost
 import com.hujiayucc.hook.author.Author.Companion.emailPrefs
+import com.hujiayucc.hook.author.Author.Companion.passwdPrefs
 import com.hujiayucc.hook.author.Author.Companion.sessionPrefs
 import com.hujiayucc.hook.databinding.FragmentMainBinding
 import com.hujiayucc.hook.ui.activity.MainActivity.Companion.searchText
@@ -245,6 +246,7 @@ class MainFragment : Fragment() {
                     "versionName" to appInfo.versionName,
                     "versionCode" to appInfo.longVersionCode,
                     "email" to appContext.prefs().get(emailPrefs),
+                    "passwd" to appContext.prefs().get(passwdPrefs),
                     "session" to appContext.prefs().get(sessionPrefs)
                 )
 
