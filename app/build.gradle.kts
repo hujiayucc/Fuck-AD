@@ -22,7 +22,7 @@ android {
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = true
             // 开启资源压缩
             isShrinkResources = true
@@ -31,7 +31,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
 
-        debug {
+        getByName("debug") {
             isMinifyEnabled = true
             // 开启资源压缩
             isShrinkResources = true
