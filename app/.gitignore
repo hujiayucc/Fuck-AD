@@ -1,6 +1,2 @@
 /build
-/debug
-/release
-/src/main/assets
-/src/main/resources
-/src/main/java/com/hujiayucc/hook/author/
+/release/

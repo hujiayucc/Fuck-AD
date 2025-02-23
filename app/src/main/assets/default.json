@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "name": "Fuck AD",
+      "packageName": "com.hujiayucc.hook",
+      "items": [
+        {
+          "name": "测试",
+          "desc": "测试1",
+          "versionName": "2.0",
+          "versionCode": 7000,
+          "type": "CLICK",
+          "action": {
+            "activity": "com.hujiayucc.hook.ui.activity.Home",
+            "view": "0x640900df",
+            "sleep": 0,
+            "regex": false
+          }
+        },
+        {
+          "name": "测试",
+          "desc": "测试2",
+          "versionName": "2.0",
+          "versionCode": 7000,
+          "type": "CLICK",
+          "action": {
+            "activity": "com.hujiayucc.hook.ui.activity.Home",
+            "view": "Activated",
+            "sleep": 5000,
+            "regex": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "虎牙直播",
+      "packageName": "com.duowan.kiwi",
+      "items": [
+        {
+          "name": "启动页广告",
+          "desc": "虎牙直播启动页广告",
+          "versionName": "12.5.6",
+          "versionCode": 100135,
+          "type": "CLICK",
+          "action": {
+            "activity": "com.duowan.kiwi.homepage.Homepage",
+            "view": "跳过",
+            "sleep": 0,
+            "regex": false
+          }
+        },
+        {
+          "name": "首页广告",
+          "desc": "虎牙直播首页弹窗广告",
+          "versionName": "12.5.6",
+          "versionCode": 100135,
+          "type": "CLICK",
+          "action": {
+            "activity": "com.duowan.kiwi.homepage.Homepage",
+            "view": "0x7f092eba",
+            "sleep": 0,
+            "regex": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "哔哩哔哩",
+      "packageName": "tv.danmaku.bili",
+      "items": [
+        {
+          "name": "启动页广告",
+          "desc": "哔哩哔哩启动页广告",
+          "versionName": "8.34.0",
+          "versionCode": 8340200,
+          "type": "CLICK",
+          "action": {
+            "activity": "tv.danmaku.bili.MainActivityV2",
+            "view": "^跳过(.*)\\d",
+            "sleep": 0,
+            "regex": true
+          }
+        }
+      ]
+    }
+  ]
+}

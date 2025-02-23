@@ -1,47 +1,44 @@
 <resources>
+    <!-- 基础信息 -->
     <string name="app_name">Fuck AD</string>
-    <string name="menu_global">Global</string>
     <string name="not_active">Not Active</string>
-    <string name="is_active">Activated</string>
-    <string name="main_version">Version: %1$s (%2$s)</string>
     <string name="main_framework">Framework: %1$s %2$s</string>
-    <string name="menu_hook_success">Hook Tip</string>
-    <string name="language_settings">Language Settings</string>
-    <string name="language_default">Default</string>
-    <string name="language_english">English</string>
-    <string name="language_chinese_zh">简体中文</string>
-    <string name="has_update">New Version</string>
-    <string name="check_update_failed">Update detection failed</string>
-    <string name="description">Fuck AD</string>
-    <string name="user_app">USER APP</string>
-    <string name="system_app">SYSTEM APP</string>
-    <string name="search">Search</string>
-    <string name="join_qq_group">Join QQ Group</string>
-    <string name="failed_to_open_qq">Failed to open QQ</string>
-    <string name="menu_open_all">Open All</string>
-    <string name="menu_close_all">Close All</string>
-    <string name="menu_invert_selection">Invert Selection</string>
-    <string name="menu_open_application">Open</string>
-    <string name="failed_to_open_application">Failed to open %1$s</string>
-    <string name="menu_hide_icon">Hide Icon</string>
-    <string name="menu_background_settings">Background Settings</string>
-    <string name="alert_choose_image_title">Choose your Image</string>
-    <string name="alert_choose_image">Choose Image</string>
-    <string name="alert_done">Done</string>
-    <string name="alert_reset">Reset</string>
-    <string name="menu_auto_skip">Auto Skip</string>
-    <string name="menu_minimize">Minimize</string>
-    <string name="tip_skip_success">Skip Success</string>
-    <string name="service_open_success">Service Started</string>
-    <string name="close_accessibilityservice">AccessibilityService Closed</string>
-    <string name="accessibility_description">Auto Skip ADs AccessibilityService\n\n1.Auto click 跳过\n2.Auto click 签到</string>
-    <string name="accessibility_notification">Auto Skipped: %1$s\nAuto Skip ADs AccessibilityService</string>
-    <string name="latest_version">Already the latest version</string>
-    <string name="menu_module_settings">Module Settings</string>
-    <string name="menu_theme_settings">Theme Settings</string>
-    <string name="github">GitHub</string>
-    <string name="saving_configs">Saving Configs</string>
-    <string name="accessibility_service_name">Fuck AD-Auto Skip</string>
-    <string name="menu_submit">Submit</string>
-    <string name="submit_failed">Submit failed</string>
+    <string name="main_version">Version: %1$s (%2$s)</string>
+    <string name="is_active">Activated</string>
+    <string name="build_time">Build Time: %1$s</string>
+    <string name="search">搜索</string>
+
+    <!-- 通知权限 -->
+    <string name="notification_permission_title">需要通知权限</string>
+    <string name="notification_permission_message">此功能需要通知权限以：\n• 显示服务运行状态\n• 提醒重要事件\n• 提供操作反馈\n\n我们承诺绝不会发送推广内容</string>
+    <string name="grant">立即授权</string>
+    <string name="deny">暂不需要</string>
+
+    <!-- 核心权限 -->
+    <string name="essential_permission_title">需要应用列表权限</string>
+    <string name="essential_permission_message">此功能需要访问应用列表以：\n• 识别已安装应用\n• 显示可用规则\n• 确保功能正常运作\n\n我们承诺仅用于功能实现，不会收集隐私数据</string>
+
+    <!-- 权限拒绝提示 -->
+    <string name="permission_denied_forever_title">权限被永久拒绝</string>
+    <string name="permission_denied_forever_message">请到设置中手动开启权限：\n设置 → 应用 → 本应用 → 特殊权限</string>
+
+    <!-- 功能受限提示 -->
+    <string name="function_limited_title">功能受限</string>
+    <string name="function_limited_message">未授予必要权限将导致：\n• 无法显示应用列表\n• 不能配置规则\n• 核心功能不可用</string>
+
+    <!-- 通用操作 -->
+    <string name="open_settings">打开设置</string>
+    <string name="retry">重试</string>
+    <string name="exit_app">退出应用</string>
+    <string name="cancel">取消</string>
+
+    <!-- 错误提示 -->
+    <string name="data_load_failed">配置加载失败：%1$s</string>
+    <string name="settings_open_failed">无法打开系统设置</string>
+
+    <!-- 权限操作 -->
+    <string name="understand_and_grant">理解并授权</string>
+    <string name="limited_function">受限使用</string>
+    <string name="description">去打他妈的广告</string>
+    <string name="menu_minimize">最小化</string>
 </resources>

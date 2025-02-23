@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.BROADCAST_STICKY" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <uses-permission android:name="android.permission.ACCESS_SUPERUSER"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission
+        android:name="android.permission.BATTERY_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <queries>
         <intent>
@@ -21,101 +22,86 @@
     </queries>
 
     <application
-            android:name=".application.XYApplication"
-            android:process=":main"
-            android:allowBackup="true"
-            android:icon="@mipmap/ic_launcher"
-            android:label="@string/app_name"
-            android:networkSecurityConfig="@xml/network_security_config"
-            android:roundIcon="@mipmap/ic_launcher_round"
-            android:supportsRtl="true"
-            android:isAccessibilityTool="true"
-            android:theme="@style/Theme.XYHook"
-            tools:ignore="UnusedAttribute">
+        android:name=".application.XYApplication"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.XYHook">
         <!-- 设置为 Xposed 模块 -->
         <meta-data
-                android:name="xposedmodule"
-                android:value="true"/>
+            android:name="xposedmodule"
+            android:value="true" />
         <meta-data
-                android:name="xposeddescription"
-                android:value="@string/description"/>
+            android:name="xposeddescription"
+            android:value="@string/description" />
         <meta-data
-                android:name="xposedminversion"
-                android:value="54"/>
+            android:name="xposedminversion"
+            android:value="90" />
         <meta-data
-                android:name="xposedscope"
-                android:resource="@array/xposed_scope" />
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
         <meta-data
             android:name="xposedsharedprefs"
-            android:value="true"/>
+            android:value="true" />
 
         <activity
-                android:name="com.hujiayucc.hook.ui.activity.MainActivity"
-                android:process=":MainActivity"
-                android:exported="true"
-                android:configChanges="uiMode"
-                android:launchMode="singleInstance"
-                android:screenOrientation="portrait"
-                android:windowSoftInputMode="stateHidden"
-                tools:ignore="LockedOrientationActivity">
+            android:name=".ui.activity.MainActivity"
+            android:configChanges="uiMode"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:windowSoftInputMode="stateHidden"
+            tools:ignore="Instantiatable">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS"/>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
             </intent-filter>
         </activity>
 
         <activity-alias
-                android:name="com.hujiayucc.hook.ui.activity.Home"
-                android:process=":MainActivity"
-                android:enabled="true"
-                android:exported="true"
-                android:configChanges="uiMode"
-                android:launchMode="singleInstance"
-                android:label="@string/app_name"
-                android:screenOrientation="portrait"
-                android:windowSoftInputMode="stateHidden"
-                android:targetActivity="com.hujiayucc.hook.ui.activity.MainActivity">
-
+            android:name=".ui.activity.Home"
+            android:configChanges="uiMode"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleInstance"
+            android:screenOrientation="portrait"
+            android:targetActivity=".ui.activity.MainActivity"
+            android:windowSoftInputMode="stateHidden"
+            tools:ignore="DiscouragedApi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
 
-        <service android:name=".service.SkipService"
-                 android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-                 android:process=":SkipService"
-                 android:exported="true"
-                 android:label="@string/accessibility_service_name"
-                 android:foregroundServiceType="dataSync"
-                 android:configChanges="density|fontScale|orientation|screenLayout|screenSize|smallestScreenSize">
+        <service
+            android:name=".service.ClickService"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="dataSync"
+            android:process=":click"
+            tools:ignore="ExportedService,ForegroundServicePermission">
             <intent-filter>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LAUNCHER" />
 
-                <action android:name="android.accessibilityservice.AccessibilityService" />
+                <action android:name="com.hujiayucc.hook.service.ClickService" />
             </intent-filter>
-            <meta-data
-                    android:name="android.accessibilityservice"
-                    android:resource="@xml/accessibility" />
-            <meta-data
-                    android:name="com.google.android.accessibilityservice.isAccessibilityTool"
-                    android:value="true" />
         </service>
 
-        <receiver android:name=".service.BootReceiver"
-                  android:process=":BootReceiver"
-                  android:exported="true">
+        <receiver
+            android:name=".service.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
-                <!-- 系统启动完成后会调用-->
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="com.hujiayucc.hook.service.SkipService" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.SCREEN_ON" />
+                <action android:name="android.intent.action.SCREEN_OFF" />
+                <action android:name="com.hujiayucc.hook.action.BOOT" />
             </intent-filter>
         </receiver>
-
-        <activity
-                android:name="com.yalantis.ucrop.UCropActivity"
-                android:screenOrientation="portrait"
-                android:theme="@style/Theme.XYHook"
-                tools:ignore="LockedOrientationActivity"/>
     </application>
 </manifest>

@@ -1,24 +1,29 @@
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
+
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.hujiayucc.hook"
     compileSdk = 35
 
+    androidResources.additionalParameters += listOf(
+        "--allow-reserved-package-id",
+        "--package-id",
+        "0x64"
+    )
+
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
-        minSdk = 26
-        //noinspection EditedTargetSdkVersion
+        minSdk = 31
         targetSdk = 35
-        versionCode = 6800
-        versionName = "1.3.8"
+        versionCode = 7000
+        versionName = "2.0"
 
-        buildConfigField("String", "SERVICE_NAME", "\"com.hujiayucc.hook.service.SkipService\"")
-        buildConfigField("String", "TAG", "\"Fuck AD\"")
-        buildConfigField("String", "CHANNEL_ID", "\"auto_skip1\"")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -27,7 +32,7 @@ android {
             // 开启资源压缩
             isShrinkResources = true
             // 版本后缀
-            versionNameSuffix = "-release"
+            versionNameSuffix = "-preview"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
 
@@ -36,7 +41,7 @@ android {
             // 开启资源压缩
             isShrinkResources = true
             // 版本后缀
-            versionNameSuffix = "-debug"
+            // versionNameSuffix = "-debug"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -50,12 +55,13 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
+        aidl = true
     }
     applicationVariants.all {
         outputs.all { output ->
             val baseName = "Fuck AD_$versionName"
             when (output) {
-                is com.android.build.gradle.internal.api.ApkVariantOutputImpl -> {
+                is ApkVariantOutputImpl -> {
                     output.outputFileName = "$baseName.apk"
                     true
                 }
@@ -66,20 +72,21 @@ android {
 }
 
 dependencies {
-    //noinspection GradleDependency
-    implementation("com.google.android.material:material:1.11.0")
-    // implementation("com.github.duanhong169:colorpicker:1.1.6")
-    implementation("com.squareup.okhttp3:okhttp:4.10.0")
-    //noinspection GradleDependency
-    implementation("androidx.activity:activity-ktx:1.3.1")
-    // implementation("androidx.fragment:fragment-ktx:1.3.6")
-    implementation("com.github.yalantis:ucrop:2.2.6")
-    implementation(project(":Author"))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.jackson.databind)
+    implementation(libs.rxjava)
+    implementation(libs.rxandroid)
 
     // 基础依赖
-    implementation("com.highcapable.yukihookapi:api:1.2.1")
+    implementation(libs.yuki.api)
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
-    compileOnly("de.robv.android.xposed:api:82")
+    compileOnly(libs.xposed.api)
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
-    ksp("com.highcapable.yukihookapi:ksp-xposed:1.2.1")
+    ksp(libs.ksp.xposed)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }
