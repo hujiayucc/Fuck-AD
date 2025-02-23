@@ -5,7 +5,7 @@
 
 # Fuck AD
 
-顾名思义，这是一个去广告的Xposed插件
+As the name implies, this is an ad-blocking Xposed module
 
 ---
 
@@ -19,7 +19,7 @@
 
 </div>
 
-### 开发组件
+### Development Components
 
 ---
 
@@ -28,7 +28,7 @@
 - [SwipeRefreshLayout](https://developer.android.com/reference/android/support/v4/widget/SwipeRefreshLayout.html)
 - ...
 
-### 目前支持
+### Currently Supported
 
 ---
 
@@ -38,7 +38,7 @@
 - 谷歌广告 测试应用： 老王VPN (成功去除)
 - 自动点击跳过
 
-### 附加适配
+### Additional Adaptations
 
 ---
 
@@ -47,11 +47,11 @@
 - 堆糖（开屏广告，应用内信息流广告）
 - 酷安 （信息流广告）
 
-### 捐赠支持
+### Donation Support
 
 ---
 
-#### 微信/支付宝/QQ
+#### WeChat/Alipay/QQ
 
 <div align="center" style="padding: 0">
 <img width="40%" src="https://raw.githubusercontent.com/Xposed-Modules-Repo/com.hujiayucc.hook/main/imgs/WeChat.png" alt="logo">
