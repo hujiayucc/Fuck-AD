@@ -2,63 +2,81 @@ package com.hujiayucc.hook.service
 
 import android.app.*
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.data.Data.ACTION
+import com.hujiayucc.hook.ui.activity.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.io.InputStream
 
 class ClickService : Service() {
+    private var isForeground = false
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var process: Process? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        startForeground(1, createNotification())
+        startForegroundServiceWithNotification()
     }
 
     private val binder = object : IClickService.Stub() {
         override fun click(activity: String, command: String?) {
-            createNotificationChannel()
-            startForeground(1, createNotification())
+            startForegroundServiceWithNotification()
             executeCommand(activity, command)
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = binder
+    override fun onBind(intent: Intent?): IBinder? {
+        if (!isForeground) startForegroundServiceWithNotification()
+        return binder
+    }
 
     override fun onDestroy() {
+        serviceScope.cancel()
+        process?.destroy()
+        process = null
         stopSelf()
         super.onDestroy()
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun executeCommand(activity: String, command: String?) {
-        val pattern = """Window\{.*?\su\d+\s(.*?)\}""".toRegex()
-        val currentActivity = pattern.find(currentActivity)?.groupValues?.get(1)
-        if (currentActivity?.contains(activity) == false) return
-        try {
-            process.outputStream.apply {
-                write("$command\n".toByteArray())
-                flush()
+        serviceScope.launch {
+            val pattern = """Window\{.*?\su\d+\s(.*?)\}""".toRegex()
+            val currentActivity = pattern.find(currentActivity)?.groupValues?.get(1)
+            if (currentActivity?.contains(activity) == false) return@launch
+            try {
+                process!!.outputStream.apply {
+                    write("$command\n".toByteArray())
+                    flush()
+                }
+                YLog.info("模拟点击 Activity: $activity 命令: $command")
+            } catch (e: Exception) {
+                YLog.error("命令执行失败", e)
             }
-            YLog.info("模拟点击 Activity: $activity 命令: $command")
-        } catch (e: Exception) {
-            YLog.error("命令执行失败", e)
         }
     }
 
     val currentActivity
         get() = try {
-            val available = process.inputStream.available().toLong()
-            process.inputStream.skipBytesCompat(available)
-            process.outputStream.apply {
+            val available = process!!.inputStream.available().toLong()
+            process!!.inputStream.skipBytesCompat(available)
+            process!!.outputStream.apply {
                 write("dumpsys activity | grep 'mCurrentFocus'\n".toByteArray())
                 flush()
             }
 
-            val reader = process.inputStream.bufferedReader()
+            val reader = process!!.inputStream.bufferedReader()
             val response = buildString {
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
@@ -87,6 +105,21 @@ class ClickService : Service() {
         }
     }
 
+    private fun startForegroundServiceWithNotification() {
+        if (isForeground) return
+        createNotificationChannel()
+        startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        process = Runtime.getRuntime().exec("su").apply {
+            Thread {
+                errorStream.copyTo(System.err)
+            }.apply {
+                isDaemon = true
+                start()
+            }
+        }
+        isForeground = true
+    }
+
     /** 创建通知渠道 */
     private fun createNotificationChannel() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -110,12 +143,10 @@ class ClickService : Service() {
 
     /** 创建常驻通知 */
     private fun createNotification(): Notification {
-        val notificationIntent = Intent(this, ClickService::class.java)
-        notificationIntent.action = ACTION
-        val pendingIntent = PendingIntent.getForegroundService(
+        val pendingIntent = PendingIntent.getActivity(
             this,
             0,
-            notificationIntent,
+            Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -129,7 +160,6 @@ class ClickService : Service() {
     }
 
     companion object {
-        private val process = Runtime.getRuntime().exec("su")
         const val CHANNEL_ID = "skip"
     }
 }
