@@ -1,36 +1,28 @@
 package com.hujiayucc.hook.service
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.app.*
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Data.ACTION
 import java.io.InputStream
 
 class ClickService : Service() {
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        createNotificationChannel()
-        refresh()
-        return START_STICKY
-    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onCreate() {
         super.onCreate()
-        refresh()
+        createNotificationChannel()
+        startForeground(1, createNotification())
     }
 
     private val binder = object : IClickService.Stub() {
         override fun click(activity: String, command: String?) {
             createNotificationChannel()
-            refresh()
+            startForeground(1, createNotification())
             executeCommand(activity, command)
         }
     }
@@ -134,22 +126,6 @@ class ClickService : Service() {
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
-    }
-
-    @SuppressLint("ForegroundServiceType")
-    fun refresh() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (NotificationManagerCompat.from(this).areNotificationsEnabled()) {
-                if (ActivityCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) return
-                NotificationManagerCompat.from(this).notify(1, createNotification())
-            }
-        } else {
-            startForeground(1, createNotification())
-        }
     }
 
     companion object {

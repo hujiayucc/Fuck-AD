@@ -1,8 +1,5 @@
 package com.hujiayucc.hook
 
-import android.annotation.SuppressLint
-import android.content.pm.ResolveInfo
-import android.content.pm.ServiceInfo
 import android.widget.Toast
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
@@ -27,9 +24,8 @@ class HookEntry : IYukiHookXposedInit {
         runModule()
     }
 
-    @SuppressLint("CheckResult")
     private fun PackageParam.runModule() {
-        onAppLifecycle(isOnFailureThrowToApp = true) {
+        onAppLifecycle(isOnFailureThrowToApp = false) {
             attachBaseContext { context, _ ->
                 YLog.debug("应用名：${context.appName} 包名：$packageName 版本名：${context.appVersionName} 版本号：${context.appVersionCode}")
                 if (config.isEmpty()) {
@@ -51,16 +47,6 @@ class HookEntry : IYukiHookXposedInit {
                     if (clickers.isNotEmpty()) loadHooker(Click(clickers))
                     if (hooks.isNotEmpty()) loadHooker(Hook(hooks))
                 }
-            }
-        }
-    }
-
-    private fun createFakeResolveInfo(): ResolveInfo {
-        return ResolveInfo().apply {
-            serviceInfo = ServiceInfo().apply {
-                packageName = "com.hujiayucc.hook"
-                name = "com.hujiayucc.hook.ClickService"
-                exported = true
             }
         }
     }
