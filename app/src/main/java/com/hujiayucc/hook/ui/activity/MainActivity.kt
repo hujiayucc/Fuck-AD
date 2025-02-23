@@ -7,6 +7,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,6 +20,7 @@ import android.view.View
 import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -47,7 +49,8 @@ class MainActivity : ModuleAppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             when {
                 granted -> startService()
-                !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) ->
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) ->
                     showPermissionSettingsGuide()
             }
         }
@@ -132,7 +135,9 @@ class MainActivity : ModuleAppCompatActivity() {
     }
 
     private fun checkNotificationPermission() {
-        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PERMISSION_GRANTED) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PERMISSION_GRANTED
+        ) {
             handleNotificationPermission()
         } else {
             startService()
@@ -154,6 +159,7 @@ class MainActivity : ModuleAppCompatActivity() {
         )
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun handleNotificationPermission() {
         when {
             shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) ->
@@ -163,6 +169,7 @@ class MainActivity : ModuleAppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun showRationaleWithDelay() {
         binding.root.postDelayed({
             MaterialAlertDialogBuilder(this)
@@ -314,7 +321,7 @@ class MainActivity : ModuleAppCompatActivity() {
         try {
             val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
             for (appTask in manager.appTasks) {
-                if (appTask.taskInfo.taskId == taskId) {
+                if (appTask.taskInfo.id == taskId) {
                     appTask.setExcludeFromRecents(exclude)
                 }
             }
