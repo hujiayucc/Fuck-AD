@@ -35,15 +35,6 @@ android {
             versionNameSuffix = "-preview"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
-
-        getByName("debug") {
-            isMinifyEnabled = true
-            // 开启资源压缩
-            isShrinkResources = true
-            // 版本后缀
-            // versionNameSuffix = "-debug"
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -55,7 +46,6 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
-        aidl = true
     }
     applicationVariants.all {
         outputs.all { output ->
@@ -78,6 +68,8 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.rxjava)
     implementation(libs.rxandroid)
+    implementation(libs.dexkit)
+    implementation(project(":FuckAD-Author"))
 
     // 基础依赖
     implementation(libs.yuki.api)
@@ -85,6 +77,8 @@ dependencies {
     compileOnly(libs.xposed.api)
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
     ksp(libs.ksp.xposed)
+
+    compileOnly(libs.ads.sdk.pro)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

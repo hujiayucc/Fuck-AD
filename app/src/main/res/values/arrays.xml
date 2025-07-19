@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="xposed_scope">
+        <item>info.muge.appshare</item>
         <item>com.duowan.kiwi</item>
+        <item>com.kmxs.reader</item>
         <item>tv.danmaku.bili</item>
+        <item>com.youdao.dict</item>
     </string-array>
 </resources>

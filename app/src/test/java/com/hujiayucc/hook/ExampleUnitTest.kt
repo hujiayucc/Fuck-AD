@@ -1,12 +1,8 @@
 package com.hujiayucc.hook
 
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.hujiayucc.hook.data.Clicker
-import com.hujiayucc.hook.data.Config
-import com.hujiayucc.hook.data.Data.mapper
+import com.fasterxml.jackson.databind.json.JsonMapper
 import com.hujiayucc.hook.data.Item
-import com.hujiayucc.hook.data.Rule
-import com.hujiayucc.hook.data.Type
 import org.junit.Test
 import java.io.File
 
@@ -18,99 +14,47 @@ import java.io.File
 class ExampleUnitTest {
     @Test
     fun addition_isCorrect() {
-        val config = Config(
-            version = 1,
-            rules = getRules()
-        )
-
+        val mapper = JsonMapper()
         mapper.enable(SerializationFeature.INDENT_OUTPUT)
-        val json = mapper.writeValueAsString(config)
+        val json = mapper.writeValueAsString(getRules())
         println("> Task :Preview JSON:\n$json")
         val file = File("src/main/assets/default.json")
         file.writeText(json, Charsets.UTF_8)
         println("> Task :Write to ${file.absolutePath}")
     }
 
-    private fun getRules(): ArrayList<Rule> {
-        return arrayListOf(
-            Rule(
-                name = "Fuck AD",
-                packageName = "com.hujiayucc.hook",
-                items = arrayListOf(
-                    Item(
-                        name = "测试",
-                        desc = "测试1",
-                        versionName = "2.0",
-                        versionCode = 7000,
-                        type = Type.CLICK,
-                        action = Clicker(
-                            activity = "com.hujiayucc.hook.ui.activity.Home",
-                            view = "0x${R.id.main_active_status.toString(16)}"
-                        )
-                    ),
-                    Item(
-                        name = "测试",
-                        desc = "测试2",
-                        versionName = "2.0",
-                        versionCode = 7000,
-                        type = Type.CLICK,
-                        action = Clicker(
-                            activity = "com.hujiayucc.hook.ui.activity.Home",
-                            sleep = 5000,
-                            view = "Activated"
-                        )
-                    )
-                )
+    private fun getRules(): List<Item> {
+        return listOf(
+            Item(
+                appName = "AppShare",
+                packageName = "info.muge.appshare",
+                action = "开屏广告",
+                versionList = listOf("4.0.4", "4.0.5")
             ),
-            Rule(
-                name = "虎牙直播",
+            Item(
+                appName = "虎牙直播",
                 packageName = "com.duowan.kiwi",
-                items = arrayListOf(
-                    Item(
-                        name = "启动页广告",
-                        desc = "虎牙直播启动页广告",
-                        versionName = "12.5.6",
-                        versionCode = 100135,
-                        type = Type.CLICK,
-                        action = Clicker(
-                            activity = "com.duowan.kiwi.homepage.Homepage",
-                            sleep = 0,
-                            view = "跳过"
-                        )
-                    ),
-                    Item(
-                        name = "首页广告",
-                        desc = "虎牙直播首页弹窗广告",
-                        versionName = "12.5.6",
-                        versionCode = 100135,
-                        type = Type.CLICK,
-                        action = Clicker(
-                            activity = "com.duowan.kiwi.homepage.Homepage",
-                            sleep = 0,
-                            view = "0x7f092eba"
-                        )
-                    )
-                )
+                action = "开屏广告",
+                versionList = listOf("15.5.72")
             ),
-            Rule(
-                name = "哔哩哔哩",
+            Item(
+                appName = "七猫免费小说",
+                packageName = "com.kmxs.reader",
+                action = "开屏广告",
+                versionList = listOf("7.67")
+            ),
+            Item(
+                appName = "哔哩哔哩",
                 packageName = "tv.danmaku.bili",
-                items = arrayListOf(
-                    Item(
-                        name = "启动页广告",
-                        desc = "哔哩哔哩启动页广告",
-                        versionName = "8.34.0",
-                        versionCode = 8340200,
-                        type = Type.CLICK,
-                        action = Clicker(
-                            activity = "tv.danmaku.bili.MainActivityV2",
-                            sleep = 0,
-                            view = "^跳过(.*)\\d",
-                            isRegex = true
-                        )
-                    )
-                )
-            )
+                action = "开屏广告",
+                versionList = listOf("8.40.0")
+            ),
+            Item(
+                appName = "网易有道词典",
+                packageName = "com.youdao.dict",
+                action = "开屏广告",
+                versionList = listOf("10.2.11")
+            ),
         )
     }
 }

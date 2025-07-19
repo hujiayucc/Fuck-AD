@@ -3,4 +3,12 @@
     <item
         android:id="@+id/menu_minimize"
         android:title="@string/menu_minimize" />
+    <item
+            android:id="@+id/menu_tk"
+            android:title="@string/menu_tk"
+            android:checkable="true" />
+    <item
+            android:id="@+id/menu_sdk"
+            android:title="@string/menu_sdk"
+            android:checkable="true" />
 </menu>

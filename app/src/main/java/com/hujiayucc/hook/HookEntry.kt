@@ -1,53 +1,94 @@
 package com.hujiayucc.hook
 
-import android.widget.Toast
+import android.app.Application
+import android.content.Context
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
+import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.highcapable.yukihookapi.hook.param.PackageParam
+import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
+import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
-import com.hujiayucc.hook.data.Action.Companion.toAction
-import com.hujiayucc.hook.data.Clicker
-import com.hujiayucc.hook.data.Config
-import com.hujiayucc.hook.data.Data.config
-import com.hujiayucc.hook.data.Data.mapper
-import com.hujiayucc.hook.data.Hooker
-import com.hujiayucc.hook.data.Type
-import com.hujiayucc.hook.utils.AppInfoUtil.appName
-import com.hujiayucc.hook.utils.AppInfoUtil.appVersionCode
-import com.hujiayucc.hook.utils.AppInfoUtil.appVersionName
+import com.hujiayucc.hook.data.Data.prefsData
+import com.hujiayucc.hook.hooker.AppShare
+import com.hujiayucc.hook.hooker.Bilibili
+import com.hujiayucc.hook.hooker.CoolApk
+import com.hujiayucc.hook.hooker.HuYa
+import com.hujiayucc.hook.hooker.KOOK
+import com.hujiayucc.hook.hooker.QiCat
+import com.hujiayucc.hook.hooker.Sdks
+import com.hujiayucc.hook.hooker.TK
+import com.hujiayucc.hook.hooker.YouDaoDict
 
 /** Hook入口 */
 @InjectYukiHookWithXposed
 class HookEntry : IYukiHookXposedInit {
-    override fun onHook() = YukiHookAPI.encase {
-        runModule()
+    companion object {
+        init {
+            System.loadLibrary("dexkit")
+        }
+
+        lateinit var classLoader: ClassLoader
     }
 
-    private fun PackageParam.runModule() {
-        onAppLifecycle(isOnFailureThrowToApp = false) {
-            attachBaseContext { context, _ ->
-                YLog.debug("应用名：${context.appName} 包名：$packageName 版本名：${context.appVersionName} 版本号：${context.appVersionCode}")
-                if (config.isEmpty()) {
-                    Toast.makeText(context, "模块配置加载失败", Toast.LENGTH_LONG).show()
-                } else if (isFirstApplication) {
-                    val config = mapper.readValue<Config>(config, Config::class.java)
-                    val clickers: ArrayList<Clicker> = arrayListOf()
-                    val hooks: ArrayList<Hooker> = arrayListOf()
-                    for (rule in config.rules) {
-                        if (rule.packageName == packageName) {
-                            for (item in rule.items) {
-                                when (item.type) {
-                                    Type.CLICK -> clickers.add(item.action.toAction<Clicker>())
-                                    Type.HOOK -> hooks.add(item.action.toAction<Hooker>())
-                                }
-                            }
-                        }
-                    }
-                    if (clickers.isNotEmpty()) loadHooker(Click(clickers))
-                    if (hooks.isNotEmpty()) loadHooker(Hook(hooks))
+    override fun onInit() = YukiHookAPI.configs {
+        debugLog {
+            tag = "Fuck AD"
+            isEnable = BuildConfig.DEBUG
+            isRecord = BuildConfig.DEBUG
+        }
+
+        isDebug = BuildConfig.DEBUG
+        isEnableModuleAppResourcesCache = true
+        isEnableDataChannel = false
+    }
+
+    override fun onHook() = YukiHookAPI.encase {
+        ApplicationClass.method { name = "attach" }
+            .hook {
+                after {
+                    appClassLoader = (args[0] as Context).classLoader
+                    classLoader = appClassLoader!!
+                    val context = instance<Application>()
+                    if (context.prefsData.getBoolean("tk")) loadHooker(TK(context))
+                    loadJGHooker(packageName)
                 }
             }
+        dispatchUncaughtException()
+        if (appContext?.prefsData?.getBoolean("sdk") == true) loadHooker(Sdks)
+        loadHooker()
+        loadJGHooker(packageName)
+    }
+
+    /** 拦截未处理的异常 */
+    private fun PackageParam.dispatchUncaughtException() {
+        ThreadClass.method { name = "dispatchUncaughtException" }
+            .hook {
+                replaceUnit {
+                    if (!BuildConfig.DEBUG) return@replaceUnit
+                    val param = args[0] as Throwable?
+                    param?.message?.let { YLog.error(it, param) }
+                }
+            }
+    }
+
+    /** 普通 Hook */
+    private fun PackageParam.loadHooker() {
+        when (packageName) {
+            "info.muge.appshare" -> loadHooker(AppShare)
+            "tv.danmaku.bili" -> loadHooker(Bilibili)
+            "com.duowan.kiwi" -> loadHooker(HuYa)
+            "com.kmxs.reader" -> loadHooker(QiCat)
+        }
+    }
+
+    /** 加固 Hook */
+    private fun PackageParam.loadJGHooker(packageName: String) {
+        when (packageName) {
+            "com.coolapk.market" -> loadHooker(CoolApk)
+            "cn.kaiheila" -> loadHooker(KOOK)
+            "com.youdao.dict" -> loadHooker(YouDaoDict)
         }
     }
 }

@@ -8,15 +8,9 @@
     <string name="build_time">Build Time: %1$s</string>
     <string name="search">搜索</string>
 
-    <!-- 通知权限 -->
-    <string name="notification_permission_title">需要通知权限</string>
-    <string name="notification_permission_message">此功能需要通知权限以：\n• 显示服务运行状态\n• 提醒重要事件\n• 提供操作反馈\n\n我们承诺绝不会发送推广内容</string>
-    <string name="grant">立即授权</string>
-    <string name="deny">暂不需要</string>
-
     <!-- 核心权限 -->
     <string name="essential_permission_title">需要应用列表权限</string>
-    <string name="essential_permission_message">此功能需要访问应用列表以：\n• 识别已安装应用\n• 显示可用规则\n• 确保功能正常运作\n\n我们承诺仅用于功能实现，不会收集隐私数据</string>
+    <string name="essential_permission_message">此功能需要访问应用列表以：\n • 识别已安装应用\n • 显示可用规则\n • 确保功能正常运作\n\n我们承诺仅用于功能实现，不会收集隐私数据</string>
 
     <!-- 权限拒绝提示 -->
     <string name="permission_denied_forever_title">权限被永久拒绝</string>
@@ -24,11 +18,10 @@
 
     <!-- 功能受限提示 -->
     <string name="function_limited_title">功能受限</string>
-    <string name="function_limited_message">未授予必要权限将导致：\n• 无法显示应用列表\n• 不能配置规则\n• 核心功能不可用</string>
+    <string name="function_limited_message">未授予必要权限将导致：\n • 无法显示应用列表\n • 不能配置规则\n • 核心功能不可用</string>
 
     <!-- 通用操作 -->
     <string name="open_settings">打开设置</string>
-    <string name="retry">重试</string>
     <string name="exit_app">退出应用</string>
     <string name="cancel">取消</string>
 
@@ -38,8 +31,11 @@
 
     <!-- 权限操作 -->
     <string name="understand_and_grant">理解并授权</string>
-    <string name="limited_function">受限使用</string>
     <string name="description">去打他妈的广告</string>
-    <string name="menu_minimize">最小化</string>
     <string name="open_fuck_ad">打开 Fuck AD</string>
+
+    <!-- 菜单 -->
+    <string name="menu_minimize">最小化</string>
+    <string name="menu_sdk">无差别禁用SDK</string>
+    <string name="menu_tk">脱壳</string>
 </resources>

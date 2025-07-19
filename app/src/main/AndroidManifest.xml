@@ -80,31 +80,5 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity-alias>
-
-        <service
-            android:name=".service.ClickService"
-            android:enabled="true"
-            android:exported="true"
-            android:foregroundServiceType="dataSync"
-            android:process=":click"
-            tools:ignore="ExportedService,ForegroundServicePermission">
-            <intent-filter>
-                <category android:name="android.intent.category.LAUNCHER" />
-
-                <action android:name="com.hujiayucc.hook.service.ClickService" />
-            </intent-filter>
-        </service>
-
-        <receiver
-            android:name=".service.BootReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.SCREEN_ON" />
-                <action android:name="android.intent.action.SCREEN_OFF" />
-                <action android:name="com.hujiayucc.hook.action.BOOT" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

@@ -18,8 +18,10 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://api.xposed.info/")
         maven("https://jitpack.io")
+        // 穿山甲广告
+        maven("https://artifact.bytedance.com/repository/pangle")
     }
 }
 
 rootProject.name = "R-Fuck AD"
-include(":app")
+include(":app", ":FuckAD-Author")
