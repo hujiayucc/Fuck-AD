@@ -10,6 +10,7 @@ import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
 import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
+import com.hujiayucc.hook.author.JwtUtils.isLogin
 import com.hujiayucc.hook.data.Data.prefsData
 import com.hujiayucc.hook.hooker.AppShare
 import com.hujiayucc.hook.hooker.Bilibili
@@ -45,6 +46,7 @@ class HookEntry : IYukiHookXposedInit {
     }
 
     override fun onHook() = YukiHookAPI.encase {
+        if (!prefs.isLogin()) return@encase
         ApplicationClass.method { name = "attach" }
             .hook {
                 after {
