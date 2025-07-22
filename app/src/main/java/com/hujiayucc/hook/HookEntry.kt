@@ -1,25 +1,21 @@
 package com.hujiayucc.hook
 
-import android.app.Application
 import android.content.Context
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
+import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
 import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
+import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.author.JwtUtils.isLogin
-import com.hujiayucc.hook.hooker.AppShare
-import com.hujiayucc.hook.hooker.Bilibili
-import com.hujiayucc.hook.hooker.CoolApk
 import com.hujiayucc.hook.hooker.DumpDex
-import com.hujiayucc.hook.hooker.HuYa
-import com.hujiayucc.hook.hooker.KOOK
-import com.hujiayucc.hook.hooker.QiCat
 import com.hujiayucc.hook.hooker.Sdks
-import com.hujiayucc.hook.hooker.YouDaoDict
+import org.luckypray.dexkit.DexKitBridge
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 /** Hook入口 */
 @InjectYukiHookWithXposed
@@ -28,8 +24,6 @@ class HookEntry : IYukiHookXposedInit {
         init {
             System.loadLibrary("dexkit")
         }
-
-        lateinit var classLoader: ClassLoader
     }
 
     override fun onInit() = YukiHookAPI.configs {
@@ -46,20 +40,41 @@ class HookEntry : IYukiHookXposedInit {
 
     override fun onHook() = YukiHookAPI.encase {
         if (!prefs.isLogin()) return@encase
-        ApplicationClass.method { name = "attach" }
-            .hook {
-                after {
-                    appClassLoader = (args[0] as Context).classLoader
-                    classLoader = appClassLoader!!
-                    val context = instance<Application>()
-                    if (prefs.getBoolean("dump_dex")) loadHooker(DumpDex(context))
-                    loadJGHooker(packageName)
+        val moduleClassLoader = this::class.java.classLoader
+        DexKitBridge.create(moduleAppFilePath).use { bridge ->
+            bridge.findClass {
+                searchPackages("com.hujiayucc.hook.hooker")
+                matcher {
+                    annotations {
+                        add {
+                            type = Run::class.java.name
+                            addElement {
+                                name = "packageName"
+                                stringValue(packageName, StringMatchType.Equals)
+                            }
+                        }
+                    }
                 }
+            }.forEach { data ->
+                val hooker = moduleClassLoader?.let { classLoader ->
+                    data.getInstance(classLoader).getDeclaredConstructor()
+                        ?.newInstance()
+                }
+                hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
+                ApplicationClass.method { name = "attach" }
+                    .hook {
+                        before {
+                            val context = args[0] as Context
+                            appClassLoader = context.classLoader
+                            if (prefs.getBoolean("sdk")) loadHooker(DumpDex(context))
+                            hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
+                        }
+                    }
             }
+        }
+
         if (prefs.getBoolean("exception")) dispatchUncaughtException()
         if (prefs.getBoolean("sdk")) loadHooker(Sdks)
-        loadHooker()
-        loadJGHooker(packageName)
     }
 
     /** 拦截未处理的异常 */
@@ -72,24 +87,5 @@ class HookEntry : IYukiHookXposedInit {
                     param?.message?.let { YLog.error(it, param) }
                 }
             }
-    }
-
-    /** 普通 Hook */
-    private fun PackageParam.loadHooker() {
-        when (packageName) {
-            "info.muge.appshare" -> loadHooker(AppShare)
-            "tv.danmaku.bili" -> loadHooker(Bilibili)
-            "com.duowan.kiwi" -> loadHooker(HuYa)
-            "com.kmxs.reader" -> loadHooker(QiCat)
-        }
-    }
-
-    /** 加固 Hook */
-    private fun PackageParam.loadJGHooker(packageName: String) {
-        when (packageName) {
-            "com.coolapk.market" -> loadHooker(CoolApk)
-            "cn.kaiheila" -> loadHooker(KOOK)
-            "com.youdao.dict" -> loadHooker(YouDaoDict)
-        }
     }
 }

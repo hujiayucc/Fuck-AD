@@ -2,13 +2,13 @@ package com.hujiayucc.hook.hooker
 
 import android.app.Activity
 import android.content.Intent
-import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
+import com.hujiayucc.hook.annotation.Run
 
-object AppShare : YukiBaseHooker() {
-    override fun onHook() {
-        YLog.debug("AppShare => 开始Hook")
+@Run("AppShare", "info.muge.appshare")
+object AppShare : Base() {
+    override fun onStart() {
         "info.muge.appshare.view.launch.LaunchActivity".toClass()
             .method { name = "initView" }.hook {
                 after {

@@ -30,7 +30,7 @@ import com.hujiayucc.hook.author.Author
 import com.hujiayucc.hook.data.Data
 import com.hujiayucc.hook.data.Data.prefsData
 import com.hujiayucc.hook.databinding.ActivityMainBinding
-import com.hujiayucc.hook.hooker.AppList
+import com.hujiayucc.hook.data.AppList
 import com.hujiayucc.hook.ui.adapter.AppListAdapter
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable

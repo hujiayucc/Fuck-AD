@@ -3,14 +3,14 @@ package com.hujiayucc.hook.hooker
 import android.os.Handler
 import android.os.Looper
 import android.view.View
-import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
+import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
-object Bilibili : YukiBaseHooker() {
-    override fun onHook() {
-        YLog.debug("哔哩哔哩 => 开始 Hook")
+@Run("哔哩哔哩", "tv.danmaku.bili")
+object Bilibili : Base() {
+    override fun onStart() {
         "tv.danmaku.bili.ui.splash.ad.page.FullImageSplash".toClassOrNull()
             ?.method { name = "ze" }
             ?.hook {

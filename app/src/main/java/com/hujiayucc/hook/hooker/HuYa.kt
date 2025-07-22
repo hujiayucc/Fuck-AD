@@ -2,14 +2,14 @@ package com.hujiayucc.hook.hooker
 
 import android.annotation.SuppressLint
 import android.view.View
-import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
+import com.hujiayucc.hook.annotation.Run
 
-object HuYa : YukiBaseHooker() {
+@Run("虎牙直播", "com.duowan.kiwi")
+object HuYa : Base() {
     @SuppressLint("ResourceType")
-    override fun onHook() {
-        YLog.debug("虎牙直播 => 开始Hook")
+    override fun onStart() {
         "com.duowan.kiwi.adsplash.view.AdSplashFragment".toClassOrNull()
             ?.method { name = "findViews" }
             ?.hook {
