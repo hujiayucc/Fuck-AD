@@ -36,6 +36,7 @@
 
     <!-- 菜单 -->
     <string name="menu_minimize">最小化</string>
-    <string name="menu_sdk">无差别禁用SDK</string>
-    <string name="menu_tk">脱壳</string>
+    <string name="menu_sdk">禁用SDK</string>
+    <string name="menu_dump_dex">导出Dex</string>
+    <string name="menu_exception">拦截异常</string>
 </resources>

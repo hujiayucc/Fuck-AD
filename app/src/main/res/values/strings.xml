@@ -1,5 +1,5 @@
 <resources>
-    <!-- 基础信息 -->
+    <!-- Basic info -->
     <string name="app_name">Fuck AD</string>
     <string name="not_active">Not Active</string>
     <string name="main_framework">Framework: %1$s %2$s</string>
@@ -8,34 +8,35 @@
     <string name="build_time">Build Time: %1$s</string>
     <string name="search">Search</string>
 
-    <!-- 核心权限 -->
+    <!-- Core permission -->
     <string name="essential_permission_title">Application list permission is required</string>
     <string name="essential_permission_message">This feature requires access to the app list to:\n • Identify installed apps \n• Display available rules\n • Ensure proper functionality \n\nWe promise to use it only for feature implementation and will not collect private data</string>
 
-    <!-- 权限拒绝提示 -->
+    <!-- Permission refusal tip -->
     <string name="permission_denied_forever_title">Permission permanently denied</string>
     <string name="permission_denied_forever_message">Please manually enable permissions in the settings: \n Settings → Application → This Application → Special Permissions</string>
 
-    <!-- 功能受限提示 -->
+    <!-- Function restriction tip -->
     <string name="function_limited_title">Limited functionality</string>
     <string name="function_limited_message">Failure to grant necessary permissions will result in:\n • inability to display application list\n • inability to configure rules\n • unavailability of core features</string>
 
-    <!-- 通用操作 -->
+    <!-- General operation-->
     <string name="open_settings">Open Settings</string>
     <string name="exit_app">Exit App</string>
     <string name="cancel">Cancel</string>
 
-    <!-- 错误提示 -->
+    <!-- Error tip -->
     <string name="data_load_failed">Configuration loading failed: %1$s</string>
     <string name="settings_open_failed">Unable to open system settings</string>
 
-    <!-- 权限操作 -->
+    <!-- Permission operation -->
     <string name="understand_and_grant">Understand and grant</string>
     <string name="description">Fuck AD</string>
     <string name="open_fuck_ad">Open Fuck AD</string>
 
-    <!-- 菜单 -->
+    <!-- Menu -->
     <string name="menu_minimize">Minimize</string>
     <string name="menu_sdk">Disable all SDK</string>
-    <string name="menu_tk">Dump dex</string>
+    <string name="menu_dump_dex">Dump dex</string>
+    <string name="menu_exception">Intercept exceptions</string>
 </resources>

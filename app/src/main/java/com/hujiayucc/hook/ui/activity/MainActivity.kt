@@ -215,8 +215,9 @@ class MainActivity : ModuleAppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        menu?.findItem(R.id.menu_tk)?.isChecked = prefsData.getBoolean("tk", false)
+        menu?.findItem(R.id.menu_dump_dex)?.isChecked = prefsData.getBoolean("dump_dex", false)
         menu?.findItem(R.id.menu_sdk)?.isChecked = prefsData.getBoolean("sdk", false)
+        menu?.findItem(R.id.menu_exception)?.isChecked = prefsData.getBoolean("exception", false)
         return true
     }
 
@@ -230,14 +231,20 @@ class MainActivity : ModuleAppCompatActivity() {
                 true
             }
 
-            R.id.menu_tk -> {
-                prefsData.edit().putBoolean("tk", !item.isChecked).apply()
+            R.id.menu_dump_dex -> {
+                prefsData.edit().putBoolean("dump_dex", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
 
             R.id.menu_sdk -> {
                 prefsData.edit().putBoolean("sdk", !item.isChecked).apply()
+                item.isChecked = !item.isChecked
+                true
+            }
+
+            R.id.menu_exception -> {
+                prefsData.edit().putBoolean("exception", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }

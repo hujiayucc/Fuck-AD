@@ -4,11 +4,16 @@
         android:id="@+id/menu_minimize"
         android:title="@string/menu_minimize" />
     <item
-            android:id="@+id/menu_tk"
-            android:title="@string/menu_tk"
+            android:id="@+id/menu_dump_dex"
+            android:title="@string/menu_dump_dex"
             android:checkable="true" />
     <item
             android:id="@+id/menu_sdk"
             android:title="@string/menu_sdk"
+            android:checkable="true" />
+
+    <item
+            android:id="@+id/menu_exception"
+            android:title="@string/menu_exception"
             android:checkable="true" />
 </menu>

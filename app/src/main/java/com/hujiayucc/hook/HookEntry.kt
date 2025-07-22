@@ -11,15 +11,14 @@ import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
 import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.author.JwtUtils.isLogin
-import com.hujiayucc.hook.data.Data.prefsData
 import com.hujiayucc.hook.hooker.AppShare
 import com.hujiayucc.hook.hooker.Bilibili
 import com.hujiayucc.hook.hooker.CoolApk
+import com.hujiayucc.hook.hooker.DumpDex
 import com.hujiayucc.hook.hooker.HuYa
 import com.hujiayucc.hook.hooker.KOOK
 import com.hujiayucc.hook.hooker.QiCat
 import com.hujiayucc.hook.hooker.Sdks
-import com.hujiayucc.hook.hooker.TK
 import com.hujiayucc.hook.hooker.YouDaoDict
 
 /** Hook入口 */
@@ -53,12 +52,12 @@ class HookEntry : IYukiHookXposedInit {
                     appClassLoader = (args[0] as Context).classLoader
                     classLoader = appClassLoader!!
                     val context = instance<Application>()
-                    if (context.prefsData.getBoolean("tk")) loadHooker(TK(context))
+                    if (prefs.getBoolean("dump_dex")) loadHooker(DumpDex(context))
                     loadJGHooker(packageName)
                 }
             }
-        dispatchUncaughtException()
-        if (appContext?.prefsData?.getBoolean("sdk") == true) loadHooker(Sdks)
+        if (prefs.getBoolean("exception")) dispatchUncaughtException()
+        if (prefs.getBoolean("sdk")) loadHooker(Sdks)
         loadHooker()
         loadJGHooker(packageName)
     }

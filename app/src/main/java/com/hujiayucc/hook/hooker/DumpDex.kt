@@ -7,7 +7,7 @@ import com.hujiayucc.hook.HookEntry.Companion.classLoader
 import org.luckypray.dexkit.DexKitBridge
 import java.io.File
 
-class TK(private val context: Context) : YukiBaseHooker() {
+class DumpDex(private val context: Context) : YukiBaseHooker() {
 
     override fun onHook() {
         val path = context.externalCacheDir?.absolutePath?.replace("/cache", "/Fuck AD") ?: ""
