@@ -1,6 +1,5 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.data
 
 import com.fasterxml.jackson.core.type.TypeReference
-import com.hujiayucc.hook.data.Item
 
 object ItemTypeReference : TypeReference<List<Item>>()

@@ -1,7 +1,6 @@
 [versions]
 adsSdkPro = "6.8.2.0"
 agp = "8.8.2"
-bcpkixJdk18on = "1.77"
 dexkit = "2.0.4"
 jacksonDatabind = "2.19.1"
 jjwt = "0.12.5"
@@ -22,8 +21,6 @@ ksp = "2.0.10-1.0.24"
 [libraries]
 ads-sdk-pro = { module = "com.pangle.cn:ads-sdk-pro", version.ref = "adsSdkPro" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-bcpkix-jdk18on = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bcpkixJdk18on" }
-bcprov-jdk18on = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bcpkixJdk18on" }
 dexkit = { module = "org.luckypray:dexkit", version.ref = "dexkit" }
 jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
 jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
