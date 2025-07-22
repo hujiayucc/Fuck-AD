@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.data
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -7,7 +7,6 @@ import android.graphics.drawable.Drawable
 import android.icu.text.Collator
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.data.Item
 import java.util.Locale
 
 class AppList(
