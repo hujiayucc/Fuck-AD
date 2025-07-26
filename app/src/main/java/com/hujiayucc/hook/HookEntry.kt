@@ -5,6 +5,7 @@ import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.highcapable.yukihookapi.hook.param.PackageParam
 import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
@@ -14,6 +15,7 @@ import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.author.JwtUtils.isLogin
 import com.hujiayucc.hook.hooker.DumpDex
 import com.hujiayucc.hook.hooker.Sdks
+import de.robv.android.xposed.XposedHelpers
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
 
@@ -39,7 +41,21 @@ class HookEntry : IYukiHookXposedInit {
     }
 
     override fun onHook() = YukiHookAPI.encase {
-        if (!prefs.isLogin()) return@encase
+        if (packageName == BuildConfig.APPLICATION_ID) {
+            "com.hujiayucc.hook.ui.activity.MainActivity".toClass()
+                .method { name = "onCreate" }
+                .hook {
+                    after {
+                        XposedHelpers.callMethod(
+                            instance,
+                            "updateFrameworkStatus",
+                            YukiHookAPI.Status.Executor.name,
+                            YukiHookAPI.Status.Executor.apiLevel
+                        )
+                    }
+                }
+        }
+        if (appContext?.prefs()?.isLogin() == false) return@encase
         val moduleClassLoader = this::class.java.classLoader
         DexKitBridge.create(moduleAppFilePath).use { bridge ->
             bridge.findClass {
@@ -66,15 +82,19 @@ class HookEntry : IYukiHookXposedInit {
                         before {
                             val context = args[0] as Context
                             appClassLoader = context.classLoader
-                            if (prefs.getBoolean("sdk")) loadHooker(DumpDex(context))
+                            if (appContext?.prefs()?.getBoolean("sdk") == true) loadHooker(
+                                DumpDex(
+                                    context
+                                )
+                            )
                             hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
                         }
                     }
             }
         }
 
-        if (prefs.getBoolean("exception")) dispatchUncaughtException()
-        if (prefs.getBoolean("sdk")) loadHooker(Sdks)
+        if (appContext?.prefs()?.getBoolean("exception") == true) dispatchUncaughtException()
+        if (appContext?.prefs()?.getBoolean("sdk") == true) loadHooker(Sdks)
     }
 
     /** 拦截未处理的异常 */

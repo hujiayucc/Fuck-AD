@@ -1,10 +1,12 @@
 package com.hujiayucc.hook.ui.activity
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.icu.text.SimpleDateFormat
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -22,20 +24,20 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.highcapable.yukihookapi.YukiHookAPI
+import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.base.ModuleAppCompatActivity
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Author
-import com.hujiayucc.hook.data.AppList
-import com.hujiayucc.hook.data.Data
-import com.hujiayucc.hook.data.Data.prefsData
 import com.hujiayucc.hook.databinding.ActivityMainBinding
+import com.hujiayucc.hook.data.AppList
 import com.hujiayucc.hook.ui.adapter.AppListAdapter
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import java.util.Date
 import kotlin.system.exitProcess
 
 class MainActivity : ModuleAppCompatActivity() {
@@ -64,6 +66,7 @@ class MainActivity : ModuleAppCompatActivity() {
         checkPermissions()
     }
 
+    @SuppressLint("SimpleDateFormat")
     private fun initializeUI() {
         setSupportActionBar(binding.toolbar)
         with(binding) {
@@ -75,10 +78,12 @@ class MainActivity : ModuleAppCompatActivity() {
                 BuildConfig.VERSION_NAME,
                 BuildConfig.VERSION_CODE
             )
-            mainDate.text = getString(R.string.build_time, Data.buildTime)
+            mainDate.text = getString(
+                R.string.build_time, SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    .format(Date(YukiHookAPI.Status.compiledTimestamp))
+            )
             listView = appList
         }
-        updateFrameworkStatus()
     }
 
     private fun setupClickListeners() {
@@ -90,17 +95,12 @@ class MainActivity : ModuleAppCompatActivity() {
         }
     }
 
-    private fun updateFrameworkStatus() {
-        if (YukiHookAPI.Status.isModuleActive) {
-            with(binding) {
-                mainImgStatus.setImageResource(R.drawable.ic_success)
-                mainStatus.text = getString(R.string.is_active)
-                mainFramework.visibility = View.VISIBLE
-                mainFramework.text = getString(R.string.main_framework).format(
-                    YukiHookAPI.Status.Executor.name,
-                    "API ${YukiHookAPI.Status.Executor.apiLevel}"
-                )
-            }
+    private fun updateFrameworkStatus(name: String, apiLevel: Int) {
+        with(binding) {
+            mainImgStatus.setImageResource(R.drawable.ic_success)
+            mainStatus.text = getString(R.string.is_active)
+            mainFramework.visibility = View.VISIBLE
+            mainFramework.text = getString(R.string.main_framework).format(name, "API $apiLevel")
         }
         setupClickListeners()
     }
@@ -215,9 +215,9 @@ class MainActivity : ModuleAppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        menu?.findItem(R.id.menu_dump_dex)?.isChecked = prefsData.getBoolean("dump_dex", false)
-        menu?.findItem(R.id.menu_sdk)?.isChecked = prefsData.getBoolean("sdk", false)
-        menu?.findItem(R.id.menu_exception)?.isChecked = prefsData.getBoolean("exception", false)
+        menu?.findItem(R.id.menu_dump_dex)?.isChecked = prefs().getBoolean("dump_dex", false)
+        menu?.findItem(R.id.menu_sdk)?.isChecked = prefs().getBoolean("sdk", false)
+        menu?.findItem(R.id.menu_exception)?.isChecked = prefs().getBoolean("exception", false)
         return true
     }
 
@@ -237,19 +237,19 @@ class MainActivity : ModuleAppCompatActivity() {
             }
 
             R.id.menu_dump_dex -> {
-                prefsData.edit().putBoolean("dump_dex", !item.isChecked).apply()
+                prefs().edit().putBoolean("dump_dex", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
 
             R.id.menu_sdk -> {
-                prefsData.edit().putBoolean("sdk", !item.isChecked).apply()
+                prefs().edit().putBoolean("sdk", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
 
             R.id.menu_exception -> {
-                prefsData.edit().putBoolean("exception", !item.isChecked).apply()
+                prefs().edit().putBoolean("exception", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
