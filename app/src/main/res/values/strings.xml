@@ -39,4 +39,5 @@
     <string name="menu_sdk">Disable all SDK</string>
     <string name="menu_dump_dex">Dump dex</string>
     <string name="menu_exception">Intercept exceptions</string>
+    <string name="menu_logout">Logout</string>
 </resources>

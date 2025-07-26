@@ -4,6 +4,9 @@
         android:id="@+id/menu_minimize"
         android:title="@string/menu_minimize" />
     <item
+            android:id="@+id/menu_logout"
+            android:title="@string/menu_logout" />
+    <item
             android:id="@+id/menu_dump_dex"
             android:title="@string/menu_dump_dex"
             android:checkable="true" />
