@@ -20,8 +20,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 33
         targetSdk = 35
-        versionCode = 7000
-        versionName = "2.0.1"
+        versionCode = 8000
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -32,7 +32,7 @@ android {
             // 开启资源压缩
             isShrinkResources = true
             // 版本后缀
-            versionNameSuffix = "-preview"
+            versionNameSuffix = "-release"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
