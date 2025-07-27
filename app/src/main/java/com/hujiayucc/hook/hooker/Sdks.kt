@@ -37,9 +37,9 @@ object Sdks : YukiBaseHooker() {
                 }
             }
 
-        "android.view.View.DeclaredOnClickListener".toClass()
-            .method { name = "onClick" }
-            .hook {
+        "android.view.View.DeclaredOnClickListener".toClassOrNull()
+            ?.method { name = "onClick" }
+            ?.hook {
                 before {
                     val view = instance as View
                     val id = view.id

@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.hooker
 
 import android.content.Context
+import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
@@ -26,8 +27,8 @@ class DumpDex(private val context: Context) : YukiBaseHooker() {
     }
 
     private fun showToast(text: String) {
-        Looper.prepare()
-        Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-        Looper.loop()
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        }
     }
 }
