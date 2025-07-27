@@ -45,6 +45,7 @@ class MainActivity : ModuleAppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var listView: ListView
     private val disposables = CompositeDisposable()
+    private lateinit var author: Author
 
     private val allAppPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -58,12 +59,14 @@ class MainActivity : ModuleAppCompatActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Author(this, true)
+        author = Author(this, true)
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initializeUI()
+        setupClickListeners()
         checkPermissions()
+        author.check(binding.mainActiveStatus, binding.mainStatus, BuildConfig.VERSION_CODE)
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -88,10 +91,14 @@ class MainActivity : ModuleAppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.mainActiveStatus.setOnClickListener {
-            Toast.makeText(this, "Active Status", Toast.LENGTH_SHORT).show()
-        }
-        binding.mainStatus.setOnClickListener {
-            Toast.makeText(this, "Module Status", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.check_version_update), Toast.LENGTH_SHORT)
+                .show()
+            author.check(
+                binding.mainActiveStatus,
+                binding.mainStatus,
+                BuildConfig.VERSION_CODE,
+                true
+            )
         }
     }
 
@@ -102,7 +109,7 @@ class MainActivity : ModuleAppCompatActivity() {
             mainFramework.visibility = View.VISIBLE
             mainFramework.text = getString(R.string.main_framework).format(name, "API $apiLevel")
         }
-        setupClickListeners()
+        author.check(binding.mainActiveStatus, binding.mainStatus, BuildConfig.VERSION_CODE)
     }
 
     private fun checkPermissions() {

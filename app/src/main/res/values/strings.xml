@@ -40,4 +40,5 @@
     <string name="menu_dump_dex">Dump dex</string>
     <string name="menu_exception">Intercept exceptions</string>
     <string name="menu_logout">Logout</string>
+    <string name="check_version_update">Check version update...</string>
 </resources>
