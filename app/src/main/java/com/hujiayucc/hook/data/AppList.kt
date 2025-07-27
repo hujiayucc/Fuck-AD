@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable
 import android.icu.text.Collator
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.utils.AnnotationScanner
 import java.util.Locale
 
 class AppList(

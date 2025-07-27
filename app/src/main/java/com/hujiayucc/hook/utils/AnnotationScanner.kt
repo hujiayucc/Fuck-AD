@@ -1,18 +1,10 @@
-package com.hujiayucc.hook.data;
+package com.hujiayucc.hook.utils
 
-import android.content.Context;
+import android.content.Context
+import dalvik.system.DexFile
+import java.io.IOException
 
-import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.Set;
-
-import dalvik.system.DexFile;
-
-public class AnnotationScanner {
-
+object AnnotationScanner {
     /**
      * 扫描指定包名下包含特定注解的类
      *
@@ -21,52 +13,44 @@ public class AnnotationScanner {
      * @param annotationClass 要查找的注解类型（如：Annotation.class或Annotation::class.java）
      * @return 包含注解的类集合（Class对象）
      */
-    public static Set<Class<?>> scanClassesWithAnnotation(
-            Context context,
-            String targetPackage,
-            Class<? extends Annotation> annotationClass
-    ) {
-        Set<Class<?>> result = new HashSet<>();
+    fun scanClassesWithAnnotation(
+        context: Context,
+        targetPackage: String,
+        annotationClass: Class<out Annotation>
+    ): Set<Class<*>> {
+        val result: MutableSet<Class<*>> = HashSet()
         try {
-            // 1. 获取当前应用的ClassLoader
-            ClassLoader classLoader = context.getClassLoader();
+            val classLoader = context.classLoader
 
-            // 2. 获取APK文件路径并加载Dex文件
-            String apkPath = context.getApplicationInfo().sourceDir;
-            DexFile dexFile = DexFile.loadDex(apkPath, null, 0);
+            val apkPath = context.applicationInfo.sourceDir
+            val dexFile = DexFile.loadDex(apkPath, null, 0)
 
-            // 3. 遍历Dex文件中的所有类名
-            Enumeration<String> entries = dexFile.entries();
+            val entries = dexFile.entries()
             while (entries.hasMoreElements()) {
-                String className = entries.nextElement();
+                val className = entries.nextElement()
 
-                // 4. 过滤目标包名下的类
-                if (!className.startsWith(targetPackage)) continue;
+                if (!className.startsWith(targetPackage)) continue
 
                 try {
-                    // 5. 加载类对象（不初始化）
-                    Class<?> clazz = Class.forName(className, false, classLoader);
+                    val clazz = Class.forName(className, false, classLoader)
 
-                    // 6. 检查类是否包含指定注解
                     if (clazz.isAnnotationPresent(annotationClass)) {
-                        result.add(clazz);
+                        result.add(clazz)
                     }
 
-                    // 7. 检查构造函数的注解
-                    for (Constructor<?> constructor : clazz.getDeclaredConstructors()) {
+                    for (constructor in clazz.declaredConstructors) {
                         if (constructor.isAnnotationPresent(annotationClass)) {
-                            result.add(clazz);
-                            break; // 避免重复添加
+                            result.add(clazz)
+                            break
                         }
                     }
-                } catch (ClassNotFoundException | NoClassDefFoundError e) {
-                    // 忽略加载失败的类
+                } catch (_: Exception) {
                 }
             }
-            dexFile.close();
-        } catch (IOException e) {
-            throw new RuntimeException("Dex文件扫描失败", e);
+            dexFile.close()
+        } catch (e: IOException) {
+            throw RuntimeException("Dex文件扫描失败", e)
         }
-        return result;
+        return result
     }
 }
