@@ -1,7 +1,10 @@
 package com.hujiayucc.hook.utils
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageInfo
+import android.view.View
 
 object AppInfoUtil {
     /** 获取版本名 */
@@ -17,7 +20,10 @@ object AppInfoUtil {
     val Context.appIcon get() = packageInfo.applicationInfo?.loadIcon(packageManager)
 
     /** 获取应用列表 */
-    val Context.allApps get() = packageManager.getInstalledPackages(0)
+    private val Context.allApps: MutableList<PackageInfo>
+        get() = packageManager.getInstalledPackages(
+            0
+        )
 
     /** 获取版本名 */
     fun Context.appVersionName(packageName: String) = packageInfo(packageName).versionName
@@ -56,4 +62,27 @@ object AppInfoUtil {
     private val Context.packageInfo get() = packageManager.getPackageInfo(packageName, 0)
     private fun Context.packageInfo(packageName: String) =
         packageManager.getPackageInfo(packageName, 0)
+
+    fun getResourceName(view: View, id: Int): String {
+        return try {
+            if (id != View.NO_ID) view.resources.getResourceName(id) else "no_id"
+        } catch (e: Exception) {
+            "unknown"
+        }
+    }
+
+    fun getActivityFromView(view: View): Activity? {
+        var context: Context? = view.context
+
+        // 遍历上下文链寻找 Activity
+        while (context != null) {
+            when (context) {
+                is Activity -> return context
+                is ContextWrapper -> context = context.baseContext
+                else -> "Unknown: ${context::class.java.name}"
+            }
+        }
+
+        return null
+    }
 }

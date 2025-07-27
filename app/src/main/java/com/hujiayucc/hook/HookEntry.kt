@@ -84,7 +84,7 @@ class HookEntry : IYukiHookXposedInit {
                         before {
                             val context = args[0] as Context
                             appClassLoader = context.classLoader
-                            if (appContext?.prefs()?.getBoolean("sdk") == true) loadHooker(
+                            if (prefs.getBoolean("sdk")) loadHooker(
                                 DumpDex(
                                     context
                                 )
@@ -96,8 +96,8 @@ class HookEntry : IYukiHookXposedInit {
             bridge.close()
         }
 
-        if (appContext?.prefs()?.getBoolean("exception") == true) dispatchUncaughtException()
-        if (appContext?.prefs()?.getBoolean("sdk") == true) loadHooker(Sdks)
+        if (prefs.getBoolean("exception")) dispatchUncaughtException()
+        if (prefs.getBoolean("sdk")) loadHooker(Sdks)
     }
 
     /** 拦截未处理的异常 */
