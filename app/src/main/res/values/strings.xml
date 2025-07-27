@@ -36,9 +36,9 @@
 
     <!-- Menu -->
     <string name="menu_minimize">Minimize</string>
-    <string name="menu_sdk">Disable all SDK</string>
+    <string name="menu_out_info">Print Click Info</string>
     <string name="menu_dump_dex">Dump dex</string>
     <string name="menu_exception">Intercept exceptions</string>
     <string name="menu_logout">Logout</string>
-    <string name="check_version_update">Check version update...</string>
+    <string name="check_version_update">Check version update…</string>
 </resources>
