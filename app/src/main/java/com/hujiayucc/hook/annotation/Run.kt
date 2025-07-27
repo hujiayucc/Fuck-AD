@@ -9,6 +9,8 @@ annotation class Run(
     val appName: String = "",
     /** 包名 */
     val packageName: String,
+    /** 启动动作 */
+    val action: String,
     /** 适配版本，留空为通用 */
     val versions: Array<String> = []
 )

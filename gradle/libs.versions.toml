@@ -2,7 +2,6 @@
 adsSdkPro = "6.8.2.0"
 agp = "8.8.2"
 dexkit = "2.0.4"
-jacksonDatabind = "2.19.1"
 jjwt = "0.12.5"
 kotlin = "2.0.10"
 coreKtx = "1.16.0"
@@ -27,7 +26,6 @@ jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
 jjwt-orgjson = { module = "io.jsonwebtoken:jjwt-orgjson", version.ref = "jjwt" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version.ref = "rxandroid" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jacksonDatabind" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

@@ -8,7 +8,7 @@ import com.highcapable.yukihookapi.hook.log.YLog
 import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
-@Run("哔哩哔哩", "tv.danmaku.bili")
+@Run("哔哩哔哩", "tv.danmaku.bili", "开屏广告")
 object Bilibili : Base() {
     override fun onStart() {
         "tv.danmaku.bili.ui.splash.ad.page.FullImageSplash".toClassOrNull()

@@ -5,7 +5,7 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
-@Run("七猫免费小说", "com.kmxs.reader")
+@Run("七猫免费小说", "com.kmxs.reader", "开屏广告")
 object QiCat : Base() {
     override fun onStart() {
         "com.qimao.qmad.qmsdk.splash.SplashAdFragmentNew".toClassOrNull()

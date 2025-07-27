@@ -25,16 +25,7 @@ class AppListAdapter(private val appList: List<Item>) : BaseAdapter() {
         }
 
         val rule = getItem(position)
-        var version = "["
-        rule.versionList.forEach {
-            version += "$it, "
-        }
-        version = if (version.endsWith(", ")) {
-            version.substring(0, version.length - 2)
-        } else {
-            version
-        }
-        version += "]"
+        val version = if (rule.versions.isNotEmpty()) rule.versions.contentToString() else "通用"
         binding.apply {
             appIcon.setImageDrawable(rule.appIcon)
             appName.text = rule.appName

@@ -30,8 +30,8 @@ import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.base.ModuleApp
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Author
-import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.data.AppList
+import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable

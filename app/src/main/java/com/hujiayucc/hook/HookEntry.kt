@@ -54,9 +54,11 @@ class HookEntry : IYukiHookXposedInit {
                         )
                     }
                 }
+            return@encase
         }
         if (appContext?.prefs()?.isLogin() == false) return@encase
         val moduleClassLoader = this::class.java.classLoader
+
         DexKitBridge.create(moduleAppFilePath).use { bridge ->
             bridge.findClass {
                 searchPackages("com.hujiayucc.hook.hooker")
@@ -91,6 +93,7 @@ class HookEntry : IYukiHookXposedInit {
                         }
                     }
             }
+            bridge.close()
         }
 
         if (appContext?.prefs()?.getBoolean("exception") == true) dispatchUncaughtException()

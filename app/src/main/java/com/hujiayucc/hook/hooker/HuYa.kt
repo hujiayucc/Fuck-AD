@@ -6,7 +6,7 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.hujiayucc.hook.annotation.Run
 
-@Run("虎牙直播", "com.duowan.kiwi")
+@Run("虎牙直播", "com.duowan.kiwi", "开屏广告")
 object HuYa : Base() {
     @SuppressLint("ResourceType")
     override fun onStart() {

@@ -5,7 +5,8 @@ import com.hujiayucc.hook.annotation.Run
 
 @Run(
     "网易有道云词典",
-    "com.youdao.dict"
+    "com.youdao.dict",
+    "开屏广告"
 )
 object YouDaoDict : Base() {
     override fun onStart() {
