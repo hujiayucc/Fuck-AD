@@ -10,16 +10,17 @@ abstract class Base : YukiBaseHooker() {
         val versions = this::class.java.annotations.filterIsInstance<Run>().first().versions
         val appName = this::class.java.annotations.filterIsInstance<Run>().first().appName
         val action = this::class.java.annotations.filterIsInstance<Run>().first().action
-        YLog.debug("Hook Start: $appName")
-        if (versions.isNotEmpty() && !versions.contains(appContext?.appVersionName)) {
+        if (versions.isNotEmpty() && !versions.contains(versionName)) {
             YLog.error("Hook Failed: $appName")
-            YLog.error("Current Version: ${appContext?.appVersionName}")
-            YLog.error("Not Support Version: ${versions.contentToString()}")
+            YLog.error("Current Version: $versionName")
+            YLog.error("Support Version: ${versions.contentToString()}")
         } else {
             YLog.debug("$appName => $action")
             onStart()
         }
     }
+
+    protected val versionName get() = systemContext.appVersionName(packageName)
 
     abstract fun onStart()
 }
