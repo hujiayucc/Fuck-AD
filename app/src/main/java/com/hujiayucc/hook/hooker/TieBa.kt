@@ -9,7 +9,7 @@ import com.hujiayucc.hook.annotation.Run
 @Run(
     "百度贴吧",
     "com.baidu.tieba",
-    "开屏广告",
+    "开屏广告, 信息流广告",
     [
         "12.86.1.0"
     ]
