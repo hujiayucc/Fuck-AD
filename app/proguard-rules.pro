@@ -1,9 +1,5 @@
 -dontobfuscate
--keep class com.hujiayucc.hook.HookEntry** { *; }
--keep class com.hujiayucc.hook.data.Item { *; }
--keep class com.hujiayucc.hook.data.AppList { *; }
--keep class com.hujiayucc.hook.data.ItemTypeReference { *; }
-
+-keep class com.hujiayucc.hook.** { *; }
 -keep class com.highcapable.yukihookapi.** { *; }
 
 -dontwarn **
