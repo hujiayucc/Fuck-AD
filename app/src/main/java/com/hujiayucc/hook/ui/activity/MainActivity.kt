@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.icu.text.SimpleDateFormat
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -113,16 +114,20 @@ class MainActivity : ModuleAppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.QUERY_ALL_PACKAGES
-            ) == PERMISSION_GRANTED -> {
-                loadAppList()
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.QUERY_ALL_PACKAGES
+                ) == PERMISSION_GRANTED -> {
+                    loadAppList()
+                }
 
-            shouldShowRequestPermissionRationale(Manifest.permission.QUERY_ALL_PACKAGES) ->
-                showEssentialPermissionRationale()
+                shouldShowRequestPermissionRationale(Manifest.permission.QUERY_ALL_PACKAGES) ->
+                    showEssentialPermissionRationale()
+            }
+        } else {
+            loadAppList()
         }
     }
 
@@ -145,7 +150,11 @@ class MainActivity : ModuleAppCompatActivity() {
             .setTitle(R.string.essential_permission_title)
             .setMessage(R.string.essential_permission_message)
             .setPositiveButton(R.string.understand_and_grant) { _, _ ->
-                allAppPermission.launch(Manifest.permission.QUERY_ALL_PACKAGES)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    allAppPermission.launch(Manifest.permission.QUERY_ALL_PACKAGES)
+                } else {
+                    loadAppList()
+                }
             }
             .setNegativeButton(R.string.exit_app) { _, _ ->
                 finish()
