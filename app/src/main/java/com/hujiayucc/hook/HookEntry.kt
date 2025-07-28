@@ -13,8 +13,8 @@ import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.author.JwtUtils.isLogin
+import com.hujiayucc.hook.hooker.ClickInfo
 import com.hujiayucc.hook.hooker.DumpDex
-import com.hujiayucc.hook.hooker.Sdks
 import de.robv.android.xposed.XposedHelpers
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
@@ -97,7 +97,7 @@ class HookEntry : IYukiHookXposedInit {
         }
 
         if (prefs.getBoolean("exception")) dispatchUncaughtException()
-        if (prefs.getBoolean("out_info")) loadHooker(Sdks)
+        if (prefs.getBoolean("out_info")) loadHooker(ClickInfo)
     }
 
     /** 拦截未处理的异常 */

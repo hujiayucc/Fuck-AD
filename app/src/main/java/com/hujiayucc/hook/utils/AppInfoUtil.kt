@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageInfo
 import android.view.View
+import com.highcapable.yukihookapi.hook.log.YLog
 
 object AppInfoUtil {
     /** 获取版本名 */
@@ -73,16 +74,26 @@ object AppInfoUtil {
 
     fun getActivityFromView(view: View): Activity? {
         var context: Context? = view.context
+        var depth = 0
+        val maxDepth = 10
 
-        // 遍历上下文链寻找 Activity
-        while (context != null) {
+        while (context != null && depth < maxDepth) {
             when (context) {
                 is Activity -> return context
                 is ContextWrapper -> context = context.baseContext
-                else -> "Unknown: ${context::class.java.name}"
+                else -> {
+                    YLog.debug("Unexpected context type: ${context::class.java.name}")
+                    return null
+                }
             }
+            depth++
         }
 
+        if (context == null) {
+            YLog.debug("Context became null for view: ${view::class.java.name}")
+        } else {
+            YLog.debug("Max depth reached: $maxDepth for view: ${view::class.java.name}")
+        }
         return null
     }
 }
