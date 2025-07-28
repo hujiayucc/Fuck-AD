@@ -15,7 +15,6 @@ class DumpDex(private val context: Context) : YukiBaseHooker() {
         val outPath = File(path)
         if (outPath.absolutePath.contains("com.hujiayucc.hook")) return
         if (!outPath.exists()) outPath.mkdirs()
-        if (outPath.listFiles()?.isNotEmpty() == true) return
         showToast("正在保存DEX文件...")
         DexKitBridge.create(appClassLoader!!, true).use { bridge ->
             bridge.exportDexFile(outPath.absolutePath)

@@ -56,6 +56,18 @@ class HookEntry : IYukiHookXposedInit {
                 }
             return@encase
         }
+
+        ApplicationClass.method { name = "attach" }
+            .hook {
+                before {
+                    val context = args[0] as Context
+                    appClassLoader = context.classLoader
+                    if (prefs.getBoolean("dump")) loadHooker(
+                        DumpDex(context)
+                    )
+                }
+            }
+
         if (appContext?.prefs()?.isLogin() == false) return@encase
         val moduleClassLoader = this::class.java.classLoader
 
@@ -79,17 +91,6 @@ class HookEntry : IYukiHookXposedInit {
                         ?.newInstance()
                 }
                 hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
-                ApplicationClass.method { name = "attach" }
-                    .hook {
-                        before {
-                            val context = args[0] as Context
-                            appClassLoader = context.classLoader
-                            if (prefs.getBoolean("dump")) loadHooker(
-                                DumpDex(context)
-                            )
-                            hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
-                        }
-                    }
             }
             bridge.close()
         }

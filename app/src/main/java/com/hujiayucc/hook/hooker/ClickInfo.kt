@@ -1,5 +1,6 @@
 package com.hujiayucc.hook.hooker
 
+import android.util.Log
 import android.view.View
 import android.widget.TextView
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
@@ -29,9 +30,10 @@ object ClickInfo : YukiBaseHooker() {
 
     @OptIn(ExperimentalStdlibApi::class)
     private fun printInfo(view: View) {
+        YLog.debug(Log.getStackTraceString(Throwable()))
         val id = view.id
         val resName: String = getResourceName(view, id)
-        val text = if (view is TextView) view.text.toString() else view::class.java.name
+        val text = if (view is TextView) view.text.toString() else ""
 
         // 获取当前 Activity
         val activity = getActivityFromView(view)
@@ -41,6 +43,7 @@ object ClickInfo : YukiBaseHooker() {
         YLog.debug(
             """
                 ====== 点击事件详情 ======
+                View 类: ${view::class.java.name}
                 View ID: 0x${view.id.toHexString()} $resName
                 View 文本: $text
                 所在 Activity: $activityName
