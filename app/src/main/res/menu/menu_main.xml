@@ -11,8 +11,8 @@
             android:title="@string/menu_dump_dex"
             android:checkable="true" />
     <item
-            android:id="@+id/menu_out_info"
-            android:title="@string/menu_out_info"
+            android:id="@+id/menu_click_info"
+            android:title="@string/menu_click_info"
             android:checkable="true" />
 
     <item

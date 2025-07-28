@@ -36,7 +36,7 @@
 
     <!-- 菜单 -->
     <string name="menu_minimize">最小化</string>
-    <string name="menu_out_info">打印点击事件</string>
+    <string name="menu_click_info">打印点击事件</string>
     <string name="menu_dump_dex">导出Dex</string>
     <string name="menu_exception">拦截异常</string>
     <string name="menu_logout">退出登录</string>

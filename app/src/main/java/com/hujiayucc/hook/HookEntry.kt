@@ -84,10 +84,8 @@ class HookEntry : IYukiHookXposedInit {
                         before {
                             val context = args[0] as Context
                             appClassLoader = context.classLoader
-                            if (prefs.getBoolean("out_info")) loadHooker(
-                                DumpDex(
-                                    context
-                                )
+                            if (prefs.getBoolean("dump")) loadHooker(
+                                DumpDex(context)
                             )
                             hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
                         }
@@ -97,7 +95,7 @@ class HookEntry : IYukiHookXposedInit {
         }
 
         if (prefs.getBoolean("exception")) dispatchUncaughtException()
-        if (prefs.getBoolean("out_info")) loadHooker(ClickInfo)
+        if (prefs.getBoolean("clickInfo")) loadHooker(ClickInfo)
     }
 
     /** 拦截未处理的异常 */
