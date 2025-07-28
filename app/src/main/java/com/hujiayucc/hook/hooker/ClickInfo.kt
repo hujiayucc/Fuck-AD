@@ -40,11 +40,11 @@ object ClickInfo : YukiBaseHooker() {
         // 输出完整信息
         YLog.debug(
             """
-                    ====== 点击事件详情 ======
-                    View ID: 0x${view.id.toHexString()} $resName
-                    View 文本: $text
-                    所在 Activity: $activityName
-                    """.trimIndent()
+                ====== 点击事件详情 ======
+                View ID: 0x${view.id.toHexString()} $resName
+                View 文本: $text
+                所在 Activity: $activityName
+            """.trimIndent()
         )
     }
 }
