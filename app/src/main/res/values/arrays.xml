@@ -8,5 +8,6 @@
         <item>com.youdao.dict</item>
         <item>com.banshenghuo.mobile</item>
         <item>com.baidu.tieba</item>
+        <item>com.qiyi.video</item>
     </string-array>
 </resources>
