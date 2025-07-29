@@ -1,3 +1,6 @@
 [submodule "FuckAD-Author"]
 	path = FuckAD-Author
 	url = https://github.com/hujiayucc/FuckAD-Author.git
+[submodule "com.hujiayucc.hook"]
+	path = com.hujiayucc.hook
+	url = https://github.com/Xposed-Modules-Repo/com.hujiayucc.hook.git
