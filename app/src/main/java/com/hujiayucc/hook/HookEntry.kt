@@ -65,6 +65,24 @@ class HookEntry : IYukiHookXposedInit {
                 if (hasCalledSuper) return@attachBaseContext
                 appClassLoader = context.classLoader
                 if (prefs.getBoolean("dump")) loadHooker(DumpDex(context))
+//                DexKitBridge.create(context.classLoader, true)
+//                    .findClass { searchPackages("com.bytedance.sdk.openadsdk") }
+//                    .forEach { data ->
+//                        data.methods.forEach { method ->
+//                            if (
+//                                method.name.contains("init", true) ||
+//                                method.name.contains("load", true) ||
+//                                method.name.contains("show", true) ||
+//                                method.name.contains("getAd", true)
+//                            )
+//                                data.name.toClassOrNull()?.method { name = method.name }
+//                                    ?.hook {
+//                                        after {
+//                                            YLog.debug("CoolMarket Class: ${data.name} Hooked: ${method.name}")
+//                                        }
+//                                    }
+//                        }
+//                    }
                 bridge.findClass {
                     searchPackages("com.hujiayucc.hook.hooker")
                     matcher {

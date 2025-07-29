@@ -17,6 +17,7 @@ class DumpDex(private val context: Context) : YukiBaseHooker() {
         if (outFile.absolutePath.contains("com.hujiayucc.hook")) return
         if (!outFile.exists()) outFile.mkdirs()
         val list = outFile.listFiles()
+        if ((list?.size ?: 0) >= 2) return
         val outPath = File(outFile, "${list?.size ?: Random.nextInt()}")
         outPath.mkdirs()
         showToast("正在保存DEX文件...")
