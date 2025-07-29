@@ -1,6 +1,5 @@
 package com.hujiayucc.hook.hooker
 
-import android.util.Log
 import android.view.View
 import android.widget.TextView
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
@@ -15,7 +14,8 @@ object ClickInfo : YukiBaseHooker() {
         ViewClass.method { name = "performClick" }
             .hook {
                 before {
-                    printInfo(instance as View)
+                    if (prefs.getBoolean("clickInfo")) printInfo(instance as View)
+                    if (prefs.getBoolean("stackTrack")) printStackTrace(Throwable("堆栈信息"))
                 }
             }
 
@@ -23,14 +23,18 @@ object ClickInfo : YukiBaseHooker() {
             ?.method { name = "onClick" }
             ?.hook {
                 before {
-                    printInfo(instance as View)
+                    if (prefs.getBoolean("clickInfo")) printInfo(instance as View)
+                    if (prefs.getBoolean("stackTrack")) printStackTrace(Throwable("堆栈信息"))
                 }
             }
     }
 
+    private fun printStackTrace(throwable: Throwable) {
+        YLog.info(e = throwable)
+    }
+
     @OptIn(ExperimentalStdlibApi::class)
     private fun printInfo(view: View) {
-        YLog.debug(Log.getStackTraceString(Throwable()))
         val id = view.id
         val resName: String = getResourceName(view, id)
         val text = if (view is TextView) view.text.toString() else ""

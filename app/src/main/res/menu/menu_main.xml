@@ -16,7 +16,7 @@
             android:checkable="true" />
 
     <item
-            android:id="@+id/menu_exception"
-            android:title="@string/menu_exception"
+            android:id="@+id/menu_stack_track"
+            android:title="@string/menu_stack_track"
             android:checkable="true" />
 </menu>

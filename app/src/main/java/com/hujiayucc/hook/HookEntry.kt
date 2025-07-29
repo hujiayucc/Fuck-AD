@@ -5,9 +5,6 @@ import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.factory.prefs
-import com.highcapable.yukihookapi.hook.log.YLog
-import com.highcapable.yukihookapi.hook.param.PackageParam
-import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.annotation.RunJiaGu
@@ -104,8 +101,7 @@ class HookEntry : IYukiHookXposedInit {
                     }
                     hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
                 }
-                if (prefs.getBoolean("exception")) dispatchUncaughtException()
-                if (prefs.getBoolean("clickInfo")) loadHooker(ClickInfo)
+                loadHooker(ClickInfo)
             }
         }
 
@@ -132,21 +128,8 @@ class HookEntry : IYukiHookXposedInit {
                 }
                 hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
             }
-            if (prefs.getBoolean("exception")) dispatchUncaughtException()
-            if (prefs.getBoolean("clickInfo")) loadHooker(ClickInfo)
+            loadHooker(ClickInfo)
             if (prefs.getBoolean("dump")) appContext?.let { loadHooker(DumpDex(it)) }
         }
-    }
-
-    /** 拦截未处理的异常 */
-    private fun PackageParam.dispatchUncaughtException() {
-        ThreadClass.method { name = "dispatchUncaughtException" }
-            .hook {
-                replaceUnit {
-                    if (!BuildConfig.DEBUG) return@replaceUnit
-                    val param = args[0] as Throwable?
-                    param?.message?.let { YLog.error(it, param) }
-                }
-            }
     }
 }
