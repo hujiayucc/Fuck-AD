@@ -1,6 +1,5 @@
 package com.hujiayucc.hook
 
-import android.content.Context
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
@@ -8,10 +7,10 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.highcapable.yukihookapi.hook.param.PackageParam
-import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
 import com.highcapable.yukihookapi.hook.type.java.ThreadClass
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.author.JwtUtils.isLogin
 import com.hujiayucc.hook.hooker.ClickInfo
 import com.hujiayucc.hook.hooker.DumpDex
@@ -57,21 +56,44 @@ class HookEntry : IYukiHookXposedInit {
             return@encase
         }
 
-        ApplicationClass.method { name = "attach" }
-            .hook {
-                before {
-                    val context = args[0] as Context
-                    appClassLoader = context.classLoader
-                    if (prefs.getBoolean("dump")) loadHooker(
-                        DumpDex(context)
-                    )
+        val moduleClassLoader = this::class.java.classLoader
+        val bridge = DexKitBridge.create(moduleAppFilePath)
+        var isJiaGi = false
+
+        onAppLifecycle {
+            attachBaseContext { context, hasCalledSuper ->
+                if (hasCalledSuper) return@attachBaseContext
+                appClassLoader = context.classLoader
+                if (prefs.getBoolean("dump")) loadHooker(DumpDex(context))
+                bridge.findClass {
+                    searchPackages("com.hujiayucc.hook.hooker")
+                    matcher {
+                        annotations {
+                            add {
+                                type = RunJiaGu::class.java.name
+                                addElement {
+                                    name = "packageName"
+                                    stringValue(packageName, StringMatchType.Equals)
+                                }
+                            }
+                        }
+                    }
+                }.forEach { data ->
+                    isJiaGi = true
+                    val hooker = moduleClassLoader?.let { classLoader ->
+                        data.getInstance(classLoader).getDeclaredConstructor()
+                            ?.newInstance()
+                    }
+                    hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
                 }
+                if (prefs.getBoolean("exception")) dispatchUncaughtException()
+                if (prefs.getBoolean("clickInfo")) loadHooker(ClickInfo)
             }
+        }
 
         if (appContext?.prefs()?.isLogin() == false) return@encase
-        val moduleClassLoader = this::class.java.classLoader
 
-        DexKitBridge.create(moduleAppFilePath).use { bridge ->
+        if (!isJiaGi) {
             bridge.findClass {
                 searchPackages("com.hujiayucc.hook.hooker")
                 matcher {
@@ -92,11 +114,10 @@ class HookEntry : IYukiHookXposedInit {
                 }
                 hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
             }
-            bridge.close()
+            if (prefs.getBoolean("exception")) dispatchUncaughtException()
+            if (prefs.getBoolean("clickInfo")) loadHooker(ClickInfo)
+            if (prefs.getBoolean("dump")) appContext?.let { loadHooker(DumpDex(it)) }
         }
-
-        if (prefs.getBoolean("exception")) dispatchUncaughtException()
-        if (prefs.getBoolean("clickInfo")) loadHooker(ClickInfo)
     }
 
     /** 拦截未处理的异常 */
