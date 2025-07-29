@@ -38,10 +38,18 @@
 - 伴生活
 - 哔哩哔哩
 - 虎牙直播
+- 酷安
 - 七猫免费小说
 - 网易有道云词典
 - AppShare
 - MockGps
+
+### 提交应用
+
+---
+
+- [Fk AD](https://fkad.hujiayucc.cn)
+- [QQ文档](https://docs.qq.com/sheet/DQ3hndWZ0RWhCb0NU)
 
 ### 捐赠支持
 

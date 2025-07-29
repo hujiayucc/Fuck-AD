@@ -37,10 +37,18 @@ As the name implies, this is an ad-blocking Xposed module
 - 伴生活
 - 哔哩哔哩
 - 虎牙直播
+- 酷安
 - 七猫免费小说
 - 网易有道云词典
 - AppShare
 - MockGps
+
+### Submit App
+
+---
+
+- [Fk AD](https://fkad.hujiayucc.cn)
+- [QQ Doc](https://docs.qq.com/sheet/DQ3hndWZ0RWhCb0NU)
 
 ### Donation Support
 
