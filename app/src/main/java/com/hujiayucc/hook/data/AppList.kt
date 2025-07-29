@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable
 import android.icu.text.Collator
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.utils.AnnotationScanner
 import java.util.Locale
 
@@ -21,6 +22,21 @@ class AppList(
         ).forEach { clazz ->
             clazz.annotations.forEach { annotation ->
                 if (annotation is Run) {
+                    val appName = annotation.appName
+                    val packageName = annotation.packageName
+                    val versions = annotation.versions
+                    val action = annotation.action
+                    val appIcon: Drawable = getAppIcon(packageName)
+                    val item = Item(appName, packageName, versions, action, appIcon)
+                    appList.add(item)
+                }
+            }
+        }
+        AnnotationScanner.scanClassesWithAnnotation(
+            context, "com.hujiayucc.hook.hooker", RunJiaGu::class.java
+        ).forEach { clazz ->
+            clazz.annotations.forEach { annotation ->
+                if (annotation is RunJiaGu) {
                     val appName = annotation.appName
                     val packageName = annotation.packageName
                     val versions = annotation.versions
