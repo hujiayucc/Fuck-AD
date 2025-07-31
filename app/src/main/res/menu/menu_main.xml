@@ -1,11 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/menu_minimize"
-        android:title="@string/menu_minimize" />
+            android:id="@+id/menu_minimize"
+            android:title="@string/menu_minimize" />
     <item
             android:id="@+id/menu_logout"
             android:title="@string/menu_logout" />
+    <item
+            android:id="@+id/menu_language_group"
+            android:title="@string/languages_settings">
+        <menu>
+            <item
+                    android:id="@+id/menu_language_system"
+                    android:title="@string/system_language"
+                    android:checkable="true" />
+            <item
+                    android:id="@+id/menu_language_en"
+                    android:title="@string/english"
+                    android:checkable="true" />
+            <item
+                    android:id="@+id/menu_language_zh_cn"
+                    android:title="@string/chinese"
+                    android:checkable="true" />
+            <item
+                    android:id="@+id/menu_language_zh_tr"
+                    android:title="@string/chinese_tr"
+                    android:checkable="true" />
+        </menu>
+    </item>
     <item
             android:id="@+id/menu_dump_dex"
             android:title="@string/menu_dump_dex"
@@ -14,7 +36,6 @@
             android:id="@+id/menu_click_info"
             android:title="@string/menu_click_info"
             android:checkable="true" />
-
     <item
             android:id="@+id/menu_stack_track"
             android:title="@string/menu_stack_track"

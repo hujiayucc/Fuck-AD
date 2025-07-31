@@ -41,4 +41,6 @@
     <string name="menu_stack_track">打印点击堆栈</string>
     <string name="menu_logout">退出登录</string>
     <string name="check_version_update">正在检查更新…</string>
+    <string name="languages_settings">语言设置</string>
+    <string name="system_language">系统语言</string>
 </resources>

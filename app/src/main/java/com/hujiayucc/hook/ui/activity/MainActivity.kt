@@ -27,26 +27,29 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.log.YLog
-import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.base.ModuleAppCompatActivity
+import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Author
 import com.hujiayucc.hook.data.AppList
 import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter
+import com.hujiayucc.hook.utils.LanguageUtils
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.util.Date
+import java.util.Locale
 import kotlin.system.exitProcess
 
-class MainActivity : ModuleAppCompatActivity() {
+class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var listView: ListView
     private val disposables = CompositeDisposable()
     private lateinit var author: Author
+    private val language = PrefsData("languages", "system")
 
     private val allAppPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -229,12 +232,34 @@ class MainActivity : ModuleAppCompatActivity() {
         }
     }
 
+    private fun updateLanguageSelection(menu: Menu, languageTag: String) {
+        val menuItemId = when (languageTag) {
+            "system" -> R.id.menu_language_system
+            Locale.ENGLISH.toLanguageTag() -> R.id.menu_language_en
+            Locale.SIMPLIFIED_CHINESE.toLanguageTag() -> R.id.menu_language_zh_cn
+            Locale.TRADITIONAL_CHINESE.toLanguageTag() -> R.id.menu_language_zh_tr
+            else -> R.id.menu_language_system
+        }
+        menu.findItem(menuItemId)?.isChecked = true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        updateLanguageSelection(menu, prefs().get(language))
+        menu.findItem(R.id.menu_dump_dex)?.isChecked = prefs().getBoolean("dump")
+        menu.findItem(R.id.menu_click_info)?.isChecked = prefs().getBoolean("clickInfo")
+        menu.findItem(R.id.menu_stack_track)?.isChecked = prefs().getBoolean("stackTrack")
+        return super.onPrepareOptionsMenu(menu)
+    }
+
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        menu?.findItem(R.id.menu_dump_dex)?.isChecked = prefs().getBoolean("dump")
-        menu?.findItem(R.id.menu_click_info)?.isChecked = prefs().getBoolean("clickInfo")
-        menu?.findItem(R.id.menu_stack_track)?.isChecked = prefs().getBoolean("stackTrack")
         return true
+    }
+
+    private fun saveLanguage(locale: Locale? = null) {
+        locale?.let { prefs().edit().put(language, it.toLanguageTag()).apply() } ?: run {
+            prefs().edit().put(language, "system").commit()
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -268,6 +293,34 @@ class MainActivity : ModuleAppCompatActivity() {
                 prefs().edit().putBoolean("stackTrack", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
+            }
+
+            R.id.menu_language_system -> {
+                item.isChecked = true
+                saveLanguage()
+                LanguageUtils.resetToSystemLanguage(this)
+                return true
+            }
+
+            R.id.menu_language_en -> {
+                item.isChecked = true
+                saveLanguage(Locale.ENGLISH)
+                LanguageUtils.setAppLanguage(this, Locale.ENGLISH)
+                return true
+            }
+
+            R.id.menu_language_zh_cn -> {
+                item.isChecked = true
+                saveLanguage(Locale.SIMPLIFIED_CHINESE)
+                LanguageUtils.setAppLanguage(this, Locale.SIMPLIFIED_CHINESE)
+                return true
+            }
+
+            R.id.menu_language_zh_tr -> {
+                item.isChecked = true
+                saveLanguage(Locale.TRADITIONAL_CHINESE)
+                LanguageUtils.setAppLanguage(this, Locale.TRADITIONAL_CHINESE)
+                return true
             }
 
             else -> super.onOptionsItemSelected(item)

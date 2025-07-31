@@ -1,0 +1,46 @@
+<resources>
+    <!-- 基礎資訊 -->
+    <string name="app_name">Fuck AD</string>
+    <string name="not_active">未啟用</string>
+    <string name="main_framework">框架: %1$s %2$s</string>
+    <string name="main_version">版本: %1$s (%2$s)</string>
+    <string name="is_active">已啟用</string>
+    <string name="build_time">建構時間: %1$s</string>
+    <string name="search">搜尋</string>
+
+    <!-- 核心權限 -->
+    <string name="essential_permission_title">需要應用清單權限</string>
+    <string name="essential_permission_message">此功能需要存取應用清單以：\n • 識別已安裝應用\n • 顯示可用規則\n • 確保功能正常運作\n\n我們承諾僅用於功能實現，不會收集隱私資料</string>
+
+    <!-- 權限拒絕提示 -->
+    <string name="permission_denied_forever_title">權限被永久拒絕</string>
+    <string name="permission_denied_forever_message">請到設定中手動開啟權限：\n設定 → 應用 → 本應用 → 特殊權限</string>
+
+    <!-- 功能受限提示 -->
+    <string name="function_limited_title">功能受限</string>
+    <string name="function_limited_message">未授予必要權限將導致：\n • 無法顯示應用清單\n • 不能設定規則\n • 核心功能不可用</string>
+
+    <!-- 通用操作 -->
+    <string name="open_settings">開啟設定</string>
+    <string name="exit_app">退出應用</string>
+    <string name="cancel">取消</string>
+
+    <!-- 錯誤提示 -->
+    <string name="data_load_failed">設定載入失敗：%1$s</string>
+    <string name="settings_open_failed">無法開啟系統設定</string>
+
+    <!-- 權限操作 -->
+    <string name="understand_and_grant">理解並授權</string>
+    <string name="description">去打他媽的廣告</string>
+    <string name="open_fuck_ad">開啟 Fuck AD</string>
+
+    <!-- 選單 -->
+    <string name="menu_minimize">最小化</string>
+    <string name="menu_click_info">列印點擊事件</string>
+    <string name="menu_dump_dex">匯出Dex</string>
+    <string name="menu_stack_track">列印點擊堆疊</string>
+    <string name="menu_logout">登出</string>
+    <string name="check_version_update">正在檢查更新…</string>
+    <string name="languages_settings">語言設定</string>
+    <string name="system_language">系統語言</string>
+</resources>
