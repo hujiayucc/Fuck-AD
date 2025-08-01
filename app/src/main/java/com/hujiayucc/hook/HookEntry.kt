@@ -96,8 +96,7 @@ class HookEntry : IYukiHookXposedInit {
                 }.forEach { data ->
                     isJiaGi = true
                     val hooker = moduleClassLoader?.let { classLoader ->
-                        data.getInstance(classLoader).getDeclaredConstructor()
-                            ?.newInstance()
+                        data.getInstance(classLoader).getDeclaredConstructor().newInstance()
                     }
                     hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
                 }
@@ -123,8 +122,7 @@ class HookEntry : IYukiHookXposedInit {
                 }
             }.forEach { data ->
                 val hooker = moduleClassLoader?.let { classLoader ->
-                    data.getInstance(classLoader).getDeclaredConstructor()
-                        ?.newInstance()
+                    data.getInstance(classLoader).getDeclaredConstructor().newInstance()
                 }
                 hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
             }

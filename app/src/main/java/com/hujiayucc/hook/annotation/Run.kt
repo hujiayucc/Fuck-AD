@@ -2,15 +2,18 @@ package com.hujiayucc.hook.annotation
 
 import kotlin.annotation.AnnotationTarget.CLASS
 
+/**
+ * Hooker运行注解
+ * @param appName App名称
+ * @param packageName 包名
+ * @param action 启动动作
+ * @param versions 适配版本，留空为通用
+ */
 @Target(CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Run(
-    /** App名称 */
     val appName: String = "",
-    /** 包名 */
     val packageName: String,
-    /** 启动动作 */
     val action: String,
-    /** 适配版本，留空为通用 */
     val versions: Array<String> = []
 )
