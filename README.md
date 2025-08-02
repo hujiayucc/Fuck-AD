@@ -34,6 +34,7 @@ As the name implies, this is an ad-blocking Xposed module
 
 - 爱奇艺
 - 百度贴吧
+- 百度网盘
 - 伴生活
 - 哔哩哔哩
 - 虎牙直播
