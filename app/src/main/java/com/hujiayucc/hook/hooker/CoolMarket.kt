@@ -1,14 +1,16 @@
 package com.hujiayucc.hook.hooker
 
+import android.view.View
 import com.highcapable.yukihookapi.hook.factory.allMethods
+import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.RunJiaGu
 
 @RunJiaGu(
     "酷安",
     "com.coolapk.market",
-    "禁用SDK"
+    "禁用SDK, 信息流广告"
 )
-object CoolMarket : BaseJiaGu() {
+object CoolMarket : Base() {
     override fun onStart() {
         "com.bytedance.sdk.openadsdk.TTAdSdk".toClassOrNull()
             ?.allMethods { _, method ->
@@ -65,6 +67,19 @@ object CoolMarket : BaseJiaGu() {
                         result = when (method.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
+                        }
+                    }
+                }
+            }
+
+        "androidx.appcompat.widget.AppCompatImageView".toClassOrNull()
+            ?.method { name = "hasOverlappingRendering" }
+            ?.hook {
+                after {
+                    val view = instance as View
+                    if (view.id == 0x7f0b0424) {
+                        if (view.isClickable && view.performClick()) {
+                            debug("信息流广告")
                         }
                     }
                 }
