@@ -20,8 +20,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 29
         targetSdk = 35
-        versionCode = 8400
-        versionName = "2.0.4"
+        versionCode = 8410
+        versionName = "2.0.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
