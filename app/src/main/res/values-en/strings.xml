@@ -43,4 +43,5 @@
     <string name="check_version_update">Check version update…</string>
     <string name="languages_settings">Languages Settings</string>
     <string name="system_language">System Language</string>
+    <string name="join_qq_group">Join QQ Group</string>
 </resources>

@@ -42,6 +42,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import java.util.Date
 import java.util.Locale
 import kotlin.system.exitProcess
+import androidx.core.net.toUri
 
 class MainActivity : BaseActivity() {
 
@@ -274,6 +275,15 @@ class MainActivity : BaseActivity() {
 
             R.id.menu_logout -> {
                 Author(this).logout()
+                true
+            }
+
+            R.id.menu_join_qq_group -> {
+                val url = "https://qm.qq.com/q/ACNWVPbfq0"
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = url.toUri()
+                }
+                startActivity(intent)
                 true
             }
 

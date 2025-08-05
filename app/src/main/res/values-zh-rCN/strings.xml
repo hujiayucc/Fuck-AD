@@ -43,4 +43,5 @@
     <string name="check_version_update">正在检查更新…</string>
     <string name="languages_settings">语言设置</string>
     <string name="system_language">系统语言</string>
+    <string name="join_qq_group">加入QQ群</string>
 </resources>

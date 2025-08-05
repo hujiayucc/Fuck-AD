@@ -7,6 +7,9 @@
             android:id="@+id/menu_logout"
             android:title="@string/menu_logout" />
     <item
+            android:id="@+id/menu_join_qq_group"
+            android:title="@string/join_qq_group" />
+    <item
             android:id="@+id/menu_language_group"
             android:title="@string/languages_settings">
         <menu>
