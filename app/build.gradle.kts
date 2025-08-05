@@ -35,6 +35,15 @@ android {
             // versionNameSuffix = "-release"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+
+        getByName("debug") {
+            isMinifyEnabled = true
+            // 开启资源压缩
+            isShrinkResources = true
+            // 版本后缀
+            // versionNameSuffix = "-debug"
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
