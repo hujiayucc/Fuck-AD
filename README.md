@@ -42,6 +42,7 @@ As the name implies, this is an ad-blocking Xposed module
 - 百度网盘
 - 伴生活
 - 哔哩哔哩
+- 豆瓣
 - 虎牙直播
 - 酷安
 - 七猫免费小说
