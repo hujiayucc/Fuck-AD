@@ -6,10 +6,10 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
-    "虎牙直播",
-    "com.duowan.kiwi",
-    "开屏广告",
-    [
+    appName = "虎牙直播",
+    packageName = "com.duowan.kiwi",
+    action = "开屏广告",
+    versions = [
         "12.7.14"
     ]
 )

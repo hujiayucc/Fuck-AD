@@ -8,10 +8,10 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
-    "百度网盘",
-    "com.baidu.netdisk",
-    "开屏广告",
-    [
+    appName = "百度网盘",
+    packageName = "com.baidu.netdisk",
+    action = "开屏广告",
+    versions = [
         "13.8.0"
     ]
 )

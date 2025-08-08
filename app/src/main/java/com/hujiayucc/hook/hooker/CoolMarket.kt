@@ -6,9 +6,9 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.RunJiaGu
 
 @RunJiaGu(
-    "酷安",
-    "com.coolapk.market",
-    "禁用SDK, 信息流广告"
+    appName = "酷安",
+    packageName = "com.coolapk.market",
+    action = "禁用SDK, 信息流广告"
 )
 object CoolMarket : Base() {
     override fun onStart() {

@@ -4,10 +4,10 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
-    "网易有道云词典",
-    "com.youdao.dict",
-    "开屏广告",
-    [
+    appName = "网易有道云词典",
+    packageName = "com.youdao.dict",
+    action = "开屏广告",
+    versions = [
         "10.2.19"
     ]
 )

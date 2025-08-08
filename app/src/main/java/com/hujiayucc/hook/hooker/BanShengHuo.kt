@@ -6,10 +6,10 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
-    "伴生活",
-    "com.banshenghuo.mobile",
-    "开屏广告",
-    [
+    appName = "伴生活",
+    packageName = "com.banshenghuo.mobile",
+    action = "开屏广告",
+    versions = [
         "2.6.25.004"
     ]
 )

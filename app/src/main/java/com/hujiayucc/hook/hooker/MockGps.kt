@@ -8,10 +8,10 @@ import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
-    "MockGps",
-    "com.huolala.mockgps",
-    "开屏广告, 底部广告",
-    [
+    appName = "MockGps",
+    packageName = "com.huolala.mockgps",
+    action = "开屏广告, 底部广告",
+    versions = [
         "2.6.1"
     ]
 )

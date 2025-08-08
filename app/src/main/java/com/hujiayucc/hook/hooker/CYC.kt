@@ -6,10 +6,10 @@ import com.highcapable.yukihookapi.hook.type.android.DialogClass
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
-    "次元城动画",
-    "com.yaxisvip.pubgtool.iueg",
-    "彈窗广告",
-    [
+    appName = "次元城动画",
+    packageName = "com.yaxisvip.pubgtool.iueg",
+    action = "彈窗广告",
+    versions = [
         "4.2.8-ga5770ca"
     ]
 )

@@ -6,10 +6,10 @@ import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
 @Run(
-    "爱奇艺",
-    "com.qiyi.video",
-    "开屏广告",
-    [
+    appName = "爱奇艺",
+    packageName = "com.qiyi.video",
+    action = "开屏广告",
+    versions = [
         "16.7.5"
     ]
 )

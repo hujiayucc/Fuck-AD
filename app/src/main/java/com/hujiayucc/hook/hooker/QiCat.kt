@@ -6,10 +6,10 @@ import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
 @Run(
-    "七猫免费小说",
-    "com.kmxs.reader",
-    "开屏广告",
-    [
+    appName = "七猫免费小说",
+    packageName = "com.kmxs.reader",
+    action = "开屏广告",
+    versions = [
         "7.67"
     ]
 )

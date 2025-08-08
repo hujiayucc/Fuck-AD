@@ -8,10 +8,10 @@ import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
 @Run(
-    "哔哩哔哩",
-    "tv.danmaku.bili",
-    "开屏广告",
-    [
+    appName = "哔哩哔哩",
+    packageName = "tv.danmaku.bili",
+    action = "开屏广告",
+    versions = [
         "8.54.0"
     ]
 )

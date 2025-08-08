@@ -7,10 +7,10 @@ import com.highcapable.yukihookapi.hook.type.android.LinearLayoutClass
 import com.hujiayucc.hook.annotation.RunJiaGu
 
 @RunJiaGu(
-    "KOOK",
-    "cn.kaiheila",
-    "开屏广告",
-    [
+    appName = "KOOK",
+    packageName = "cn.kaiheila",
+    action = "开屏广告",
+    versions = [
         "1.75.0"
     ]
 )
