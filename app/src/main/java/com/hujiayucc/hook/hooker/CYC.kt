@@ -1,8 +1,6 @@
 package com.hujiayucc.hook.hooker
 
-import android.app.Dialog
 import com.highcapable.yukihookapi.hook.factory.method
-import com.highcapable.yukihookapi.hook.type.android.DialogClass
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -19,16 +17,6 @@ object CYC : Base() {
             .method { name = "run" }
             .hook {
                 replaceUnit {}
-            }
-
-        DialogClass.method { name = "show" }
-            .hook {
-                after {
-                    if (instance::class.java.name == "androidx.compose.ui.window.DialogWrapper") {
-                        val dialog = instance as Dialog
-                        dialog.dismiss()
-                    }
-                }
             }
     }
 }
