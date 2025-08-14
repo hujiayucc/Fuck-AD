@@ -34,7 +34,7 @@ abstract class Base : YukiBaseHooker() {
 
     abstract fun onStart()
     fun debug(msg: String) {
-        YLog.debug("Hook: $appName => $msg")
+        YLog.debug(msg)
     }
 
     fun error(msg: String) {
