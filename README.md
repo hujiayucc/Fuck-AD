@@ -43,7 +43,9 @@ As the name implies, this is an ad-blocking Xposed module
 - 伴生活
 - 哔哩哔哩
 - 次元城动画
+- 抖音
 - 豆瓣
+- 疯狂刷题
 - 虎牙直播
 - 酷安
 - 七猫免费小说
