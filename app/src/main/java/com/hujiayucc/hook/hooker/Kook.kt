@@ -2,6 +2,7 @@ package com.hujiayucc.hook.hooker
 
 import android.view.View
 import android.widget.LinearLayout
+import com.highcapable.yukihookapi.hook.factory.allMethods
 import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.type.android.LinearLayoutClass
 import com.hujiayucc.hook.annotation.RunJiaGu
@@ -24,11 +25,12 @@ object Kook : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClassOrNull()
-            ?.method { name = "getView" }
-            ?.hook {
-                after {
-                    val view = instance as View
-                    view.performClick()
+            ?.allMethods { index, method ->
+                method.hook {
+                    after {
+                        val view = instance as View
+                        view.performClick()
+                    }
                 }
             }
     }

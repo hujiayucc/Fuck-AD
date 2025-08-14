@@ -29,11 +29,12 @@ object BaiduPan : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClass()
-            .method { name = "getView" }
-            .hook {
-                after {
-                    val view = instance as View
-                    view.performClick()
+            .allMethods { index, method ->
+                method.hook {
+                    after {
+                        val view = instance as View
+                        view.performClick()
+                    }
                 }
             }
 
