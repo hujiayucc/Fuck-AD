@@ -1,4 +1,5 @@
 import com.android.build.gradle.internal.api.ApkVariantOutputImpl
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -7,8 +8,21 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        all {
+            print("Loading signingConfigs...")
+            val properties = rootProject.file("local.properties").inputStream().use {
+                Properties().apply { load(it) }
+            }
+            storeFile = file(properties.getProperty("storeFile"))
+            storePassword = properties.getProperty("storePassword")
+            keyAlias = properties.getProperty("keyAlias")
+            keyPassword = properties.getProperty("keyPassword")
+        }
+    }
+
     namespace = "com.hujiayucc.hook"
-    compileSdk = 35
+    compileSdk = 36
 
     androidResources.additionalParameters += listOf(
         "--allow-reserved-package-id",
@@ -19,7 +33,7 @@ android {
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 8500
         versionName = "2.0.5"
 
