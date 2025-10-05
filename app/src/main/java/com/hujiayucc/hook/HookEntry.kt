@@ -52,7 +52,7 @@ class HookEntry : IYukiHookXposedInit {
                     }
                 }
             return@encase
-        }
+        } else if (!isFirstApplication) return@encase
 
         val moduleClassLoader = this::class.java.classLoader
         val bridge = DexKitBridge.create(moduleAppFilePath)
