@@ -11,22 +11,26 @@ import com.hujiayucc.hook.utils.AppInfoUtil.getResourceName
 
 object ClickInfo : YukiBaseHooker() {
     override fun onHook() {
-        ViewClass.method { name = "performClick" }
-            .hook {
-                before {
-                    if (prefs.getBoolean("clickInfo")) printInfo(instance as View)
-                    if (prefs.getBoolean("stackTrack")) printStackTrace(Throwable("堆栈信息"))
+        val click = prefs.getBoolean("clickInfo")
+        val stackTrack = prefs.getBoolean("stackTrack")
+        if (click || stackTrack) {
+            ViewClass.method { name = "performClick" }
+                .hook {
+                    before {
+                        if (click) printInfo(instance as View)
+                        if (stackTrack) printStackTrace(Throwable("堆栈信息"))
+                    }
                 }
-            }
 
-        "android.view.View.DeclaredOnClickListener".toClassOrNull()
-            ?.method { name = "onClick" }
-            ?.hook {
-                before {
-                    if (prefs.getBoolean("clickInfo")) printInfo(instance as View)
-                    if (prefs.getBoolean("stackTrack")) printStackTrace(Throwable("堆栈信息"))
+            "android.view.View.DeclaredOnClickListener".toClassOrNull()
+                ?.method { name = "onClick" }
+                ?.hook {
+                    before {
+                        if (click) printInfo(instance as View)
+                        if (stackTrack) printStackTrace(Throwable("堆栈信息"))
+                    }
                 }
-            }
+        }
     }
 
     private fun printStackTrace(throwable: Throwable) {
