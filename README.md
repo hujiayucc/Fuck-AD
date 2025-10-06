@@ -46,6 +46,7 @@ As the name implies, this is an ad-blocking Xposed module
 - 抖音
 - 豆瓣
 - 疯狂刷题
+- 红果免费短剧
 - 虎牙直播
 - 酷安
 - 七猫免费小说
