@@ -47,4 +47,5 @@
     <string name="chinese" translatable="false">简体中文</string>
     <string name="chinese_tr" translatable="false">繁體中文</string>
     <string name="join_qq_group">Join QQ Group</string>
+    <string name="sdks" translatable="false">SDKs</string>
 </resources>

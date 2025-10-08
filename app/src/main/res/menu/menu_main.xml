@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
             android:id="@+id/menu_minimize"
             android:title="@string/menu_minimize" />
@@ -43,4 +43,9 @@
             android:id="@+id/menu_stack_track"
             android:title="@string/menu_stack_track"
             android:checkable="true" />
+
+    <item
+            android:id="@+id/menu_sdk"
+            android:title="@string/sdks"
+            app:showAsAction="always" />
 </menu>

@@ -333,6 +333,12 @@ class MainActivity : BaseActivity() {
                 return true
             }
 
+            R.id.menu_sdk -> {
+                val intent = Intent(this, SDKActivity::class.java)
+                startActivity(intent)
+                return true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
