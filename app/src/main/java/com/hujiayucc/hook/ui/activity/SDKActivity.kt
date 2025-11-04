@@ -8,8 +8,11 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ListView
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.highcapable.yukihookapi.hook.factory.prefs
+import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
@@ -19,15 +22,27 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
-import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.*
 
 class SDKActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySdkBinding
     private lateinit var progressBar: ProgressBar
     private lateinit var listView: ListView
+    private lateinit var textView: TextView
     private val disposables = CompositeDisposable()
     private lateinit var adapter: AppListAdapter2
     private val itemList = ArrayList<Item2>()
+    private lateinit var prefs: YukiHookPrefsBridge
+
+    private data class AppEntry(val appInfo: ApplicationInfo, val label: String)
+
+    private val adClassMap = mapOf(
+        "com.bytedance.sdk.openadsdk.TTAdSdk" to "穿山甲",
+        "com.qq.e.comm.DownloadService" to "腾讯广告",
+        "com.kwad.sdk.api.KsAdSDK" to "快手广告",
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,9 +52,16 @@ class SDKActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         progressBar = binding.progressBar
         listView = binding.appList
+        textView = binding.textView
         adapter = AppListAdapter2(itemList)
         listView.adapter = adapter
-        loadApps()
+        prefs = prefs()
+        val cachedPackages = loadCachedItemsAndShowIfAny()
+        if (cachedPackages.isNotEmpty()) {
+            updateFromDiffAsync(cachedPackages)
+        } else {
+            loadApps()
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -63,74 +85,87 @@ class SDKActivity : AppCompatActivity() {
 
     @SuppressLint("CheckResult", "SetTextI18n")
     private fun loadApps() {
-        val apps = packageManager.getInstalledApplications(0).filter { appInfo ->
-            (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-        }.map { appInfo ->
-            Pair(appInfo.loadLabel(packageManager).toString(), appInfo)
-        }.sortedBy { (label, _) ->
-            label.lowercase(Locale.getDefault())
-        }.map { (_, appInfo) ->
-            appInfo
-        }
+        val apps = packageManager.getInstalledApplications(0)
+            .asSequence()
+            .filter { appInfo -> (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .map { appInfo -> AppEntry(appInfo, appInfo.loadLabel(packageManager).toString()) }
+            .sortedBy { entry -> entry.label.lowercase(Locale.getDefault()) }
+            .toList()
+
+        val maxConcurrency = kotlin.math.min(4, kotlin.math.max(2, Runtime.getRuntime().availableProcessors() - 1))
+        val processedCount = java.util.concurrent.atomic.AtomicInteger(0)
 
         disposables.add(
             Observable.fromIterable(apps)
-                .subscribeOn(Schedulers.io())
-                .map { appInfo -> getItem(appInfo) }
-                .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe {
-                    progressBar.max = apps.size
-                    progressBar.progress = 0
-                    progressBar.visibility = View.VISIBLE
-                    binding.textView.visibility = View.VISIBLE
-                    listView.visibility = View.GONE
-                    itemList.clear()
+                    clearProgress(apps.size)
+                    hideListView()
                 }
+                .concatMapEager({ entry ->
+                    Observable.defer {
+                        val action = getSDKs(entry.appInfo)
+                        val current = processedCount.incrementAndGet()
+                        runOnUiThread {
+                            progressBar.progress = current
+                            textView.text = "${progressBar.progress}/${progressBar.max}"
+                        }
+                        if (action.isNotEmpty()) {
+                            val icon = getAppIcon(entry.appInfo.packageName)
+                            Observable.just(
+                                Item2(
+                                    appName = entry.label,
+                                    packageName = entry.appInfo.packageName,
+                                    action = action,
+                                    appIcon = icon
+                                )
+                            )
+                        } else {
+                            Observable.empty()
+                        }
+                    }.subscribeOn(Schedulers.io())
+                }, maxConcurrency, 128)
+                .buffer(16)
+                .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
-                    { item ->
-                        if (item.action.isNotEmpty()) {
-                            itemList.add(item)
+                    { batch ->
+                        if (batch.isNotEmpty()) {
+                            itemList.addAll(batch)
                             adapter.notifyDataSetChanged()
                         }
-                        progressBar.progress += 1
-                        binding.textView.text = "${progressBar.progress}/${progressBar.max}"
                     },
                     { error ->
                         Toast.makeText(this, "加载应用列表失败: ${error.message}", Toast.LENGTH_SHORT).show()
-                        progressBar.visibility = View.GONE
-                        binding.textView.visibility = View.GONE
-                        listView.visibility = View.VISIBLE
+                        showListView()
                     },
-                    {
-                        progressBar.visibility = View.GONE
-                        binding.textView.visibility = View.GONE
-                        listView.visibility = View.VISIBLE
-                    }
+                    { showListView() }
                 )
         )
     }
 
-    private fun getItem(appInfo: ApplicationInfo): Item2 {
-        val label = appInfo.loadLabel(packageManager).toString()
-        val icon = getAppIcon(appInfo.packageName)
-        return Item2(
-            appName = label,
-            packageName = appInfo.packageName,
-            action = getSDKs(appInfo),
-            appIcon = icon
-        )
+    private fun clearProgress(total: Int) {
+        progressBar.max = total
+        progressBar.progress = 0
+        itemList.clear()
+    }
+
+    private fun showListView() {
+        progressBar.visibility = View.GONE
+        textView.visibility = View.GONE
+        listView.visibility = View.VISIBLE
+        saveItemsAsync()
+    }
+
+    private fun hideListView() {
+        progressBar.visibility = View.VISIBLE
+        textView.visibility = View.VISIBLE
+        listView.visibility = View.GONE
     }
 
     fun getSDKs(appInfo: ApplicationInfo): String {
         val list = ArrayList<String>()
-        val adMap = mapOf(
-            "com.bytedance.sdk.openadsdk.TTAdSdk" to "穿山甲",
-            "com.qq.e.comm.DownloadService" to "腾讯广告",
-            "com.kwad.sdk.api.KsAdSDK" to "快手广告",
-        )
         return try {
             val classLoader = PathClassLoader(appInfo.sourceDir, classLoader)
-            for ((className, name) in adMap) {
+            for ((className, name) in adClassMap) {
                 try {
                     classLoader.loadClass(className)
                     list.add(name)
@@ -138,9 +173,177 @@ class SDKActivity : AppCompatActivity() {
                     continue
                 }
             }
-            if (list.isNotEmpty()) list.toArray().contentToString() else ""
+            if (list.isNotEmpty()) list.joinToString(prefix = "[", postfix = "]") else ""
         } catch (_: Exception) {
             ""
         }
+    }
+
+    /**
+     * 读取缓存并优先展示。返回缓存中的包名集合用于后续增量对比。
+     */
+    private fun loadCachedItemsAndShowIfAny(): Set<String> {
+        val packages = LinkedHashSet<String>()
+        try {
+            val jsonStr = prefs.getString("sdkItems", "")
+            if (jsonStr.isNotEmpty()) {
+                val currentInstalled = currentInstalledPackages()
+                val arr = JSONArray(jsonStr)
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    val pkg = obj.optString("packageName")
+                    val name = obj.optString("appName")
+                    val action = obj.optString("action")
+                    if (pkg.isNotEmpty() && currentInstalled.contains(pkg)) {
+                        packages.add(pkg)
+                        val icon = getAppIcon(pkg)
+                        itemList.add(
+                            Item2(
+                                appName = name,
+                                packageName = pkg,
+                                action = action,
+                                appIcon = icon
+                            )
+                        )
+                    }
+                }
+                if (itemList.isNotEmpty()) {
+                    adapter.notifyDataSetChanged()
+                    showListView()
+                    return packages
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        try {
+            val listStr = prefs.getString("sdkList", "")
+            if (listStr.isNotEmpty()) {
+                val arr = JSONArray(listStr)
+                for (i in 0 until arr.length()) {
+                    val pkg = arr.optString(i)
+                    if (!pkg.isNullOrEmpty()) packages.add(pkg)
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return packages
+    }
+
+    /**
+     * 异步对比新增/卸载并做增量更新。
+     */
+    @SuppressLint("CheckResult")
+    private fun updateFromDiffAsync(savedPackages: Set<String>) {
+        disposables.add(
+            Observable.fromCallable {
+                val current = currentInstalledPackages()
+                val added = current.minus(savedPackages)
+                val removed = savedPackages.minus(current)
+                Pair(added, removed)
+            }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnNext { (_, removed) ->
+                    if (removed.isNotEmpty()) {
+                        val iterator = itemList.iterator()
+                        var changed = false
+                        while (iterator.hasNext()) {
+                            val it = iterator.next()
+                            if (removed.contains(it.packageName)) {
+                                iterator.remove()
+                                changed = true
+                            }
+                        }
+                        if (changed) adapter.notifyDataSetChanged()
+                    }
+                }
+                .observeOn(Schedulers.io())
+                .flatMap { (added, _) ->
+                    if (added.isEmpty()) Observable.just(emptyList())
+                    else scanSpecificPackages(added)
+                }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ newItems ->
+                    if (newItems.isNotEmpty()) {
+                        itemList.addAll(newItems)
+                        adapter.notifyDataSetChanged()
+                    }
+                    saveItemsAsync()
+                }, { _ ->
+                })
+        )
+    }
+
+    /**
+     * 扫描指定包集合，返回命中的 Item2 列表。
+     */
+    private fun scanSpecificPackages(packages: Set<String>): Observable<List<Item2>> {
+        val entries = packages.mapNotNull { pkg ->
+            try {
+                val info = packageManager.getApplicationInfo(pkg, 0)
+                AppEntry(info, info.loadLabel(packageManager).toString())
+            } catch (_: Exception) {
+                null
+            }
+        }
+        if (entries.isEmpty()) return Observable.just(emptyList())
+
+        val maxConcurrency = kotlin.math.min(4, kotlin.math.max(2, Runtime.getRuntime().availableProcessors() - 1))
+        return Observable.fromIterable(entries)
+            .concatMapEager({ entry ->
+                Observable.defer {
+                    val action = getSDKs(entry.appInfo)
+                    if (action.isNotEmpty()) {
+                        val icon = getAppIcon(entry.appInfo.packageName)
+                        Observable.just(
+                            Item2(
+                                appName = entry.label,
+                                packageName = entry.appInfo.packageName,
+                                action = action,
+                                appIcon = icon
+                            )
+                        )
+                    } else {
+                        Observable.empty()
+                    }
+                }.subscribeOn(Schedulers.io())
+            }, maxConcurrency, 64)
+            .buffer(16)
+            .reduce(ArrayList<Item2>()) { acc, list ->
+                acc.apply { addAll(list) }
+            }
+            .map { it.toList() }
+            .toObservable()
+    }
+
+    private fun currentInstalledPackages(): Set<String> {
+        return packageManager.getInstalledApplications(0)
+            .asSequence()
+            .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .map { it.packageName }
+            .toSet()
+    }
+
+    private fun saveItemsAsync() {
+        Thread {
+            try {
+                val pkgArr = JSONArray(itemList.map { it.packageName })
+                val itemArr = JSONArray()
+                itemList.forEach { item ->
+                    val obj = JSONObject()
+                    obj.put("appName", item.appName)
+                    obj.put("packageName", item.packageName)
+                    obj.put("action", item.action)
+                    itemArr.put(obj)
+                }
+                prefs.edit {
+                    putString("sdkList", pkgArr.toString())
+                    putString("sdkItems", itemArr.toString())
+                    apply()
+                }
+            } catch (_: Exception) {
+            }
+        }.start()
     }
 }
