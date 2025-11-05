@@ -80,6 +80,10 @@
                 android:name=".ui.activity.SDKActivity"
                 android:exported="false"/>
 
+        <activity
+                android:name=".ui.activity.AppInfoActivity"
+                android:exported="false"/>
+
         <service
                 android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
                 android:enabled="false"

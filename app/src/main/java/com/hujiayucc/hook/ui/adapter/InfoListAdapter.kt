@@ -1,25 +1,32 @@
 package com.hujiayucc.hook.ui.adapter
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Filter
 import android.widget.Filterable
-import com.hujiayucc.hook.R
-import com.hujiayucc.hook.data.Item2
-import com.hujiayucc.hook.databinding.AppRuleBinding
-import com.hujiayucc.hook.ui.activity.AppInfoActivity
+import com.hujiayucc.hook.databinding.ItemComponentBinding
 import java.util.*
 
-class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filterable {
-    private var filteredList: List<Item2> = appList
+class InfoListAdapter(private var componentList: List<ComponentItem>) : BaseAdapter(), Filterable {
+    private var filteredList: List<ComponentItem> = componentList
     private var currentFilterQuery: String? = null
-    
-    fun updateData(newList: List<Item2>) {
-        appList = newList
+
+    data class ComponentItem(
+        val name: String,
+        val type: ComponentType,
+        val exported: Boolean
+    )
+
+    enum class ComponentType : java.io.Serializable {
+        ACTIVITY,
+        SERVICE
+    }
+
+    fun updateData(newList: List<ComponentItem>) {
+        componentList = newList
         if (currentFilterQuery.isNullOrEmpty()) {
             filteredList = newList
             notifyDataSetChanged()
@@ -27,37 +34,25 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
             filter.filter(currentFilterQuery)
         }
     }
-    
+
     override fun getCount(): Int = filteredList.size
-    override fun getItem(position: Int): Item2 = filteredList[position]
+    override fun getItem(position: Int): ComponentItem = filteredList[position]
     override fun getItemId(position: Int): Long = position.toLong()
 
     @SuppressLint("SetTextI18n")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val binding = convertView?.let {
-            AppRuleBinding.bind(it)
+            ItemComponentBinding.bind(it)
         } ?: run {
             val view = LayoutInflater.from(parent?.context)
-                .inflate(R.layout.app_rule, parent, false)
-            AppRuleBinding.bind(view)
+                .inflate(com.hujiayucc.hook.R.layout.item_info, parent, false)
+            ItemComponentBinding.bind(view)
         }
 
-        val rule = getItem(position)
+        val item = getItem(position)
         binding.apply {
-            appIcon.setImageDrawable(rule.appIcon)
-            appName.text = rule.appName
-            appPackage.text = rule.packageName
-            action.text = rule.action
-            root.setOnClickListener {
-                try {
-                    val intent = Intent(parent?.context, AppInfoActivity::class.java)
-                    intent.putExtra("packageName", rule.packageName)
-                    intent.putExtra("appName", rule.appName)
-                    parent?.context?.startActivity(intent)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
+            componentName.text = item.name
+            exportedStatus.text = if (item.exported) "导出" else "未导出"
         }
 
         return binding.root
@@ -70,12 +65,11 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
                 val filterPattern = constraint?.toString()?.lowercase(Locale.getDefault())?.trim() ?: ""
 
                 if (filterPattern.isEmpty()) {
-                    results.values = appList
-                    results.count = appList.size
+                    results.values = componentList
+                    results.count = componentList.size
                 } else {
-                    val filtered = appList.filter { item ->
-                        item.appName.lowercase(Locale.getDefault()).contains(filterPattern) ||
-                        item.packageName.lowercase(Locale.getDefault()).contains(filterPattern)
+                    val filtered = componentList.filter { item ->
+                        item.name.lowercase(Locale.getDefault()).contains(filterPattern)
                     }
                     results.values = filtered
                     results.count = filtered.size
@@ -85,10 +79,11 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
 
             @Suppress("UNCHECKED_CAST")
             override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
-                filteredList = results?.values as? List<Item2> ?: appList
+                filteredList = results?.values as? List<ComponentItem> ?: componentList
                 currentFilterQuery = constraint?.toString()
                 notifyDataSetChanged()
             }
         }
     }
 }
+
