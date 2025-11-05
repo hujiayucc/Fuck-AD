@@ -10,7 +10,7 @@ import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SearchView
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import com.hujiayucc.hook.R
@@ -26,11 +26,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
 
-class SDKActivity : AppCompatActivity() {
+class SDKActivity : BaseActivity() {
     private lateinit var binding: ActivitySdkBinding
     private lateinit var progressBar: ProgressBar
     private lateinit var listView: ListView
     private lateinit var textView: TextView
+    private lateinit var searchView: SearchView
     private val disposables = CompositeDisposable()
     private lateinit var adapter: AppListAdapter2
     private val itemList = ArrayList<Item2>()
@@ -53,8 +54,10 @@ class SDKActivity : AppCompatActivity() {
         progressBar = binding.progressBar
         listView = binding.appList
         textView = binding.textView
+        searchView = binding.searchView
         adapter = AppListAdapter2(itemList)
         listView.adapter = adapter
+        setupSearchView()
         prefs = prefs()
         val cachedPackages = loadCachedItemsAndShowIfAny()
         if (cachedPackages.isNotEmpty()) {
@@ -130,7 +133,7 @@ class SDKActivity : AppCompatActivity() {
                     { batch ->
                         if (batch.isNotEmpty()) {
                             itemList.addAll(batch)
-                            adapter.notifyDataSetChanged()
+                            adapter.updateData(itemList.toList())
                         }
                     },
                     { error ->
@@ -208,7 +211,8 @@ class SDKActivity : AppCompatActivity() {
                     }
                 }
                 if (itemList.isNotEmpty()) {
-                    adapter.notifyDataSetChanged()
+                    itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
+                    adapter.updateData(itemList.toList())
                     showListView()
                     return packages
                 }
@@ -255,7 +259,7 @@ class SDKActivity : AppCompatActivity() {
                                 changed = true
                             }
                         }
-                        if (changed) adapter.notifyDataSetChanged()
+                        if (changed) adapter.updateData(itemList.toList())
                     }
                 }
                 .observeOn(Schedulers.io())
@@ -267,7 +271,8 @@ class SDKActivity : AppCompatActivity() {
                 .subscribe({ newItems ->
                     if (newItems.isNotEmpty()) {
                         itemList.addAll(newItems)
-                        adapter.notifyDataSetChanged()
+                        itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
+                        adapter.updateData(itemList.toList())
                     }
                     saveItemsAsync()
                 }, { _ ->
@@ -345,5 +350,18 @@ class SDKActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }.start()
+    }
+
+    private fun setupSearchView() {
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                adapter.filter.filter(newText)
+                return true
+            }
+        })
     }
 }
