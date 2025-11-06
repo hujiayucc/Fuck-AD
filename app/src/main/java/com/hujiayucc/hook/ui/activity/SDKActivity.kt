@@ -11,8 +11,6 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
-import com.highcapable.yukihookapi.hook.factory.prefs
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
@@ -35,7 +33,6 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private val disposables = CompositeDisposable()
     private lateinit var adapter: AppListAdapter2
     private val itemList = ArrayList<Item2>()
-    private lateinit var prefs: YukiHookPrefsBridge
 
     private data class AppEntry(val appInfo: ApplicationInfo, val label: String)
 
@@ -58,7 +55,6 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         adapter = AppListAdapter2(itemList)
         listView.adapter = adapter
         setupSearchView()
-        prefs = prefs()
         val cachedPackages = loadCachedItemsAndShowIfAny()
         if (cachedPackages.isNotEmpty()) {
             updateFromDiffAsync(cachedPackages)
@@ -188,7 +184,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private fun loadCachedItemsAndShowIfAny(): Set<String> {
         val packages = LinkedHashSet<String>()
         try {
-            val jsonStr = prefs.getString("sdkItems", "")
+            val jsonStr = MainActivity.prefs.getString("sdkItems", "")
             if (jsonStr.isNotEmpty()) {
                 val currentInstalled = currentInstalledPackages()
                 val arr = JSONArray(jsonStr)
@@ -221,7 +217,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         }
 
         try {
-            val listStr = prefs.getString("sdkList", "")
+            val listStr = MainActivity.prefs.getString("sdkList", "")
             if (listStr.isNotEmpty()) {
                 val arr = JSONArray(listStr)
                 for (i in 0 until arr.length()) {
@@ -342,7 +338,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                     obj.put("action", item.action)
                     itemArr.put(obj)
                 }
-                prefs.edit {
+                MainActivity.prefs.edit {
                     putString("sdkList", pkgArr.toString())
                     putString("sdkItems", itemArr.toString())
                     apply()

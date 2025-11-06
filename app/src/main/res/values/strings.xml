@@ -48,4 +48,10 @@
     <string name="chinese_tr" translatable="false">繁體中文</string>
     <string name="join_qq_group">Join QQ Group</string>
     <string name="sdks" translatable="false">SDKs</string>
+    <string name="close">Close</string>
+    <string name="host_prompt">Host Prompt</string>
+    <string name="tip_host_prompt">Currently in the host environment, you can turn off the host prompt in the menu, and
+        you will no longer be redirected to the host interface!
+    </string>
+    <string name="tip">Tip</string>
 </resources>

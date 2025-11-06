@@ -44,4 +44,8 @@
     <string name="languages_settings">語言設定</string>
     <string name="system_language">系統語言</string>
     <string name="join_qq_group">加入QQ群</string>
+    <string name="close">關閉</string>
+    <string name="host_prompt">宿主提示</string>
+    <string name="tip_host_prompt">當前為宿主環境，你可以在選單中關閉宿主提示，之後將不會再跳轉宿主介面！</string>
+    <string name="tip">提示</string>
 </resources>

@@ -23,6 +23,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.log.YLog
+import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import com.highcapable.yukihookapi.hook.xposed.prefs.data.PrefsData
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
@@ -58,7 +59,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        author = Author(this, true)
+        prefs = prefs().native()
+        author = Author(this, true, prefs)
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -85,6 +87,22 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                     .format(Date(YukiHookAPI.Status.compiledTimestamp))
             )
             listView = appList
+        }
+
+        if (YukiHookAPI.Status.isModuleActive) {
+            updateFrameworkStatus(
+                YukiHookAPI.Status.Executor.name,
+                YukiHookAPI.Status.Executor.apiLevel
+            )
+
+            if (YukiHookAPI.Status.isXposedEnvironment) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.tip))
+                    .setMessage(getString(R.string.tip_host_prompt))
+                    .setCancelable(false)
+                    .setNegativeButton(getString(R.string.close), null)
+                    .show()
+            }
         }
     }
 
@@ -222,10 +240,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        updateLanguageSelection(menu, prefs().get(language))
-        menu.findItem(R.id.menu_dump_dex)?.isChecked = prefs().getBoolean("dump")
-        menu.findItem(R.id.menu_click_info)?.isChecked = prefs().getBoolean("clickInfo")
-        menu.findItem(R.id.menu_stack_track)?.isChecked = prefs().getBoolean("stackTrack")
+        updateLanguageSelection(menu, prefs.get(language))
+        menu.findItem(R.id.menu_dump_dex)?.isChecked = prefs.getBoolean("dump")
+        menu.findItem(R.id.menu_click_info)?.isChecked = prefs.getBoolean("clickInfo")
+        menu.findItem(R.id.menu_stack_track)?.isChecked = prefs.getBoolean("stackTrack")
+        menu.findItem(R.id.menu_host_prompt)?.isChecked = prefs.getBoolean("hostPrompt", true)
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -235,8 +254,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     private fun saveLanguage(locale: Locale? = null) {
-        locale?.let { prefs().edit().put(language, it.toLanguageTag()).apply() } ?: run {
-            prefs().edit().put(language, "system").commit()
+        locale?.let { prefs.edit().put(language, it.toLanguageTag()).apply() } ?: run {
+            prefs.edit().put(language, "system").commit()
         }
     }
 
@@ -251,7 +270,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
 
             R.id.menu_logout -> {
-                Author(this).logout()
+                Author(this, prefs = prefs).logout()
                 true
             }
 
@@ -265,19 +284,19 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
 
             R.id.menu_dump_dex -> {
-                prefs().edit().putBoolean("dump", !item.isChecked).apply()
+                prefs.edit().putBoolean("dump", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
 
             R.id.menu_click_info -> {
-                prefs().edit().putBoolean("clickInfo", !item.isChecked).apply()
+                prefs.edit().putBoolean("clickInfo", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
 
             R.id.menu_stack_track -> {
-                prefs().edit().putBoolean("stackTrack", !item.isChecked).apply()
+                prefs.edit().putBoolean("stackTrack", !item.isChecked).apply()
                 item.isChecked = !item.isChecked
                 true
             }
@@ -316,6 +335,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 return true
             }
 
+            R.id.menu_host_prompt -> {
+                prefs.edit().putBoolean("hostPrompt", !item.isChecked).apply()
+                return true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -332,5 +356,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+    
+    companion object {
+        lateinit var prefs : YukiHookPrefsBridge
     }
 }

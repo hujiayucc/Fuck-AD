@@ -44,4 +44,10 @@
     <string name="languages_settings">Languages Settings</string>
     <string name="system_language">System Language</string>
     <string name="join_qq_group">Join QQ Group</string>
+    <string name="close">Close</string>
+    <string name="host_prompt">Host Prompt</string>
+    <string name="tip_host_prompt">Currently in the host environment, you can turn off the host prompt in the menu, and
+        you will no longer be redirected to the host interface!
+    </string>
+    <string name="tip">Tip</string>
 </resources>
