@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.highcapable.yukihookapi.hook.xposed.parasitic.activity.proxy.ModuleActivity
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.ActivityAppInfoBinding
-import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
 import java.lang.reflect.ParameterizedType
 import java.util.*
@@ -26,8 +25,7 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), ModuleActivity {
         }
 
         @Deprecated("Deprecated in Java")
-        override fun onLowMemory() {
-        }
+        override fun onLowMemory() {}
 
         override fun onTrimMemory(level: Int) {}
     }
@@ -102,9 +100,5 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), ModuleActivity {
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         delegate.onRestoreInstanceState(savedInstanceState)
         super.onRestoreInstanceState(savedInstanceState)
-    }
-
-    override fun getOnBackInvokedDispatcher(): OnBackInvokedDispatcher {
-        return super.getOnBackInvokedDispatcher()
     }
 }
