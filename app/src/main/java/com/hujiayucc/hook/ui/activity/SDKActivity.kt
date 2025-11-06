@@ -26,7 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
 
-class SDKActivity : BaseActivity() {
+class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private lateinit var binding: ActivitySdkBinding
     private lateinit var progressBar: ProgressBar
     private lateinit var listView: ListView

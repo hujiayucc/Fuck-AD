@@ -11,4 +11,16 @@
             android:targetClass="com.hujiayucc.hook.ui.activity.MainActivity"
             android:targetPackage="com.hujiayucc.hook" />
     </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="sdk"
+        android:shortcutLongLabel="@string/sdks"
+        android:shortcutShortLabel="@string/sdks">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.hujiayucc.hook.ui.activity.SDKActivity"
+            android:targetPackage="com.hujiayucc.hook" />
+    </shortcut>
 </shortcuts>

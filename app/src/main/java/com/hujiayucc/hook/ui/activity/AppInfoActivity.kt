@@ -9,7 +9,7 @@ import com.google.android.material.tabs.TabLayoutMediator
 import com.hujiayucc.hook.databinding.ActivityAppInfoBinding
 import com.hujiayucc.hook.ui.adapter.InfoPagerAdapter
 
-class AppInfoActivity : BaseActivity() {
+class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
     private lateinit var binding: ActivityAppInfoBinding
     private var packageName: String = ""
 
@@ -75,4 +75,3 @@ class AppInfoActivity : BaseActivity() {
         }.attach()
     }
 }
-

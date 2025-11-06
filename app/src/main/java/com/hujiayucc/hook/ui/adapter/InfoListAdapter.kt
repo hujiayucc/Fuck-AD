@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Filter
 import android.widget.Filterable
-import com.hujiayucc.hook.databinding.ItemComponentBinding
+import com.hujiayucc.hook.databinding.ItemInfoBinding
 import java.util.*
 
 class InfoListAdapter(private var componentList: List<ComponentItem>) : BaseAdapter(), Filterable {
@@ -42,11 +42,11 @@ class InfoListAdapter(private var componentList: List<ComponentItem>) : BaseAdap
     @SuppressLint("SetTextI18n")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val binding = convertView?.let {
-            ItemComponentBinding.bind(it)
+            ItemInfoBinding.bind(it)
         } ?: run {
             val view = LayoutInflater.from(parent?.context)
                 .inflate(com.hujiayucc.hook.R.layout.item_info, parent, false)
-            ItemComponentBinding.bind(view)
+            ItemInfoBinding.bind(view)
         }
 
         val item = getItem(position)

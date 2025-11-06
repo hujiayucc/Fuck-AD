@@ -8,13 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.icu.text.SimpleDateFormat
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Process
+import android.os.*
 import android.provider.Settings
-import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -23,6 +18,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.hook.factory.prefs
@@ -39,12 +35,10 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
-import java.util.Date
-import java.util.Locale
+import java.util.*
 import kotlin.system.exitProcess
-import androidx.core.net.toUri
 
-class MainActivity : BaseActivity() {
+class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var listView: ListView
@@ -214,23 +208,6 @@ class MainActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         excludeFromRecent(false)
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        return when (keyCode) {
-            KeyEvent.KEYCODE_BACK -> {
-                if (binding.search.visibility != View.GONE) {
-                    binding.search.setText("")
-                    binding.search.visibility = View.GONE
-                    false
-                } else {
-                    finish()
-                    true
-                }
-            }
-
-            else -> super.onKeyDown(keyCode, event)
-        }
     }
 
     private fun updateLanguageSelection(menu: Menu, languageTag: String) {

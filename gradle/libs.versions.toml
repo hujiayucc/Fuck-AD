@@ -1,4 +1,5 @@
 [versions]
+activity = "1.11.0"
 adsSdkPro = "6.8.2.0"
 agp = "8.12.0"
 dexkit = "2.0.7"
@@ -19,6 +20,7 @@ ksp = "2.2.20-2.0.3"
 
 [libraries]
 ads-sdk-pro = { module = "com.pangle.cn:ads-sdk-pro", version.ref = "adsSdkPro" }
+androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 dexkit = { module = "org.luckypray:dexkit", version.ref = "dexkit" }
 jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }

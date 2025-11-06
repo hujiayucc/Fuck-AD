@@ -9,12 +9,12 @@ import android.view.ViewGroup
 import android.widget.ListView
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
-import com.hujiayucc.hook.databinding.FragmentComponentListBinding
+import com.hujiayucc.hook.databinding.FragmentAppInfoListBinding
 import com.hujiayucc.hook.ui.adapter.InfoListAdapter
 import java.util.*
 
 class InfoListFragment : Fragment() {
-    private var _binding: FragmentComponentListBinding? = null
+    private var _binding: FragmentAppInfoListBinding? = null
     private val binding get() = _binding!!
     
     private lateinit var listView: ListView
@@ -53,7 +53,7 @@ class InfoListFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentComponentListBinding.inflate(inflater, container, false)
+        _binding = FragmentAppInfoListBinding.inflate(inflater, container, false)
         return binding.root
     }
 
