@@ -215,7 +215,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         menu.findItem(R.id.menu_stack_track)?.isChecked = prefsBridge.getBoolean("stackTrack")
         menu.findItem(R.id.menu_using_native)?.isChecked =
             (prefs().native().getBoolean("usingNative", true) || prefs().getBoolean("usingNative", true))
-        menu.findItem(R.id.menu_host_prompt)?.isChecked = prefsBridge.getBoolean("hostPrompt")
+        menu.findItem(R.id.menu_host_prompt)?.isChecked = prefsBridge.getBoolean("hostPrompt", true)
         return super.onPrepareOptionsMenu(menu)
     }
 

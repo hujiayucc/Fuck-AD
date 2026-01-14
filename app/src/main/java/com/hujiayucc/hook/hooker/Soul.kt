@@ -2,7 +2,6 @@ package com.hujiayucc.hook.hooker
 
 import android.app.Activity
 import com.highcapable.kavaref.KavaRef.Companion.resolve
-import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
