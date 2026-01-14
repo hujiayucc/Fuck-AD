@@ -305,39 +305,39 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 item.isChecked = true
                 saveLanguage()
                 LanguageUtils.resetToSystemLanguage(this)
-                return true
+                true
             }
 
             R.id.menu_language_en -> {
                 item.isChecked = true
                 saveLanguage(Locale.ENGLISH)
                 LanguageUtils.setAppLanguage(this, Locale.ENGLISH)
-                return true
+                true
             }
 
             R.id.menu_language_zh_cn -> {
                 item.isChecked = true
                 saveLanguage(Locale.SIMPLIFIED_CHINESE)
                 LanguageUtils.setAppLanguage(this, Locale.SIMPLIFIED_CHINESE)
-                return true
+                true
             }
 
             R.id.menu_language_zh_tr -> {
                 item.isChecked = true
                 saveLanguage(Locale.TRADITIONAL_CHINESE)
                 LanguageUtils.setAppLanguage(this, Locale.TRADITIONAL_CHINESE)
-                return true
+                true
             }
 
             R.id.menu_sdk -> {
                 val intent = Intent(this, SDKActivity::class.java)
                 startActivity(intent)
-                return true
+                true
             }
 
             R.id.menu_host_prompt -> {
                 prefs.edit().putBoolean("hostPrompt", !item.isChecked).apply()
-                return true
+                true
             }
 
             else -> super.onOptionsItemSelected(item)
