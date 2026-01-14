@@ -1,9 +1,9 @@
 package com.hujiayucc.hook.hooker
 
+import android.app.Application
 import android.content.Context
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.method
-import com.highcapable.yukihookapi.hook.type.android.ApplicationClass
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 import org.luckypray.dexkit.DexKitBridge
 
@@ -23,33 +23,33 @@ object QiCat : Base() {
             bridge.close()
         }
 
-        ApplicationClass.method { name = "attach" }.hook {
+        Application::class.resolve().firstMethod { name = "attach" }.hook {
             before {
                 for ((className, methodName) in boolMap) {
-                    className.toClassOrNull((args[0] as Context).classLoader)?.method { name = methodName }
+                    className.toClassOrNull((args[0] as Context).classLoader)?.resolve()?.firstMethod { name = methodName }
                         ?.hook { replaceTo(true) }?.ignoredAllFailure()
                 }
             }
         }
 
-        val baseInfo = "com.qimao.qmuser.model.entity.mine_v2.BaseInfo".toClass()
+        val baseInfo = "com.qimao.qmuser.model.entity.mine_v2.BaseInfo".toClass().resolve()
         val methods = arrayOf("isVipExpired", "isVipState", "isShowYearVip")
 
         for (method in methods) {
-            baseInfo.method { name = method }.hook { replaceToTrue() }
+            baseInfo.firstMethod { name = method }.hook { replaceToTrue() }
         }
 
-        "com.qimao.qmuser.model.entity.AdDataConfig".toClass().method { name = "getAdvertiser" }
+        "com.qimao.qmuser.model.entity.AdDataConfig".toClass().resolve().firstMethod { name = "getAdvertiser" }
             .hook { replaceTo(null) }
 
-        "com.qimao.qmuser.model.entity.AdPositionData".toClass().method { name = "getAdv" }
+        "com.qimao.qmuser.model.entity.AdPositionData".toClass().resolve().firstMethod { name = "getAdv" }
             .hook { replaceTo(null) }
 
-        "com.qimao.qmuser.view.bonus.LoginGuidePopupTask".toClass().method { name = "addPopup" }
+        "com.qimao.qmuser.view.bonus.LoginGuidePopupTask".toClass().resolve().firstMethod { name = "addPopup" }
             .hook { replaceUnit { } }
 
         "com.qimao.qmuser.view.VipStatusView".toClass()
-            .method { name = "init" }
+            .resolve().firstMethod { name = "init" }
             .hook{
                 after {
                     instance<View>().visibility = View.GONE

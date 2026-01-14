@@ -2,8 +2,7 @@ package com.hujiayucc.hook.hooker
 
 import android.view.View
 import android.widget.TextView
-import com.highcapable.yukihookapi.hook.factory.constructor
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -16,7 +15,7 @@ import com.hujiayucc.hook.annotation.Run
 )
 object TieBa : Base() {
     override fun onStart() {
-        "com.baidu.sdk.container.widget.RectangleCountDownView".toClass().method {
+        "com.baidu.sdk.container.widget.RectangleCountDownView".toClass().resolve().firstMethod {
             name = "onDraw"
         }.hook {
             after {
@@ -29,11 +28,13 @@ object TieBa : Base() {
             }
         }
 
-        "com.baidu.tieba.recapp.lego.view.AdCardBaseView".toClass().constructor()
-            .hook {
-                after {
-                    val view = instance as View
-                    view.visibility = View.GONE
+        "com.baidu.tieba.recapp.lego.view.AdCardBaseView".toClass().resolve()
+            .constructor().build().forEach { constructor ->
+                constructor.hook {
+                    after {
+                        val view = instance as View
+                        view.visibility = View.GONE
+                    }
                 }
             }
     }

@@ -1,5 +1,6 @@
 package com.hujiayucc.hook.hooker
 
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 
@@ -14,7 +15,7 @@ import com.hujiayucc.hook.annotation.Run
 object CYC : Base() {
     override fun onStart() {
         "com.windmill.sdk.a.m$12$1".toClass()
-            .method { name = "run" }
+            .resolve().firstMethod { name = "run" }
             .hook {
                 replaceUnit {}
             }

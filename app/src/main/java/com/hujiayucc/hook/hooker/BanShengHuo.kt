@@ -2,7 +2,7 @@ package com.hujiayucc.hook.hooker
 
 import android.app.Activity
 import android.content.Intent
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -16,7 +16,7 @@ import com.hujiayucc.hook.annotation.Run
 object BanShengHuo : Base() {
     override fun onStart() {
         "com.banshenghuo.mobile.modules.SplashActivity".toClass()
-            .method { name = "initData" }
+            .resolve().firstMethod { name = "initData" }
             .hook {
                 replaceUnit {
                     val activity = instance as Activity

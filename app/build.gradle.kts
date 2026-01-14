@@ -63,9 +63,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+
     buildFeatures {
         buildConfig = true
         viewBinding = true
@@ -100,6 +98,9 @@ dependencies {
     compileOnly(libs.xposed.api)
     // ❗作为 Xposed 模块使用务必添加，其它情况可选
     ksp(libs.ksp.xposed)
+    // 使用 KavaRef 作为核心反射 API
+    implementation(libs.kavaref.core)
+    implementation(libs.kavaref.extension)
 
     compileOnly(libs.ads.sdk.pro)
 

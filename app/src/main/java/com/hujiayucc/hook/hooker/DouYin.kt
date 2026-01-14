@@ -3,7 +3,7 @@ package com.hujiayucc.hook.hooker
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
@@ -16,7 +16,7 @@ object DouYin : Base() {
 
     override fun onStart() {
         "com.ss.android.excitingvideo.ExcitingVideoActivity".toClassOrNull()
-            ?.method { name = "onResume" }
+            ?.resolve()?.firstMethod { name = "onResume" }
             ?.hook {
                 after {
                     instance.javaClass.fields.forEach { field ->

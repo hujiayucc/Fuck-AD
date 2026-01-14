@@ -50,6 +50,11 @@
             app:showAsAction="always" />
 
     <item
+            android:id="@+id/menu_using_native"
+            android:title="@string/using_native_prefs"
+            android:checkable="true" />
+
+    <item
             android:id="@+id/menu_host_prompt"
             android:title="@string/host_prompt"
             android:checkable="true"/>

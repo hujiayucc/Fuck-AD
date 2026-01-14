@@ -2,9 +2,7 @@ package com.hujiayucc.hook.hooker
 
 import android.view.View
 import android.widget.LinearLayout
-import com.highcapable.yukihookapi.hook.factory.allMethods
-import com.highcapable.yukihookapi.hook.factory.method
-import com.highcapable.yukihookapi.hook.type.android.LinearLayoutClass
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.RunJiaGu
 
 @RunJiaGu(
@@ -17,7 +15,8 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 )
 object Kook : Base() {
     override fun onStart() {
-        LinearLayoutClass.method { name = "onDraw" }.hook {
+        LinearLayout::class.resolve().firstMethod { name = "onDraw" }
+            .hook {
                 after {
                     val layout = instance as LinearLayout
                     if (layout.id == 0x7f0a0a51) layout.performClick()
@@ -25,7 +24,7 @@ object Kook : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClassOrNull()
-            ?.allMethods { index, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     after {
                         val view = instance as View

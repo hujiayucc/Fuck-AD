@@ -1,8 +1,7 @@
 package com.hujiayucc.hook.hooker
 
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.allMethods
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -16,10 +15,10 @@ import com.hujiayucc.hook.annotation.Run
 object DouBan : Base() {
     override fun onStart() {
         "com.bytedance.sdk.openadsdk.TTAdSdk".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -28,10 +27,10 @@ object DouBan : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.api.ln".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -40,10 +39,10 @@ object DouBan : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.core.AdSdkInitializerHolder".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -52,10 +51,10 @@ object DouBan : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.CSJConfig".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -63,11 +62,11 @@ object DouBan : Base() {
                 }
             }
 
-        "com.bytedance.sdk.openadsdk.AdSlot\$Builder".toClassOrNull()
-            ?.allMethods { _, method ->
+        $$"com.bytedance.sdk.openadsdk.AdSlot$Builder".toClassOrNull()
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -76,7 +75,7 @@ object DouBan : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClassOrNull()
-            ?.allMethods { index, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     after {
                         val view = instance as View
@@ -85,40 +84,40 @@ object DouBan : Base() {
                 }
             }
 
-        "com.qq.e.comm.managers.plugin.PM\$a".toClassOrNull()
-            ?.method { name = "call" }
+        $$"com.qq.e.comm.managers.plugin.PM$a".toClassOrNull()
+            ?.resolve()?.firstMethod { name = "call" }
             ?.hook { replaceTo(null) }
 
-        "com.qq.e.comm.managers.plugin.PM\$a".toClassOrNull()
-            ?.method { name = "a" }
+        $$"com.qq.e.comm.managers.plugin.PM$a".toClassOrNull()
+            ?.resolve()?.firstMethod { name = "a" }
             ?.hook { replaceToFalse() }
 
         "com.douban.ad.h0".toClassOrNull()
-            ?.method { name = "run" }
+            ?.resolve()?.firstMethod { name = "run" }
             ?.hook { replaceUnit {} }
 
         "com.douban.ad.g0".toClassOrNull()
-            ?.method { name = "run" }
+            ?.resolve()?.firstMethod { name = "run" }
             ?.hook { replaceUnit {} }
 
         "com.douban.ad.k0".toClassOrNull()
-            ?.method { name = "d" }
+            ?.resolve()?.firstMethod { name = "d" }
             ?.hook { replaceUnit {} }
 
         "com.douban.ad.AdView".toClassOrNull()
-            ?.method { name = "b" }
+            ?.resolve()?.firstMethod { name = "b" }
             ?.hook { replaceUnit {} }
 
         "com.douban.ad.t".toClassOrNull()
-            ?.method { name = "onGlobalLayout" }
+            ?.resolve()?.firstMethod { name = "onGlobalLayout" }
             ?.hook { replaceUnit {} }
 
-        "com.douban.frodo.splash.SplashAdNewRequestor\$c".toClassOrNull()
-            ?.method { name = "handleMessage" }
-            ?.hook { replaceUnit{} }
+        $$"com.douban.frodo.splash.SplashAdNewRequestor$c".toClassOrNull()
+            ?.resolve()?.firstMethod { name = "handleMessage" }
+            ?.hook { replaceUnit {} }
 
         "com.bytedance.sdk.openadsdk.core.component.splash.e.r$1".toClassOrNull()
-            ?.method { name = "run" }
+            ?.resolve()?.firstMethod { name = "run" }
             ?.hook { replaceUnit {} }
     }
 }

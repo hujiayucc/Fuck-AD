@@ -2,32 +2,32 @@ package com.hujiayucc.hook.hooker
 
 import android.view.View
 import android.widget.TextView
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.method
 import com.highcapable.yukihookapi.hook.log.YLog
-import com.highcapable.yukihookapi.hook.type.android.ViewClass
+import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.utils.AppInfoUtil.getActivityFromView
 import com.hujiayucc.hook.utils.AppInfoUtil.getResourceName
 
 object ClickInfo : YukiBaseHooker() {
     override fun onHook() {
-        val click = prefs.getBoolean("clickInfo")
-        val stackTrack = prefs.getBoolean("stackTrack")
-        if (click || stackTrack) {
-            ViewClass.method { name = "performClick" }
+        val click = appContext?.prefsBridge?.getBoolean("clickInfo")
+        val stackTrack = appContext?.prefsBridge?.getBoolean("stackTrack")
+        if (click == true || stackTrack == true) {
+            View::class.resolve().firstMethod { name = "performClick" }
                 .hook {
                     before {
-                        if (click) printInfo(instance as View)
-                        if (stackTrack) printStackTrace(Throwable("堆栈信息"))
+                        if (click == true) printInfo(instance as View)
+                        if (stackTrack == true) printStackTrace(Throwable("堆栈信息"))
                     }
                 }
 
             "android.view.View.DeclaredOnClickListener".toClassOrNull()
-                ?.method { name = "onClick" }
+                ?.resolve()?.firstMethod { name = "onClick" }
                 ?.hook {
                     before {
-                        if (click) printInfo(instance as View)
-                        if (stackTrack) printStackTrace(Throwable("堆栈信息"))
+                        if (click == true) printInfo(instance as View)
+                        if (stackTrack == true) printStackTrace(Throwable("堆栈信息"))
                     }
                 }
         }

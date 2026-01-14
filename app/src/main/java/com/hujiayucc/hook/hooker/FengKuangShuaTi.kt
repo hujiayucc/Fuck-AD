@@ -1,7 +1,7 @@
 package com.hujiayucc.hook.hooker
 
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.allMethods
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.RunJiaGu
 
 @RunJiaGu(
@@ -12,7 +12,7 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 object FengKuangShuaTi: Base() {
     override fun onStart() {
         "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     after {
                         val view = instance as View

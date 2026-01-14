@@ -4,9 +4,7 @@ import android.os.LocaleList
 import android.os.StrictMode
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.application.ModuleApplication
-import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 
 class XYApplication : ModuleApplication() {
     override fun onCreate() {

@@ -1,8 +1,7 @@
 package com.hujiayucc.hook.hooker
 
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.allMethods
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.RunJiaGu
 
 @RunJiaGu(
@@ -13,10 +12,10 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 object CoolMarket : Base() {
     override fun onStart() {
         "com.bytedance.sdk.openadsdk.TTAdSdk".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -25,10 +24,10 @@ object CoolMarket : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.api.ln".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -37,10 +36,10 @@ object CoolMarket : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.core.AdSdkInitializerHolder".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -49,10 +48,10 @@ object CoolMarket : Base() {
             }
 
         "com.bytedance.sdk.openadsdk.CSJConfig".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -60,11 +59,11 @@ object CoolMarket : Base() {
                 }
             }
 
-        "com.bytedance.sdk.openadsdk.AdSlot\$Builder".toClassOrNull()
-            ?.allMethods { _, method ->
+        $$"com.bytedance.sdk.openadsdk.AdSlot$Builder".toClassOrNull()
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     before {
-                        result = when (method.returnType) {
+                        result = when (method.self.returnType) {
                             java.lang.Boolean.TYPE -> false
                             else -> null
                         }
@@ -73,7 +72,7 @@ object CoolMarket : Base() {
             }
 
         "androidx.appcompat.widget.AppCompatImageView".toClassOrNull()
-            ?.method { name = "hasOverlappingRendering" }
+            ?.resolve()?.firstMethod { name = "hasOverlappingRendering" }
             ?.hook {
                 after {
                     val view = instance as View

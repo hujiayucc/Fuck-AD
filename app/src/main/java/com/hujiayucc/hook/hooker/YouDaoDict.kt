@@ -1,6 +1,6 @@
 package com.hujiayucc.hook.hooker
 
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -15,7 +15,7 @@ object YouDaoDict : Base() {
     override fun onStart() {
         if (versionName == "10.2.19")
             "com.youdao.community.extension.ExtensionsKt".toClassOrNull()
-                ?.method { name = "H" }
+                ?.resolve()?.firstMethod { name = "H" }
                 ?.hook {
                     after {
                         val view = args[0] as android.view.View

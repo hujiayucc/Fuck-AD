@@ -2,7 +2,7 @@ package com.hujiayucc.hook.hooker
 
 import android.annotation.SuppressLint
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -18,7 +18,7 @@ object HuYa : Base() {
     override fun onStart() {
         if (versionName == "12.7.14")
             "com.duowan.kiwi.adsplash.view.AdSplashFragment".toClassOrNull()
-                ?.method { name = "findViews" }
+                ?.resolve()?.firstMethod { name = "findViews" }
                 ?.hook {
                     after {
                         runCatching {

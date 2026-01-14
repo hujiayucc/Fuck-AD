@@ -50,4 +50,6 @@
     <string name="host_prompt">宿主提示</string>
     <string name="tip_host_prompt">當前為宿主環境，你可以在選單中關閉宿主提示，之後將不會再跳轉宿主介面！</string>
     <string name="tip">提示</string>
+    <string name="using_native_prefs">使用原生 Prefs</string>
+    <string name="only_allowed_to_be_set_within_the_module">僅允許在模組中設置</string>
 </resources>

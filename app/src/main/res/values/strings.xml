@@ -56,4 +56,6 @@
         you will no longer be redirected to the host interface!
     </string>
     <string name="tip">Tip</string>
+    <string name="using_native_prefs">Using native prefs</string>
+    <string name="only_allowed_to_be_set_within_the_module">Only allowed to be set within the module</string>
 </resources>

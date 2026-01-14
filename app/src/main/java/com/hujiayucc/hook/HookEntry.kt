@@ -1,15 +1,19 @@
 package com.hujiayucc.hook
 
+import android.app.Activity
 import android.content.Intent
+import android.os.Bundle
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.highcapable.yukihookapi.YukiHookAPI
 import com.highcapable.yukihookapi.annotation.xposed.InjectYukiHookWithXposed
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
-import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.factory.registerModuleAppActivities
 import com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.author.JwtUtils.isLogin
+import com.hujiayucc.hook.data.Data.prefsBridge
+import com.hujiayucc.hook.data.Data.proxyMap
 import com.hujiayucc.hook.hooker.ClickInfo
 import com.hujiayucc.hook.hooker.DumpDex
 import com.hujiayucc.hook.ui.activity.MainActivity
@@ -29,12 +33,11 @@ class HookEntry : IYukiHookXposedInit {
         debugLog {
             tag = "Fuck AD"
             isEnable = BuildConfig.DEBUG
-            isRecord = BuildConfig.DEBUG
         }
 
-        isDebug = BuildConfig.DEBUG
-        isEnableModuleAppResourcesCache = true
+        isEnableModuleAppResourcesCache = false
         isEnableDataChannel = false
+        isEnableHookSharedPreferences = true
     }
 
     override fun onHook() = YukiHookAPI.encase {
@@ -44,10 +47,10 @@ class HookEntry : IYukiHookXposedInit {
         var isJiaGi = false
 
         onAppLifecycle {
-            attachBaseContext { context, hasCalledSuper ->
-                if (hasCalledSuper) return@attachBaseContext
+            attachBaseContext { context, _ ->
                 appClassLoader = context.classLoader
-                if (prefs.getBoolean("dump")) loadHooker(DumpDex(context))
+                if (!context.prefsBridge.isLogin()) return@attachBaseContext
+                if (context.prefsBridge.getBoolean("dump")) loadHooker(DumpDex(context))
                 bridge.findClass {
                     searchPackages("com.hujiayucc.hook.hooker")
                     matcher {
@@ -68,48 +71,53 @@ class HookEntry : IYukiHookXposedInit {
                     }
                     hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
                 }
+
+                if (!isJiaGi) {
+                    bridge.findClass {
+                        searchPackages("com.hujiayucc.hook.hooker")
+                        matcher {
+                            annotations {
+                                add {
+                                    type = Run::class.java.name
+                                    addElement {
+                                        name = "packageName"
+                                        stringValue(packageName, StringMatchType.Equals)
+                                    }
+                                }
+                            }
+                        }
+                    }.forEach { data ->
+                        val hooker = moduleClassLoader?.let { classLoader ->
+                            data.getInstance(classLoader).getDeclaredConstructor().newInstance()
+                        }
+                        hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
+                    }
+                    loadHooker(ClickInfo)
+                    if (context.prefsBridge.getBoolean("dump")) appContext?.let { loadHooker(DumpDex(it)) }
+                }
+
                 loadHooker(ClickInfo)
             }
 
             onCreate {
-                if (
-                    !prefs.isLogin() ||
-                    packageName != BuildConfig.APPLICATION_ID &&
-                    prefs.getBoolean("hostPrompt", true)
+                if (packageName != BuildConfig.APPLICATION_ID &&
+                    packageName != "android" &&
+                    prefsBridge.getBoolean("hostPrompt", true)
                 ) {
-                    registerModuleAppActivities()
-                    val intent = Intent(this, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    startActivity(intent)
-                }
-            }
-        }
-
-        if (appContext?.prefs()?.native()?.isLogin() == false) return@encase
-
-        if (!isJiaGi) {
-            bridge.findClass {
-                searchPackages("com.hujiayucc.hook.hooker")
-                matcher {
-                    annotations {
-                        add {
-                            type = Run::class.java.name
-                            addElement {
-                                name = "packageName"
-                                stringValue(packageName, StringMatchType.Equals)
-                            }
+                    registerModuleAppActivities(proxyMap.getOrDefault(packageName, null))
+                    Activity::class.resolve().firstMethod {
+                        name = "onCreate"
+                        parameters(Bundle::class.java)
+                    }.hook {
+                        after {
+                            val activity = instance<Activity>()
+                            if (activity is MainActivity) return@after
+                            val intent = Intent(activity, MainActivity::class.java)
+                            activity.startActivity(intent)
                         }
                     }
                 }
-            }.forEach { data ->
-                val hooker = moduleClassLoader?.let { classLoader ->
-                    data.getInstance(classLoader).getDeclaredConstructor().newInstance()
-                }
-                hooker?.let { h -> loadHooker(h as YukiBaseHooker) }
             }
-            loadHooker(ClickInfo)
-            if (prefs.getBoolean("dump")) appContext?.let { loadHooker(DumpDex(it)) }
         }
     }
 }

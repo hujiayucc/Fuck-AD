@@ -2,14 +2,16 @@ package com.hujiayucc.hook.hooker
 
 import android.app.Activity
 import android.content.Intent
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(appName = "AppShare", packageName = "info.muge.appshare", action = "开屏广告")
 object AppShare : Base() {
     override fun onStart() {
         "info.muge.appshare.view.launch.LaunchActivity".toClass()
-            .method { name = "initView" }.hook {
+            .resolve().firstMethod {
+                name = "initView"
+            }.hook {
                 after {
                     val activity = instance<Activity>()
                     activity.startActivityForResult(

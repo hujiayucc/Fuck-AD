@@ -17,7 +17,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://api.xposed.info/")
-        maven("https://jitpack.io")
         // 穿山甲广告
         maven("https://artifact.bytedance.com/repository/pangle")
     }

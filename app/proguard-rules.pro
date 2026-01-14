@@ -18,3 +18,7 @@
 
 # 保留签名算法实现
 -keep class io.jsonwebtoken.impl.** { *; }
+
+# KavaRef
+-keepattributes Signature
+-keep class com.highcapable.kavaref.extension.TypeRef {*;}

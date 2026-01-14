@@ -3,8 +3,7 @@ package com.hujiayucc.hook.hooker
 import android.os.Handler
 import android.os.Looper
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.allMethods
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 
 @Run(
@@ -19,7 +18,7 @@ object MockGps : Base() {
     override fun onStart() {
         val handler = Handler(Looper.getMainLooper())
         "com.kwad.components.ad.splashscreen.widget.CircleSkipView".toClassOrNull()
-            ?.allMethods { _, method ->
+            ?.resolve()?.method()?.build()?.forEach { method ->
                 method.hook {
                     after {
                         handler.postDelayed({
@@ -31,7 +30,7 @@ object MockGps : Base() {
             }
 
         "androidx.appcompat.widget.AppCompatImageView".toClassOrNull()
-            ?.method { name = "setImageDrawable" }
+            ?.resolve()?.firstMethod { name = "setImageDrawable" }
             ?.hook {
                 after {
                     val view = instance as View

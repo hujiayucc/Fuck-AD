@@ -3,7 +3,7 @@ package com.hujiayucc.hook.hooker
 import android.os.Handler
 import android.os.Looper
 import android.view.View
-import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
 
@@ -19,7 +19,7 @@ object Bilibili : Base() {
     override fun onStart() {
         if (versionName == "8.54.0")
             "tv.danmaku.bili.ui.splash.ad.page.FullImageSplash".toClassOrNull()
-                ?.method { name = "y6" }
+                ?.resolve()?.firstMethod { name = "y6" }
                 ?.hook {
                     after {
                         val view = XposedHelpers.getObjectField(instance, "v") as View

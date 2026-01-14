@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.hooker
 
 import android.view.View
+import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
 import de.robv.android.xposed.XposedHelpers
@@ -16,7 +17,7 @@ import de.robv.android.xposed.XposedHelpers
 object IQiYi : Base() {
     override fun onStart() {
         "com.qiyi.video.qysplashscreen.ad.g".toClass()
-            .method { name = "B1" }
+            .resolve().firstMethod { name = "B1" }
             .hook {
                 after {
                     val view = XposedHelpers.getObjectField(instance, "t") as View
