@@ -19,20 +19,6 @@
             app:layout_constraintTop_toTopOf="parent">
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <androidx.appcompat.widget.SearchView
-            android:id="@+id/search_view"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
-            android:queryHint="搜索应用名称或包名"
-            app:iconifiedByDefault="false"
-            app:layout_constraintTop_toBottomOf="@+id/toolbar"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
-
     <ProgressBar
             android:id="@+id/progress_bar"
             android:layout_width="match_parent"
@@ -42,7 +28,7 @@
             android:max="100"
             android:progress="20"
             android:padding="50dp"
-            app:layout_constraintTop_toBottomOf="@+id/search_view"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
@@ -51,7 +37,7 @@
             android:id="@+id/text_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/search_view"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="50dp"
@@ -65,7 +51,7 @@
             android:layout_height="0dp"
             android:layout_marginTop="8dp"
             android:visibility="gone"
-            app:layout_constraintTop_toBottomOf="@+id/search_view"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>

@@ -7,6 +7,8 @@
     <string name="is_active">Activated</string>
     <string name="build_time">Build Time: %1$s</string>
     <string name="search">Search</string>
+    <string name="sdk_search_hint">Search app name or package</string>
+    <string name="app_info_search_hint">Search component name</string>
 
     <!-- Core permission -->
     <string name="essential_permission_title">Application list permission is required</string>

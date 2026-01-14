@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ListView
-import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import com.hujiayucc.hook.databinding.FragmentAppInfoListBinding
 import com.hujiayucc.hook.ui.adapter.InfoListAdapter
@@ -18,16 +17,20 @@ class InfoListFragment : Fragment() {
     private val binding get() = _binding!!
     
     private lateinit var listView: ListView
-    private lateinit var searchView: SearchView
     private lateinit var adapter: InfoListAdapter
     private val componentList = ArrayList<InfoListAdapter.ComponentItem>()
     
     private var packageName: String = ""
     private var componentType: InfoListAdapter.ComponentType = InfoListAdapter.ComponentType.ACTIVITY
 
+    private var pendingQuery: String? = null
+
     companion object {
         private const val ARG_PACKAGE_NAME = "packageName"
         private const val ARG_COMPONENT_TYPE = "componentType"
+        private const val FR_SEARCH_KEY_ACTIVITY = "app_info_search_activity"
+        private const val FR_SEARCH_KEY_SERVICE = "app_info_search_service"
+        private const val FR_QUERY_KEY = "query"
 
         fun newInstance(packageName: String, componentType: InfoListAdapter.ComponentType): InfoListFragment {
             val fragment = InfoListFragment()
@@ -61,10 +64,9 @@ class InfoListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         listView = binding.componentList
-        searchView = binding.searchView
         adapter = InfoListAdapter(componentList)
         listView.adapter = adapter
-        setupSearchView()
+        setupSearchReceiver()
 
         loadComponents()
     }
@@ -74,17 +76,16 @@ class InfoListFragment : Fragment() {
         _binding = null
     }
 
-    private fun setupSearchView() {
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                adapter.filter.filter(newText)
-                return true
-            }
-        })
+    private fun setupSearchReceiver() {
+        val key = when (componentType) {
+            InfoListAdapter.ComponentType.ACTIVITY -> FR_SEARCH_KEY_ACTIVITY
+            InfoListAdapter.ComponentType.SERVICE -> FR_SEARCH_KEY_SERVICE
+        }
+        parentFragmentManager.setFragmentResultListener(key, viewLifecycleOwner) { _, bundle ->
+            val q = bundle.getString(FR_QUERY_KEY, "")
+            pendingQuery = q
+            adapter.filter.filter(q)
+        }
     }
 
     @SuppressLint("SetTextI18n")
@@ -134,6 +135,8 @@ class InfoListFragment : Fragment() {
 
             componentList.sortBy { it.name.lowercase(Locale.getDefault()) }
             adapter.updateData(componentList.toList())
+            // 如果 Activity 在列表加载前就发了 query，这里确保更新数据后仍应用过滤
+            pendingQuery?.let { adapter.filter.filter(it) }
 
             binding.progressBar.visibility = View.GONE
             binding.textView.visibility = View.GONE

@@ -9,6 +9,8 @@
     <string name="search">Search</string>
 
     <!-- Core permission -->
+    <string name="sdk_search_hint">Search app name or package</string>
+    <string name="app_info_search_hint">Search component name</string>
     <string name="essential_permission_title">Application list permission is required</string>
     <string name="essential_permission_message">This feature requires access to the app list to:\n • Identify installed apps \n• Display available rules\n • Ensure proper functionality \n\nWe promise to use it only for feature implementation and will not collect private data</string>
 

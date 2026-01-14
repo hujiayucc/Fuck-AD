@@ -7,6 +7,8 @@
     <string name="is_active">已激活</string>
     <string name="build_time">构建时间: %1$s</string>
     <string name="search">搜索</string>
+    <string name="sdk_search_hint">搜索应用名称或包名</string>
+    <string name="app_info_search_hint">搜索组件名称</string>
 
     <!-- 核心权限 -->
     <string name="essential_permission_title">需要应用列表权限</string>

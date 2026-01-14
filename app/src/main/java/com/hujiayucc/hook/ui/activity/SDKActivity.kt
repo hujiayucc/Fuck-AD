@@ -9,6 +9,8 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.ListView
 import android.widget.ProgressBar
@@ -40,7 +42,6 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private lateinit var progressBar: ProgressBar
     private lateinit var listView: ListView
     private lateinit var textView: TextView
-    private lateinit var searchView: SearchView
     private val disposables = CompositeDisposable()
     private lateinit var adapter: AppListAdapter2
     private val itemList = ArrayList<Item2>()
@@ -66,10 +67,8 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         progressBar = binding.progressBar
         listView = binding.appList
         textView = binding.textView
-        searchView = binding.searchView
         adapter = AppListAdapter2(itemList)
         listView.adapter = adapter
-        setupSearchView()
         hideListView()
         disposables.add(
             loadCachedItemsAsync().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
@@ -91,6 +90,31 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
     override fun onSupportNavigateUp(): Boolean {
         finish()
+        return true
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_sdk, menu)
+        val item = menu.findItem(R.id.action_search)
+        val sv = item.actionView as? SearchView
+        sv?.queryHint = getString(R.string.sdk_search_hint)
+        sv?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean = false
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                adapter.filter.filter(newText)
+                return true
+            }
+        })
+
+        item.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
+            override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
+
+            override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
+                adapter.filter.filter("")
+                return true
+            }
+        })
         return true
     }
 
@@ -345,19 +369,6 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             } catch (_: Exception) {
             }
         }, delayMs, TimeUnit.MILLISECONDS)
-    }
-
-    private fun setupSearchView() {
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                adapter.filter.filter(newText)
-                return true
-            }
-        })
     }
 
     private fun buildAppsList(): List<AppEntry> {

@@ -9,6 +9,8 @@
     <string name="search">搜尋</string>
 
     <!-- 核心權限 -->
+    <string name="sdk_search_hint">搜尋應用名稱或包名</string>
+    <string name="app_info_search_hint">搜尋組件名稱</string>
     <string name="essential_permission_title">需要應用清單權限</string>
     <string name="essential_permission_message">此功能需要存取應用清單以：\n • 識別已安裝應用\n • 顯示可用規則\n • 確保功能正常運作\n\n我們承諾僅用於功能實現，不會收集隱私資料</string>
 
