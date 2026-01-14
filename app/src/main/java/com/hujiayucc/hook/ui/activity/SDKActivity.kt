@@ -15,6 +15,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
+import com.highcapable.yukihookapi.hook.factory.prefs
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
@@ -199,7 +200,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             val items = ArrayList<Item2>()
 
             try {
-                val jsonStr = MainActivity.prefs.getString("sdkItems", "")
+                val jsonStr = prefs().getString("sdkItems", "")
                 if (jsonStr.isNotEmpty()) {
                     val currentInstalled = currentInstalledPackages()
                     val arr = JSONArray(jsonStr)
@@ -226,7 +227,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             }
 
             try {
-                val listStr = MainActivity.prefs.getString("sdkList", "")
+                val listStr = prefs().getString("sdkList", "")
                 if (listStr.isNotEmpty()) {
                     val arr = JSONArray(listStr)
                     for (i in 0 until arr.length()) {
@@ -336,7 +337,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                     obj.put("action", item.action)
                     itemArr.put(obj)
                 }
-                MainActivity.prefs.edit {
+                prefs().edit {
                     putString("sdkList", pkgArr.toString())
                     putString("sdkItems", itemArr.toString())
                     apply()

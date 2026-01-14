@@ -72,7 +72,11 @@ class HookEntry : IYukiHookXposedInit {
             }
 
             onCreate {
-                if (packageName != BuildConfig.APPLICATION_ID && prefs.native().getBoolean("hostPrompt", true)) {
+                if (
+                    !prefs.isLogin() ||
+                    packageName != BuildConfig.APPLICATION_ID &&
+                    prefs.getBoolean("hostPrompt", true)
+                ) {
                     registerModuleAppActivities()
                     val intent = Intent(this, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
