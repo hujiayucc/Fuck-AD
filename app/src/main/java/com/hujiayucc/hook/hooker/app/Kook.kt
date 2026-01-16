@@ -3,7 +3,7 @@ package com.hujiayucc.hook.hooker.app
 import android.widget.LinearLayout
 import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.RunJiaGu
-import com.hujiayucc.hook.hooker.Base
+import com.hujiayucc.hook.hooker.util.Base
 
 @RunJiaGu(
     appName = "KOOK",

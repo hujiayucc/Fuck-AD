@@ -14,8 +14,8 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.author.JwtUtils.isLogin
 import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.data.Data.proxyMap
-import com.hujiayucc.hook.hooker.app.ClickInfo
-import com.hujiayucc.hook.hooker.DumpDex
+import com.hujiayucc.hook.hooker.util.ClickInfo
+import com.hujiayucc.hook.hooker.util.DumpDex
 import com.hujiayucc.hook.ui.activity.MainActivity
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType

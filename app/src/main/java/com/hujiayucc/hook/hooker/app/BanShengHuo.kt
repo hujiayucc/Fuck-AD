@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
-import com.hujiayucc.hook.hooker.Base
+import com.hujiayucc.hook.hooker.util.Base
 
 @Run(
     appName = "伴生活",

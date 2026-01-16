@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.hooker.app
+package com.hujiayucc.hook.hooker.util
 
 import android.view.View
 import android.widget.TextView
@@ -6,8 +6,7 @@ import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.hujiayucc.hook.data.Data.prefsBridge
-import com.hujiayucc.hook.utils.AppInfoUtil.getActivityFromView
-import com.hujiayucc.hook.utils.AppInfoUtil.getResourceName
+import com.hujiayucc.hook.utils.AppInfoUtil
 
 object ClickInfo : YukiBaseHooker() {
     override fun onHook() {
@@ -40,11 +39,11 @@ object ClickInfo : YukiBaseHooker() {
     @OptIn(ExperimentalStdlibApi::class)
     private fun printInfo(view: View) {
         val id = view.id
-        val resName: String = getResourceName(view, id)
+        val resName: String = AppInfoUtil.getResourceName(view, id)
         val text = if (view is TextView) view.text.toString() else ""
 
         // 获取当前 Activity
-        val activity = getActivityFromView(view)
+        val activity = AppInfoUtil.getActivityFromView(view)
         val activityName = activity?.javaClass?.name ?: "Unknown"
 
         // 输出完整信息

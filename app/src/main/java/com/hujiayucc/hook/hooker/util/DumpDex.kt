@@ -1,4 +1,4 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.util
 
 import android.content.Context
 import android.os.Handler
@@ -18,10 +18,10 @@ class DumpDex(private val context: Context) : YukiBaseHooker() {
         if (!outFile.exists()) outFile.mkdirs()
         val list = outFile.listFiles()
         if ((list?.size ?: 0) >= 4) return
-        val outPath = File(outFile, "${list?.size ?: Random.nextInt()}")
+        val outPath = File(outFile, "${list?.size ?: Random.Default.nextInt()}")
         outPath.mkdirs()
         showToast("正在保存DEX文件...")
-        DexKitBridge.create(appClassLoader!!, true).use { bridge ->
+        DexKitBridge.Companion.create(appClassLoader!!, true).use { bridge ->
             bridge.exportDexFile(outPath.absolutePath)
             bridge.close()
             if (outPath.listFiles()?.isNotEmpty() == true) {
