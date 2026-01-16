@@ -1,11 +1,13 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
 import android.app.Application
 import android.content.Context
 import android.view.View
 import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.hooker.Base
 import org.luckypray.dexkit.DexKitBridge
+import kotlin.collections.iterator
 
 @Run(
     appName = "七猫免费小说",

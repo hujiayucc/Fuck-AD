@@ -1,6 +1,7 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
 import com.hujiayucc.hook.annotation.RunJiaGu
+import com.hujiayucc.hook.hooker.Base
 
 @RunJiaGu(
     appName = "疯狂刷题",

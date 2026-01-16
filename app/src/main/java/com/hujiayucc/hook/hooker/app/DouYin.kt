@@ -1,10 +1,11 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
 import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.hooker.Base
 import de.robv.android.xposed.XposedHelpers
 
 @Run(

@@ -14,7 +14,7 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.author.JwtUtils.isLogin
 import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.data.Data.proxyMap
-import com.hujiayucc.hook.hooker.ClickInfo
+import com.hujiayucc.hook.hooker.app.ClickInfo
 import com.hujiayucc.hook.hooker.DumpDex
 import com.hujiayucc.hook.ui.activity.MainActivity
 import org.luckypray.dexkit.DexKitBridge
@@ -52,7 +52,7 @@ class HookEntry : IYukiHookXposedInit {
                 if (!context.prefsBridge.isLogin()) return@attachBaseContext
                 if (context.prefsBridge.getBoolean("dump")) loadHooker(DumpDex(context))
                 bridge.findClass {
-                    searchPackages("com.hujiayucc.hook.hooker")
+                    searchPackages("com.hujiayucc.hook.hooker.app")
                     matcher {
                         annotations {
                             add {

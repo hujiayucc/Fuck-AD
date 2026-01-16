@@ -1,10 +1,10 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
 import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.data.Data.formatTime
+import com.hujiayucc.hook.hooker.Base
 import de.robv.android.xposed.XposedHelpers
-import java.text.SimpleDateFormat
 
 @Run(
     appName = "番茄免费小说",

@@ -1,7 +1,9 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
+import android.view.View
 import com.highcapable.kavaref.KavaRef.Companion.resolve
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.hooker.Base
 
 @Run(
     appName = "网易有道云词典",
@@ -18,7 +20,7 @@ object YouDaoDict : Base() {
                 ?.resolve()?.firstMethod { name = "H" }
                 ?.hook {
                     after {
-                        val view = args[0] as android.view.View
+                        val view = args[0] as View
                         view.performClick()
                     }
                 }

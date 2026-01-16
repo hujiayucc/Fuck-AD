@@ -1,7 +1,8 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
 import android.annotation.SuppressLint
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.hooker.Base
 
 @Run(
     appName = "虎牙直播",

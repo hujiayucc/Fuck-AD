@@ -1,8 +1,8 @@
-package com.hujiayucc.hook.hooker
+package com.hujiayucc.hook.hooker.app
 
 import com.highcapable.kavaref.KavaRef.Companion.resolve
-import com.highcapable.yukihookapi.hook.factory.method
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.hooker.Base
 
 @Run(
     appName = "次元城动画",
