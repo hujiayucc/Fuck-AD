@@ -74,7 +74,7 @@ class HookEntry : IYukiHookXposedInit {
 
                 if (!isJiaGi) {
                     bridge.findClass {
-                        searchPackages("com.hujiayucc.hook.hooker")
+                        searchPackages("com.hujiayucc.hook.hooker.app")
                         matcher {
                             annotations {
                                 add {
