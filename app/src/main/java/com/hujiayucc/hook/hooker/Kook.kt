@@ -15,21 +15,12 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 )
 object Kook : Base() {
     override fun onStart() {
+        loadSdk(pangle = true)
         LinearLayout::class.resolve().firstMethod { name = "onDraw" }
             .hook {
                 after {
                     val layout = instance as LinearLayout
                     if (layout.id == 0x7f0a0a51) layout.performClick()
-                }
-            }
-
-        "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    after {
-                        val view = instance as View
-                        view.performClick()
-                    }
                 }
             }
     }

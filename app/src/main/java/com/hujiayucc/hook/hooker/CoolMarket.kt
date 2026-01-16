@@ -11,66 +11,7 @@ import com.hujiayucc.hook.annotation.RunJiaGu
 )
 object CoolMarket : Base() {
     override fun onStart() {
-        "com.bytedance.sdk.openadsdk.TTAdSdk".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    before {
-                        result = when (method.self.returnType) {
-                            java.lang.Boolean.TYPE -> false
-                            else -> null
-                        }
-                    }
-                }
-            }
-
-        "com.bytedance.sdk.openadsdk.api.ln".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    before {
-                        result = when (method.self.returnType) {
-                            java.lang.Boolean.TYPE -> false
-                            else -> null
-                        }
-                    }
-                }
-            }
-
-        "com.bytedance.sdk.openadsdk.core.AdSdkInitializerHolder".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    before {
-                        result = when (method.self.returnType) {
-                            java.lang.Boolean.TYPE -> false
-                            else -> null
-                        }
-                    }
-                }
-            }
-
-        "com.bytedance.sdk.openadsdk.CSJConfig".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    before {
-                        result = when (method.self.returnType) {
-                            java.lang.Boolean.TYPE -> false
-                            else -> null
-                        }
-                    }
-                }
-            }
-
-        $$"com.bytedance.sdk.openadsdk.AdSlot$Builder".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    before {
-                        result = when (method.self.returnType) {
-                            java.lang.Boolean.TYPE -> false
-                            else -> null
-                        }
-                    }
-                }
-            }
-
+        loadSdk(pangle = true)
         "androidx.appcompat.widget.AppCompatImageView".toClassOrNull()
             ?.resolve()?.firstMethod { name = "hasOverlappingRendering" }
             ?.hook {

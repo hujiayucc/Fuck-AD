@@ -16,23 +16,12 @@ import com.hujiayucc.hook.annotation.Run
 )
 object MockGps : Base() {
     override fun onStart() {
-        val handler = Handler(Looper.getMainLooper())
-        "com.kwad.components.ad.splashscreen.widget.CircleSkipView".toClassOrNull()
-            ?.resolve()?.method()?.build()?.forEach { method ->
-                method.hook {
-                    after {
-                        handler.postDelayed({
-                            val view = instanceOrNull as View?
-                            view?.performClick()
-                        }, 200)
-                    }
-                }
-            }
-
+        loadSdk(kw = true)
         "androidx.appcompat.widget.AppCompatImageView".toClassOrNull()
             ?.resolve()?.firstMethod { name = "setImageDrawable" }
             ?.hook {
                 after {
+                    val handler = Handler(Looper.getMainLooper())
                     val view = instance as View
                     if (view.id == 0x7f080254) {
                         handler.postDelayed({

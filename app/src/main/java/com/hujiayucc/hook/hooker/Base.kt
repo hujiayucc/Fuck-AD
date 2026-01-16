@@ -4,6 +4,9 @@ import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.annotation.RunJiaGu
+import com.hujiayucc.hook.hooker.sdk.GDT
+import com.hujiayucc.hook.hooker.sdk.KW
+import com.hujiayucc.hook.hooker.sdk.Pangle
 import com.hujiayucc.hook.utils.AppInfoUtil.appVersionName
 
 abstract class Base : YukiBaseHooker() {
@@ -39,5 +42,17 @@ abstract class Base : YukiBaseHooker() {
 
     fun error(msg: String) {
         YLog.error("Hook: $appName => $msg")
+    }
+
+    /**
+     * SDK拦截
+     * @param pangle 穿山甲
+     * @param gdt 广电通
+     * @param kw 快手
+     */
+    fun loadSdk(pangle: Boolean = false, gdt: Boolean = false, kw: Boolean = false) {
+        if (pangle) loadHooker(Pangle)
+        if (gdt) loadHooker(GDT)
+        if (kw) loadHooker(KW)
     }
 }

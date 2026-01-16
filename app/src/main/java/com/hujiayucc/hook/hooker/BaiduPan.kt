@@ -17,22 +17,13 @@ import com.hujiayucc.hook.annotation.Run
 object BaiduPan : Base() {
     @SuppressLint("ResourceType")
     override fun onStart() {
+        loadSdk(pangle = true)
         "com.qumeng.advlib.__remote__.ui.elements.SplashCountdownView".toClass()
             .resolve().method().build().forEach { method ->
                 method.hook {
                     after {
                         val view = instance as View
                         if (view.isClickable) view.performClick()
-                    }
-                }
-            }
-
-        "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClass()
-            .resolve().method().build().forEach { method ->
-                method.hook {
-                    after {
-                        val view = instance as View
-                        view.performClick()
                     }
                 }
             }

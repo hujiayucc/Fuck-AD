@@ -8,10 +8,7 @@ import com.hujiayucc.hook.annotation.Run
 @Run(
     appName = "百度贴吧",
     packageName = "com.baidu.tieba",
-    action = "开屏广告, 信息流广告",
-    versions = [
-        "12.86.1.0"
-    ]
+    action = "开屏广告, 信息流广告"
 )
 object TieBa : Base() {
     override fun onStart() {
