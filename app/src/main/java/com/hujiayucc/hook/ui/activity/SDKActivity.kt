@@ -35,6 +35,7 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 import kotlin.math.min
 
@@ -48,10 +49,21 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private val itemList = ArrayList<Item2>()
     private val saveExecutor = Executors.newSingleThreadScheduledExecutor()
     private var pendingSave: ScheduledFuture<*>? = null
+    private var pendingSaveSnapshot: PendingSave? = null
 
     private data class AppEntry(val appInfo: ApplicationInfo, val label: String)
     private data class CacheItem(val appName: String, val packageName: String, val action: String)
-    private data class CachedResult(val packages: Set<String>, val items: List<Item2>)
+    private data class PendingSave(val items: List<CacheItem>, val scannedPackages: Set<String>?)
+    private data class CachedResult(
+        val scannedPackages: Set<String>,
+        val installedPackages: Set<String>,
+        val items: List<Item2>,
+        val hasItemCache: Boolean,
+        val hasScanCache: Boolean
+    )
+    private data class PackageDiff(val addedPackages: Set<String>, val removedPackages: Set<String>) {
+        val hasChanges: Boolean get() = addedPackages.isNotEmpty() || removedPackages.isNotEmpty()
+    }
 
     private val sdkComponentPrefixMap = linkedMapOf(
         "com.bytedance.sdk.openadsdk." to "穿山甲",
@@ -71,22 +83,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         adapter = AppListAdapter2(itemList)
         listView.adapter = adapter
         hideListView()
-        disposables.add(
-            loadCachedItemsAsync().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ result ->
-                    if (result.items.isNotEmpty()) {
-                        itemList.clear()
-                        itemList.addAll(result.items)
-                        itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
-                        adapter.updateData(itemList)
-                        showListView()
-                    }
-                    if (result.packages.isNotEmpty()) updateFromDiffAsync(result.packages)
-                    else loadApps()
-                }, {
-                    loadApps()
-                })
-        )
+        loadSdkItems()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -120,10 +117,10 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         disposables.clear()
-        pendingSave?.cancel(false)
-        saveExecutor.shutdownNow()
+        flushPendingSave()
+        saveExecutor.shutdown()
+        super.onDestroy()
     }
 
     @SuppressLint("UseCompatLoadingForDrawables")
@@ -135,16 +132,41 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         }
     }
 
+    private fun loadSdkItems() {
+        disposables.add(
+            loadCachedItemsAsync().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ result ->
+                    if (result.hasItemCache) showCachedItems(result.items)
+                    if (result.hasItemCache && result.hasScanCache) updateFromDiffAsync(result)
+                    else loadApps()
+                }, {
+                    loadApps()
+                })
+        )
+    }
+
+    private fun showCachedItems(items: List<Item2>) {
+        itemList.clear()
+        itemList.addAll(items)
+        itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
+        adapter.updateData(itemList)
+        showListView()
+    }
+
     @SuppressLint("CheckResult", "SetTextI18n")
     private fun loadApps() {
         val maxConcurrency = min(4, max(2, Runtime.getRuntime().availableProcessors() - 1))
         val processedCount = AtomicInteger(0)
         val lastUiUpdateAt = AtomicLong(0L)
+        val scannedPackages = AtomicReference<Set<String>>(emptySet())
 
         disposables.add(
             Observable.fromCallable { buildAppsList() }.subscribeOn(Schedulers.io())
                 .doOnSubscribe { hideListView() }.observeOn(AndroidSchedulers.mainThread())
-                .doOnNext { apps -> clearProgress(apps.size) }.observeOn(Schedulers.io())
+                .doOnNext { apps ->
+                    scannedPackages.set(apps.map { it.appInfo.packageName }.toSet())
+                    clearProgress(apps.size)
+                }.observeOn(Schedulers.io())
                 .flatMap { apps: List<AppEntry> ->
                     val total = apps.size
                     Observable.fromIterable(apps).concatMapEager({ entry: AppEntry ->
@@ -177,7 +199,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                     showListView()
                 }, {
                     showListView()
-                    requestSaveItems()
+                    requestSaveItems(scannedPackages.get())
                 })
         )
     }
@@ -204,7 +226,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     fun getSDKs(appInfo: ApplicationInfo): String {
         return try {
             val pkgInfo = getPackageInfoCompat(appInfo.packageName)
-            val componentNames = extractComponentClassNames(pkgInfo)
+            val componentNames = extractComponentClassNames(pkgInfo).toList()
 
             val hits = LinkedHashSet<String>()
             for ((prefix, name) in sdkComponentPrefixMap) {
@@ -216,18 +238,17 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         }
     }
 
-    /**
-     * 读取缓存并优先展示（后台线程）。返回缓存中的包名集合用于后续增量对比。
-     */
     private fun loadCachedItemsAsync(): Observable<CachedResult> {
         return Observable.fromCallable {
-            val packages = LinkedHashSet<String>()
+            val currentInstalled = currentInstalledPackages()
+            val (hasScanCache, scannedPackages) = readPackageSet(PREF_SDK_SCANNED_PACKAGES)
             val items = ArrayList<Item2>()
+            var hasItemCache = false
 
             try {
-                val jsonStr = prefsBridge.getString("sdkItems", "")
+                val jsonStr = prefsBridge.getString(PREF_SDK_ITEMS, "")
                 if (jsonStr?.isNotEmpty() == true) {
-                    val currentInstalled = currentInstalledPackages()
+                    hasItemCache = true
                     val arr = JSONArray(jsonStr)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
@@ -235,7 +256,6 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                         val name = obj.optString("appName")
                         val action = obj.optString("action")
                         if (pkg.isNotEmpty() && currentInstalled.contains(pkg)) {
-                            packages.add(pkg)
                             val icon = getAppIcon(pkg)
                             items.add(
                                 Item2(
@@ -244,71 +264,66 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                             )
                         }
                     }
-                    if (items.isNotEmpty()) {
-                        return@fromCallable CachedResult(packages = packages, items = items)
-                    }
                 }
             } catch (_: Exception) {
+                hasItemCache = false
+                items.clear()
             }
 
-            try {
-                val listStr = prefsBridge.getString("sdkList", "")
-                if (listStr?.isNotEmpty() == true) {
-                    val arr = JSONArray(listStr)
-                    for (i in 0 until arr.length()) {
-                        val pkg = arr.optString(i)
-                        if (!pkg.isNullOrEmpty()) packages.add(pkg)
-                    }
-                }
-            } catch (_: Exception) {
-            }
-
-            CachedResult(packages = packages, items = emptyList())
+            CachedResult(
+                scannedPackages = scannedPackages,
+                installedPackages = currentInstalled,
+                items = items,
+                hasItemCache = hasItemCache,
+                hasScanCache = hasScanCache
+            )
         }
     }
 
-    /**
-     * 异步对比新增/卸载并做增量更新。
-     */
     @SuppressLint("CheckResult")
-    private fun updateFromDiffAsync(savedPackages: Set<String>) {
+    private fun updateFromDiffAsync(result: CachedResult) {
         disposables.add(
             Observable.fromCallable {
-                val current = currentInstalledPackages()
-                val added = current.minus(savedPackages)
-                val removed = savedPackages.minus(current)
-                Pair(added, removed)
-            }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).doOnNext { (_, removed) ->
-                if (removed.isNotEmpty()) {
-                    val iterator = itemList.iterator()
-                    var changed = false
-                    while (iterator.hasNext()) {
-                        val it = iterator.next()
-                        if (removed.contains(it.packageName)) {
-                            iterator.remove()
-                            changed = true
-                        }
-                    }
-                    if (changed) adapter.updateData(itemList)
+                PackageDiff(
+                    addedPackages = result.installedPackages.minus(result.scannedPackages),
+                    removedPackages = result.scannedPackages.minus(result.installedPackages)
+                )
+            }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).doOnNext { diff ->
+                if (diff.removedPackages.isNotEmpty()) removeCachedItems(diff.removedPackages)
+            }.observeOn(Schedulers.io()).flatMap { diff ->
+                val scan = if (diff.addedPackages.isEmpty()) {
+                    Observable.just(emptyList())
+                } else {
+                    scanSpecificPackages(diff.addedPackages)
                 }
-            }.observeOn(Schedulers.io()).flatMap { (added, _) ->
-                if (added.isEmpty()) Observable.just(emptyList())
-                else scanSpecificPackages(added)
-            }.observeOn(AndroidSchedulers.mainThread()).subscribe({ newItems ->
+                scan.map { newItems -> diff to newItems }
+            }.observeOn(AndroidSchedulers.mainThread()).subscribe({ (diff, newItems) ->
                 if (newItems.isNotEmpty()) {
                     itemList.addAll(newItems)
                     itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
                     adapter.updateData(itemList)
                 }
-                requestSaveItems()
-            }, { _ ->
+                if (diff.hasChanges) requestSaveItems(result.installedPackages)
+                showListView()
+            }, {
+                showListView()
             })
         )
     }
 
-    /**
-     * 扫描指定包集合，返回命中的 Item2 列表。
-     */
+    private fun removeCachedItems(packages: Set<String>) {
+        val iterator = itemList.iterator()
+        var changed = false
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            if (packages.contains(item.packageName)) {
+                iterator.remove()
+                changed = true
+            }
+        }
+        if (changed) adapter.updateData(itemList)
+    }
+
     private fun scanSpecificPackages(packages: Set<String>): Observable<List<Item2>> {
         val entries = packages.mapNotNull { pkg ->
             try {
@@ -348,27 +363,65 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }.map { it.packageName }.toSet()
     }
 
-    private fun requestSaveItems(delayMs: Long = 600L) {
+    private fun requestSaveItems(scannedPackages: Set<String>? = null, delayMs: Long = 600L) {
         pendingSave?.cancel(false)
-        val snapshot = itemList.map { CacheItem(it.appName, it.packageName, it.action) }
+        val pending = PendingSave(
+            items = itemList.map { CacheItem(it.appName, it.packageName, it.action) },
+            scannedPackages = scannedPackages
+        )
+        pendingSaveSnapshot = pending
         pendingSave = saveExecutor.schedule({
             try {
-                val pkgArr = JSONArray(snapshot.map { it.packageName })
-                val itemArr = JSONArray()
-                snapshot.forEach { item ->
-                    val obj = JSONObject()
-                    obj.put("appName", item.appName)
-                    obj.put("packageName", item.packageName)
-                    obj.put("action", item.action)
-                    itemArr.put(obj)
-                }
-                prefsBridge.edit {
-                    putString("sdkList", pkgArr.toString())
-                    putString("sdkItems", itemArr.toString())
-                }
+                val packageSnapshot = pending.scannedPackages ?: currentInstalledPackages()
+                saveItemsSnapshot(pending.items, packageSnapshot)
+                if (pendingSaveSnapshot === pending) pendingSaveSnapshot = null
             } catch (_: Exception) {
             }
         }, delayMs, TimeUnit.MILLISECONDS)
+    }
+
+    private fun flushPendingSave() {
+        val pending = pendingSaveSnapshot ?: return
+        pendingSave?.cancel(false)
+        val packageSnapshot = pending.scannedPackages ?: currentInstalledPackages()
+        saveItemsSnapshot(pending.items, packageSnapshot, commit = true)
+        pendingSaveSnapshot = null
+        pendingSave = null
+    }
+
+    private fun saveItemsSnapshot(items: List<CacheItem>, scannedPackages: Set<String>, commit: Boolean = false) {
+        val pkgArr = JSONArray(items.map { it.packageName })
+        val scannedPkgArr = JSONArray(scannedPackages.sorted())
+        val itemArr = JSONArray()
+        items.forEach { item ->
+            val obj = JSONObject()
+            obj.put("appName", item.appName)
+            obj.put("packageName", item.packageName)
+            obj.put("action", item.action)
+            itemArr.put(obj)
+        }
+        prefsBridge.edit(commit = commit) {
+            putString(PREF_SDK_LIST, pkgArr.toString())
+            putString(PREF_SDK_ITEMS, itemArr.toString())
+            putString(PREF_SDK_SCANNED_PACKAGES, scannedPkgArr.toString())
+            putLong(PREF_SDK_CACHE_UPDATED_AT, System.currentTimeMillis())
+        }
+    }
+
+    private fun readPackageSet(key: String): Pair<Boolean, Set<String>> {
+        val value = prefsBridge.getString(key, "")
+        if (value.isNullOrEmpty()) return false to emptySet()
+        return try {
+            val packages = LinkedHashSet<String>()
+            val arr = JSONArray(value)
+            for (i in 0 until arr.length()) {
+                val pkg = arr.optString(i)
+                if (!pkg.isNullOrEmpty()) packages.add(pkg)
+            }
+            true to packages
+        } catch (_: Exception) {
+            false to emptySet()
+        }
     }
 
     private fun buildAppsList(): List<AppEntry> {
@@ -403,5 +456,12 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
     override fun onServiceStateChanged(service: XposedService?) {
 
+    }
+
+    companion object {
+        private const val PREF_SDK_LIST = "sdkList"
+        private const val PREF_SDK_ITEMS = "sdkItems"
+        private const val PREF_SDK_SCANNED_PACKAGES = "sdkScannedPackages"
+        private const val PREF_SDK_CACHE_UPDATED_AT = "sdkCacheUpdatedAt"
     }
 }
