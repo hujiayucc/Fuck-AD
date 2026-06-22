@@ -8,12 +8,18 @@ import android.widget.BaseAdapter
 import android.widget.Filter
 import android.widget.Filterable
 import com.hujiayucc.hook.databinding.ItemInfoBinding
-import io.github.libxposed.service.XposedService
-import java.util.*
+import java.util.Locale
 
 class InfoListAdapter(private var componentList: List<ComponentItem>) : BaseAdapter(), Filterable {
+    private data class SearchableComponent(
+        val item: ComponentItem,
+        val normalizedName: String
+    )
+
+    private var searchableList: List<SearchableComponent> = componentList.toSearchableComponents()
     private var filteredList: List<ComponentItem> = componentList
-    private var currentFilterQuery: String? = null
+    private var currentFilterQuery: String = ""
+    private val componentFilter = ComponentFilter()
 
     data class ComponentItem(
         val name: String,
@@ -28,12 +34,8 @@ class InfoListAdapter(private var componentList: List<ComponentItem>) : BaseAdap
 
     fun updateData(newList: List<ComponentItem>) {
         componentList = newList
-        if (currentFilterQuery.isNullOrEmpty()) {
-            filteredList = newList
-            notifyDataSetChanged()
-        } else {
-            filter.filter(currentFilterQuery)
-        }
+        searchableList = newList.toSearchableComponents()
+        updateFilteredList(filterComponents(currentFilterQuery))
     }
 
     override fun getCount(): Int = filteredList.size
@@ -59,32 +61,44 @@ class InfoListAdapter(private var componentList: List<ComponentItem>) : BaseAdap
         return binding.root
     }
 
-    override fun getFilter(): Filter {
-        return object : Filter() {
-            override fun performFiltering(constraint: CharSequence?): FilterResults {
-                val results = FilterResults()
-                val filterPattern = constraint?.toString()?.lowercase(Locale.getDefault())?.trim() ?: ""
+    override fun getFilter(): Filter = componentFilter
 
-                if (filterPattern.isEmpty()) {
-                    results.values = componentList
-                    results.count = componentList.size
-                } else {
-                    val filtered = componentList.filter { item ->
-                        item.name.lowercase(Locale.getDefault()).contains(filterPattern)
-                    }
-                    results.values = filtered
-                    results.count = filtered.size
-                }
-                return results
-            }
+    private fun List<ComponentItem>.toSearchableComponents(): List<SearchableComponent> {
+        return map { item -> SearchableComponent(item, item.name.normalizeFilterText()) }
+    }
 
-            @Suppress("UNCHECKED_CAST")
-            override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
-                filteredList = results?.values as? List<ComponentItem> ?: componentList
-                currentFilterQuery = constraint?.toString()
-                notifyDataSetChanged()
+    private fun filterComponents(query: String): List<ComponentItem> {
+        val filterPattern = query.normalizeFilterText()
+        if (filterPattern.isEmpty()) return componentList
+
+        return searchableList.asSequence()
+            .filter { searchable -> searchable.normalizedName.contains(filterPattern) }
+            .map { searchable -> searchable.item }
+            .toList()
+    }
+
+    private fun updateFilteredList(newFilteredList: List<ComponentItem>) {
+        if (filteredList == newFilteredList) return
+        filteredList = newFilteredList
+        notifyDataSetChanged()
+    }
+
+    private fun String.normalizeFilterText(): String = lowercase(Locale.ROOT).trim()
+
+    private inner class ComponentFilter : Filter() {
+        override fun performFiltering(constraint: CharSequence?): FilterResults {
+            val filtered = filterComponents(constraint?.toString().orEmpty())
+            return FilterResults().apply {
+                values = filtered
+                count = filtered.size
             }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+            currentFilterQuery = constraint?.toString().orEmpty()
+            val newFilteredList = results?.values as? List<ComponentItem> ?: filterComponents(currentFilterQuery)
+            updateFilteredList(newFilteredList)
         }
     }
 }
-
