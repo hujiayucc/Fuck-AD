@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.content.pm.PackageManager.NameNotFoundException
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -14,14 +16,17 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.ActivityAppInfoBinding
 import com.hujiayucc.hook.ui.adapter.InfoPagerAdapter
 import io.github.libxposed.service.XposedService
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
     private lateinit var binding: ActivityAppInfoBinding
     private var packageName: String = ""
     private var lastQuery: String = ""
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var packageCheckExecutor: ExecutorService? = null
     private val pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
         override fun onPageSelected(position: Int) {
-            // 切换 Tab 时把当前搜索词再派发一次，保证新页面立即应用过滤
             dispatchSearchQuery(lastQuery)
         }
     }
@@ -53,7 +58,11 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
     }
 
     override fun onDestroy() {
-        binding.viewPager.unregisterOnPageChangeCallback(pageChangeCallback)
+        packageCheckExecutor?.shutdownNow()
+        packageCheckExecutor = null
+        if (binding.viewPager.adapter != null) {
+            binding.viewPager.unregisterOnPageChangeCallback(pageChangeCallback)
+        }
         super.onDestroy()
     }
 
@@ -63,7 +72,6 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
         val sv = item.actionView as? SearchView
 
         sv?.queryHint = getString(R.string.app_info_search_hint)
-        // 恢复上次输入（比如旋转屏/重建）
         if (lastQuery.isNotEmpty()) {
             item.expandActionView()
             sv?.setQuery(lastQuery, false)
@@ -94,30 +102,43 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
     @SuppressLint("SetTextI18n")
     private fun checkPackageAndSetupViewPager() {
         if (packageName.isEmpty()) {
-            binding.progressBar.visibility = View.GONE
-            binding.textView.text = "包名为空"
-            binding.textView.visibility = View.VISIBLE
+            showMessage("包名为空")
             return
         }
 
-        try {
-            packageManager.getPackageInfo(
-                packageName,
-                PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES
-            )
-
-            setupViewPager()
-            binding.progressBar.visibility = View.GONE
-            binding.textView.visibility = View.GONE
-        } catch (_: NameNotFoundException) {
-            binding.progressBar.visibility = View.GONE
-            binding.textView.text = "应用不存在或无法访问"
-            binding.textView.visibility = View.VISIBLE
-        } catch (e: Exception) {
-            binding.progressBar.visibility = View.GONE
-            binding.textView.text = "加载失败: ${e.message}"
-            binding.textView.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.VISIBLE
+        binding.textView.visibility = View.VISIBLE
+        packageCheckExecutor?.shutdownNow()
+        val executor = Executors.newSingleThreadExecutor()
+        packageCheckExecutor = executor
+        executor.execute {
+            val result = runCatching {
+                packageManager.getPackageInfo(
+                    packageName,
+                    PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES
+                )
+            }
+            mainHandler.post {
+                if (packageCheckExecutor !== executor) return@post
+                result.onSuccess {
+                    setupViewPager()
+                    binding.progressBar.visibility = View.GONE
+                    binding.textView.visibility = View.GONE
+                }.onFailure { error ->
+                    when (error) {
+                        is NameNotFoundException -> showMessage("应用不存在或无法访问")
+                        else -> showMessage("加载失败: ${error.message}")
+                    }
+                }
+            }
         }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showMessage(message: String) {
+        binding.progressBar.visibility = View.GONE
+        binding.textView.text = message
+        binding.textView.visibility = View.VISIBLE
     }
 
     private fun setupViewPager() {
@@ -136,7 +157,6 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
 
     private fun dispatchSearchQuery(query: String) {
         val payload = Bundle().apply { putString(FR_QUERY_KEY, query) }
-        // 分开 key，避免“旧 Fragment 先消费导致新 Fragment 收不到”的问题
         supportFragmentManager.setFragmentResult(FR_SEARCH_KEY_ACTIVITY, payload)
         supportFragmentManager.setFragmentResult(FR_SEARCH_KEY_SERVICE, payload)
     }

@@ -10,19 +10,14 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Filter
 import android.widget.Filterable
-import android.widget.Toast
 import com.hujiayucc.hook.R
-import com.hujiayucc.hook.application.XYApplication
 import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.databinding.AppRuleBinding
 import com.hujiayucc.hook.ui.activity.AppInfoActivity
-import io.github.libxposed.service.XposedService
-import java.text.Collator
 import java.util.*
 
 class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filterable {
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val appNameCollator = Collator.getInstance(Locale.CHINA)
     private var displayList: List<Item2> = appList
     private var filteredList: List<Item2> = appList
     private var currentFilterQuery: String = ""
@@ -42,15 +37,12 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
     override fun getItemId(position: Int): Long = position.toLong()
 
     private fun sortByScope(scopedPackages: Set<String>? = null) {
-        val currentScoped = scopedPackages ?: XYApplication.mService?.scope?.filterNotNull()?.toSet().orEmpty()
-        displayList = appList.sortedWith { a, b ->
-            val scopeCompare = compareValues(a.packageName !in currentScoped, b.packageName !in currentScoped)
-            if (scopeCompare != 0) {
-                scopeCompare
-            } else {
-                appNameCollator.compare(a.appName, b.appName)
-            }
-        }
+        displayList = ScopeAdapterUtils.sortByScope(
+            items = appList,
+            scopedPackages = scopedPackages,
+            packageNameOf = { it.packageName },
+            appNameOf = { it.appName }
+        )
     }
 
     private fun applyFilter(query: String) {
@@ -66,30 +58,11 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
     }
 
     private fun refreshSorted(scopedPackages: Set<String>? = null) {
-        val refreshAction = Runnable {
+        ScopeAdapterUtils.runOnMain(mainHandler) {
             sortByScope(scopedPackages)
             applyFilter(currentFilterQuery)
             notifyDataSetChanged()
         }
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            refreshAction.run()
-        } else {
-            mainHandler.post(refreshAction)
-        }
-    }
-
-    private fun currentScopeSet(): MutableSet<String> {
-        return XYApplication.mService?.scope?.filterNotNull()?.toMutableSet() ?: mutableSetOf()
-    }
-
-    private fun predictedScopeWithout(packageName: String): Set<String> {
-        return currentScopeSet().apply { remove(packageName) }
-    }
-
-    private fun approvedScopeSet(approved: List<String?>): Set<String> {
-        val scoped = currentScopeSet()
-        scoped.addAll(approved.filterNotNull())
-        return scoped
     }
 
     @SuppressLint("SetTextI18n")
@@ -101,6 +74,7 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
                 .inflate(R.layout.app_rule, parent, false)
             AppRuleBinding.bind(view)
         }
+        val context = parent?.context ?: binding.root.context
 
         val rule = getItem(position)
         binding.apply {
@@ -108,42 +82,12 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
             appName.text = rule.appName
             appPackage.text = rule.packageName
             action.text = rule.action
-            XYApplication.mService?.apply {
-                val packageName = rule.packageName
-                switchButton.visibility = View.VISIBLE
-                switchButton.setOnClickListener(null)
-                switchButton.isChecked = (rule.packageName in scope)
-                switchButton.setOnClickListener {
-                    if (switchButton.isChecked) {
-                        switchButton.isChecked = false
-                        requestScope(listOf(packageName), object : XposedService.OnScopeEventListener {
-                            override fun onScopeRequestApproved(approved: List<String?>) {
-                                refreshSorted(approvedScopeSet(approved))
-                            }
-
-                            override fun onScopeRequestFailed(message: String) {
-                                refreshSorted()
-                                Toast.makeText(parent?.context, message, Toast.LENGTH_SHORT).show()
-                            }
-                        })
-                    } else {
-                        removeScope(listOf(packageName))
-                        refreshSorted(predictedScopeWithout(packageName))
-                    }
-                }
-            } ?: run {
-                switchButton.setOnClickListener(null)
-                switchButton.visibility = View.GONE
-            }
+            ScopeAdapterUtils.bindScopeSwitch(context, switchButton, rule.packageName, ::refreshSorted)
             root.setOnClickListener {
-                try {
-                    val intent = Intent(parent?.context, AppInfoActivity::class.java)
-                    intent.putExtra("packageName", rule.packageName)
-                    intent.putExtra("appName", rule.appName)
-                    parent?.context?.startActivity(intent)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                val intent = Intent(context, AppInfoActivity::class.java)
+                intent.putExtra("packageName", rule.packageName)
+                intent.putExtra("appName", rule.appName)
+                context.startActivity(intent)
             }
         }
 

@@ -1,8 +1,11 @@
 package com.hujiayucc.hook.ui.fragment
 
 import android.annotation.SuppressLint
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +14,8 @@ import androidx.fragment.app.Fragment
 import com.hujiayucc.hook.databinding.FragmentAppInfoListBinding
 import com.hujiayucc.hook.ui.adapter.InfoListAdapter
 import java.util.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class InfoListFragment : Fragment() {
     private var _binding: FragmentAppInfoListBinding? = null
@@ -19,6 +24,8 @@ class InfoListFragment : Fragment() {
     private lateinit var listView: ListView
     private lateinit var adapter: InfoListAdapter
     private val componentList = ArrayList<InfoListAdapter.ComponentItem>()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var loadExecutor: ExecutorService? = null
 
     private var packageName: String = ""
     private var componentType: InfoListAdapter.ComponentType = InfoListAdapter.ComponentType.ACTIVITY
@@ -73,6 +80,8 @@ class InfoListFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        loadExecutor?.shutdownNow()
+        loadExecutor = null
         super.onDestroyView()
         _binding = null
     }
@@ -92,63 +101,83 @@ class InfoListFragment : Fragment() {
     @SuppressLint("SetTextI18n")
     private fun loadComponents() {
         if (packageName.isEmpty()) {
-            binding.progressBar.visibility = View.GONE
-            binding.textView.text = "包名为空"
-            binding.textView.visibility = View.VISIBLE
-            listView.visibility = View.GONE
+            showError("包名为空")
             return
         }
 
-        try {
-            val packageInfo = requireContext().packageManager.getPackageInfo(
-                packageName,
-                PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES
-            )
+        binding.progressBar.visibility = View.VISIBLE
+        binding.textView.visibility = View.VISIBLE
+        listView.visibility = View.GONE
 
-            componentList.clear()
+        loadExecutor?.shutdownNow()
+        val executor = Executors.newSingleThreadExecutor()
+        loadExecutor = executor
+        executor.execute {
+            val result = runCatching {
+                val packageInfo = requireContext().packageManager.getPackageInfo(
+                    packageName,
+                    PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES
+                )
+                buildComponentItems(packageInfo)
+            }
 
-            when (componentType) {
-                InfoListAdapter.ComponentType.ACTIVITY -> {
-                    val activities = packageInfo.activities ?: emptyArray()
-                    activities.forEach { activityInfo ->
-                        componentList.add(
-                            InfoListAdapter.ComponentItem(
-                                name = activityInfo.name,
-                                type = InfoListAdapter.ComponentType.ACTIVITY,
-                                exported = activityInfo.exported
-                            )
+            mainHandler.post {
+                if (_binding == null || loadExecutor !== executor) return@post
+                result.onSuccess { items -> showComponents(items) }
+                    .onFailure { error -> showError("加载失败: ${error.message}") }
+            }
+        }
+    }
+
+    private fun buildComponentItems(packageInfo: PackageInfo): List<InfoListAdapter.ComponentItem> {
+        val items = ArrayList<InfoListAdapter.ComponentItem>()
+        when (componentType) {
+            InfoListAdapter.ComponentType.ACTIVITY -> {
+                val activities = packageInfo.activities ?: emptyArray()
+                activities.forEach { activityInfo ->
+                    items.add(
+                        InfoListAdapter.ComponentItem(
+                            name = activityInfo.name,
+                            type = InfoListAdapter.ComponentType.ACTIVITY,
+                            exported = activityInfo.exported
                         )
-                    }
-                }
-
-                InfoListAdapter.ComponentType.SERVICE -> {
-                    val services = packageInfo.services ?: emptyArray()
-                    services.forEach { serviceInfo ->
-                        componentList.add(
-                            InfoListAdapter.ComponentItem(
-                                name = serviceInfo.name,
-                                type = InfoListAdapter.ComponentType.SERVICE,
-                                exported = serviceInfo.exported
-                            )
-                        )
-                    }
+                    )
                 }
             }
 
-            componentList.sortBy { it.name.lowercase(Locale.getDefault()) }
-            adapter.updateData(componentList.toList())
-            // 如果 Activity 在列表加载前就发了 query，这里确保更新数据后仍应用过滤
-            pendingQuery?.let { adapter.filter.filter(it) }
-
-            binding.progressBar.visibility = View.GONE
-            binding.textView.visibility = View.GONE
-            listView.visibility = View.VISIBLE
-        } catch (e: Exception) {
-            binding.progressBar.visibility = View.GONE
-            binding.textView.text = "加载失败: ${e.message}"
-            binding.textView.visibility = View.VISIBLE
-            listView.visibility = View.GONE
+            InfoListAdapter.ComponentType.SERVICE -> {
+                val services = packageInfo.services ?: emptyArray()
+                services.forEach { serviceInfo ->
+                    items.add(
+                        InfoListAdapter.ComponentItem(
+                            name = serviceInfo.name,
+                            type = InfoListAdapter.ComponentType.SERVICE,
+                            exported = serviceInfo.exported
+                        )
+                    )
+                }
+            }
         }
+        return items.sortedBy { it.name.lowercase(Locale.getDefault()) }
+    }
+
+    private fun showComponents(items: List<InfoListAdapter.ComponentItem>) {
+        componentList.clear()
+        componentList.addAll(items)
+        adapter.updateData(componentList.toList())
+        pendingQuery?.let { adapter.filter.filter(it) }
+
+        binding.progressBar.visibility = View.GONE
+        binding.textView.visibility = View.GONE
+        listView.visibility = View.VISIBLE
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showError(message: String) {
+        if (_binding == null) return
+        binding.progressBar.visibility = View.GONE
+        binding.textView.text = message
+        binding.textView.visibility = View.VISIBLE
+        if (::listView.isInitialized) listView.visibility = View.GONE
     }
 }
-
