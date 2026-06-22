@@ -23,13 +23,27 @@ import java.lang.reflect.Method
 abstract class Hooker {
     private object UnsetResult
 
-    protected lateinit var appName: String
-    protected lateinit var action: String
+    protected var appName: String = javaClass.simpleName
+    protected var action: String = "Hook"
     protected var classLoader: ClassLoader? = null
 
     abstract fun XposedModuleInterface.PackageReadyParam.onPackageReady()
     fun call(param: XposedModuleInterface.PackageReadyParam) {
         classLoader = param.classLoader
+        val isJiaGu = readHookMetadata()
+
+        if (isJiaGu) {
+            runCatching {
+                classLoader = getRealClassLoader()
+            }.onFailure { error ->
+                logHookError("Failed to get real ClassLoader for $appName", error)
+            }
+        }
+
+        param.runHook()
+    }
+
+    private fun readHookMetadata(): Boolean {
         var isJiaGu = false
         this.javaClass.annotations.forEach { annotation ->
             when (annotation) {
@@ -45,17 +59,7 @@ abstract class Hooker {
                 }
             }
         }
-
-        if (isJiaGu) {
-            try {
-                classLoader = getRealClassLoader()
-            } catch (e: Exception) {
-                if (prefs.getBoolean("errorLog", false))
-                    logE("Failed to get real ClassLoader for $appName", e)
-            }
-        }
-
-        param.runHook()
+        return isJiaGu
     }
 
     @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
@@ -85,8 +89,13 @@ abstract class Hooker {
     }
 
     fun XposedModuleInterface.PackageReadyParam.runHook() {
-        onPackageReady()
-        runCatching { module.log(Log.INFO, "Fuck AD", "$appName => $action") }
+        runCatching {
+            onPackageReady()
+        }.onSuccess {
+            runCatching { module.log(Log.INFO, "Fuck AD", "$appName => $action") }
+        }.onFailure { error ->
+            logHookError("Failed to run ${this@Hooker.javaClass.name} for $appName => $action", error)
+        }
     }
 
     @Throws(ClassNotFoundException::class)
@@ -97,7 +106,7 @@ abstract class Hooker {
     fun String.toClassOrNull(): Class<*>? {
         return try {
             classLoader?.loadClass(this)
-        } catch (_: ClassNotFoundException) {
+        } catch (_: Throwable) {
             null
         }
     }
@@ -109,20 +118,29 @@ abstract class Hooker {
         return getDeclaredMethod(name, *parameterTypes)
     }
 
+    fun Class<*>.methodOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
+        return runCatching { method(name, *parameterTypes) }.getOrNull()
+    }
+
     fun Class<*>.constructor(): Array<out Constructor<*>>? {
-        return try {
-            declaredConstructors
-        } catch (_: NoSuchMethodException) {
+        return runCatching { declaredConstructors }.getOrElse { error ->
+            logHookError("Failed to get constructors: ${name}", error)
             null
         }
     }
 
     fun Class<*>.methods(name: String): List<Method> {
-        return declaredMethods.filter { it.name == name }
+        return runCatching { declaredMethods.filter { it.name == name } }.getOrElse { error ->
+            logHookError("Failed to get methods $name: ${this.name}", error)
+            emptyList()
+        }
     }
 
     fun Class<*>.methodContains(name: String): List<Method> {
-        return declaredMethods.filter { it.name.contains(name) }
+        return runCatching { declaredMethods.filter { it.name.contains(name) } }.getOrElse { error ->
+            logHookError("Failed to get methods contains $name: ${this.name}", error)
+            emptyList()
+        }
     }
 
     class HookDsl internal constructor() {
@@ -166,53 +184,78 @@ abstract class Hooker {
                     }
             }
 
-            dsl.replaceBlock?.let { replace ->
-                return@intercept replace.invoke(callback)
-            }
-            dsl.replaceUnitBlock?.let { replaceUnit ->
-                replaceUnit.invoke(callback)
-                return@intercept null
+            fun proceedOriginal(): Any? {
+                originalExecuted = true
+                return hookChain.proceedWith(hookChain.thisObject, hookChain.args.toTypedArray())
             }
 
-            dsl.beforeBlock?.invoke(callback)
+            dsl.replaceBlock?.let { replace ->
+                return@intercept try {
+                    replace.invoke(callback)
+                } catch (error: Throwable) {
+                    logHookError("Hook replace failed: ${toGenericString()}", error)
+                    proceedOriginal()
+                }
+            }
+            dsl.replaceUnitBlock?.let { replaceUnit ->
+                return@intercept try {
+                    replaceUnit.invoke(callback)
+                    null
+                } catch (error: Throwable) {
+                    logHookError("Hook replaceUnit failed: ${toGenericString()}", error)
+                    proceedOriginal()
+                }
+            }
+
+            dsl.beforeBlock?.let { before ->
+                runCatching { before.invoke(callback) }.onFailure { error ->
+                    logHookError("Hook before failed: ${toGenericString()}", error)
+                }
+            }
             if (currentResult === UnsetResult) {
-                originalExecuted = true
-                callback.result = hookChain.proceedWith(hookChain.thisObject, hookChain.args.toTypedArray())
+                callback.result = proceedOriginal()
             }
 
             if (originalExecuted) {
-                dsl.afterBlock?.invoke(callback)
+                dsl.afterBlock?.let { after ->
+                    runCatching { after.invoke(callback) }.onFailure { error ->
+                        logHookError("Hook after failed: ${toGenericString()}", error)
+                    }
+                }
             }
             callback.result
         }
     }
 
-    fun Method.hook(block: HookDsl.() -> Unit) {
-        val dsl = HookDsl().apply(block)
-        val hookBlockCount = listOf(
-            dsl.replaceBlock,
-            dsl.replaceUnitBlock,
-            dsl.beforeBlock,
-            dsl.afterBlock
-        ).count { it != null }
-        require(hookBlockCount == 1) {
-            "Hook DSL requires exactly one of replace/replaceTo/replaceUnit/before/after."
+    private fun HookDsl.isValid(): Boolean {
+        val replaceCount = listOf(replaceBlock, replaceUnitBlock).count { it != null }
+        val callbackCount = listOf(beforeBlock, afterBlock).count { it != null }
+        return (replaceCount == 1 && callbackCount == 0) || (replaceCount == 0 && callbackCount > 0)
+    }
+
+    private fun Executable.hookExecutable(block: HookDsl.() -> Unit) {
+        val dsl = runCatching { HookDsl().apply(block) }.getOrElse { error ->
+            logHookError("Failed to build Hook DSL: ${toGenericString()}", error)
+            return
         }
-        hookInternal(dsl)
+        if (!dsl.isValid()) {
+            logHookError(
+                "Invalid Hook DSL: ${toGenericString()}",
+                IllegalArgumentException("Hook DSL requires replace/replaceTo/replaceUnit, or before/after.")
+            )
+            return
+        }
+        runCatching { hookInternal(dsl) }.onFailure { error ->
+            logHookError("Failed to install hook: ${toGenericString()}", error)
+        }
+    }
+
+    fun Method.hook(block: HookDsl.() -> Unit) {
+        hookExecutable(block)
     }
 
     fun Constructor<*>.hook(block: HookDsl.() -> Unit) {
-        val dsl = HookDsl().apply(block)
-        val hookBlockCount = listOf(
-            dsl.replaceBlock,
-            dsl.replaceUnitBlock,
-            dsl.beforeBlock,
-            dsl.afterBlock
-        ).count { it != null }
-        require(hookBlockCount == 1) {
-            "Hook DSL requires exactly one of replace/replaceTo/replaceUnit/before/after."
-        }
-        hookInternal(dsl)
+        hookExecutable(block)
     }
 
     fun List<Method>?.hook(block: HookDsl.() -> Unit) {
@@ -230,11 +273,20 @@ abstract class Hooker {
     }
 
     fun getField(obj: Any, fieldName: String): Any? {
-        return obj.javaClass.getDeclaredField(fieldName).apply { isAccessible = true }.get(obj)
+        return runCatching {
+            obj.javaClass.getDeclaredField(fieldName).apply { isAccessible = true }.get(obj)
+        }.getOrElse { error ->
+            logHookError("Failed to get field $fieldName: ${obj.javaClass.name}", error)
+            null
+        }
     }
 
     fun setField(obj: Any, fieldName: String, value: Any?) {
-        obj.javaClass.getDeclaredField(fieldName).apply { isAccessible = true }.set(obj, value)
+        runCatching {
+            obj.javaClass.getDeclaredField(fieldName).apply { isAccessible = true }.set(obj, value)
+        }.onFailure { error ->
+            logHookError("Failed to set field $fieldName: ${obj.javaClass.name}", error)
+        }
     }
 
     fun loadSdk(
@@ -268,6 +320,11 @@ abstract class Hooker {
 
     protected fun logW(message: String, throwable: Throwable? = null) {
         module.log(Log.WARN, "Fuck AD", message, throwable)
+    }
+
+    private fun logHookError(message: String, throwable: Throwable? = null) {
+        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
+        if (shouldLog) runCatching { logE(message, throwable) }
     }
 
     protected inline fun runMain(crossinline function: () -> Unit) {
