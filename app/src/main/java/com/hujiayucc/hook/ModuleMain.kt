@@ -12,6 +12,7 @@ import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
+import java.util.concurrent.ConcurrentHashMap
 
 class ModuleMain : XposedModule() {
     companion object {
@@ -25,14 +26,13 @@ class ModuleMain : XposedModule() {
         private const val HOOKER_PACKAGE = "com.hujiayucc.hook.hooker.app"
         val BUILTIN_HOOKERS = listOf(Loader, ClickInfo)
         val SDK_HOOKERS = listOf(GDT, KW, Pangle)
+        private val appHookerClassCache = ConcurrentHashMap<String, List<Class<out Hooker>>>()
 
         lateinit var prefs: SharedPreferences
             private set
         lateinit var module: XposedModule
             private set
         lateinit var bridge: DexKitBridge
-            private set
-        var hookers: MutableList<Hooker> = mutableListOf()
             private set
     }
 
@@ -48,25 +48,8 @@ class ModuleMain : XposedModule() {
 
     override fun onPackageLoaded(param: XposedModuleInterface.PackageLoadedParam) {
         try {
-            if (!param.applicationInfo.sourceDir.endsWith(BASE_APK_SUFFIX)) return
-            hookers.addAll(BUILTIN_HOOKERS)
-            javaClass.classLoader?.let { classLoader ->
-                bridge.findClass {
-                    searchPackages(HOOKER_PACKAGE)
-                    matcher {
-                        annotations {
-                            add {
-                                addElement {
-                                    name = "packageName"
-                                    stringValue(param.packageName, StringMatchType.Equals)
-                                }
-                            }
-                        }
-                    }
-                }.forEach { data ->
-                    hookers.add(data.getInstance(classLoader).getDeclaredConstructor().newInstance() as Hooker)
-                }
-            }
+            if (!param.isBaseApk()) return
+            resolveAppHookerClasses(param.packageName)
         } catch (e: Exception) {
             logIfDebug("onPackageLoaded", e)
         }
@@ -74,19 +57,65 @@ class ModuleMain : XposedModule() {
 
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
         try {
-            if (!param.applicationInfo.sourceDir.endsWith(BASE_APK_SUFFIX)) return
-            if (hookers.isNotEmpty()) {
-                hookers.forEach { it.call(param) }
-                hookers.clear()
-            } else {
-                SDK_HOOKERS.forEach { it.loadSdk(param) }
+            if (!param.isBaseApk()) return
+            val appHookers = createAppHookers(param.packageName)
+            (BUILTIN_HOOKERS + appHookers).forEach { it.call(param) }
+            if (appHookers.isEmpty()) {
+                SDK_HOOKERS.forEach { it.call(param) }
             }
         } catch (e: Exception) {
             logIfDebug("onPackageReady", e)
         }
     }
 
-    private fun logIfDebug(stage: String, error: Exception) {
-        if (prefs.getBoolean("errorLog", false)) log(Log.ERROR, TAG, "$stage error", error)
+    private fun XposedModuleInterface.PackageLoadedParam.isBaseApk(): Boolean {
+        return applicationInfo.sourceDir.endsWith(BASE_APK_SUFFIX)
+    }
+
+    private fun XposedModuleInterface.PackageReadyParam.isBaseApk(): Boolean {
+        return applicationInfo.sourceDir.endsWith(BASE_APK_SUFFIX)
+    }
+
+    private fun createAppHookers(packageName: String): List<Hooker> {
+        return resolveAppHookerClasses(packageName).mapNotNull { hookerClass ->
+            try {
+                hookerClass.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
+            } catch (e: Exception) {
+                logIfDebug("createAppHooker:${hookerClass.name}", e)
+                null
+            }
+        }
+    }
+
+    private fun resolveAppHookerClasses(packageName: String): List<Class<out Hooker>> {
+        appHookerClassCache[packageName]?.let { return it }
+        val moduleClassLoader = javaClass.classLoader ?: return emptyList()
+        val hookerClasses = bridge.findClass {
+            searchPackages(HOOKER_PACKAGE)
+            matcher {
+                annotations {
+                    add {
+                        addElement {
+                            name = "packageName"
+                            stringValue(packageName, StringMatchType.Equals)
+                        }
+                    }
+                }
+            }
+        }.mapNotNull { data ->
+            try {
+                data.getInstance(moduleClassLoader).asSubclass(Hooker::class.java)
+            } catch (e: Exception) {
+                logIfDebug("resolveAppHookerClass:$packageName", e)
+                null
+            }
+        }
+        appHookerClassCache[packageName] = hookerClasses
+        return hookerClasses
+    }
+
+    private fun logIfDebug(stage: String, error: Throwable) {
+        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
+        if (shouldLog) log(Log.ERROR, TAG, "$stage error", error)
     }
 }
