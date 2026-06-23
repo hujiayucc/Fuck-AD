@@ -1,9 +1,7 @@
-import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 kotlin {
@@ -70,18 +68,6 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
-    }
-    applicationVariants.all {
-        outputs.all { output ->
-            val baseName = "Fuck AD_$versionName"
-            when (output) {
-                is ApkVariantOutputImpl -> {
-                    output.outputFileName = "$baseName.apk"
-                    true
-                }
-                else -> {false}
-            }
-        }
     }
 }
 
