@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.PackageManager.NameNotFoundException
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Menu
@@ -433,7 +434,12 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
     private fun getPackageInfoCompat(packageName: String): PackageInfo {
         val flags = (PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES).toLong()
-        return packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(flags))
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(flags))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, flags.toInt())
+        }
     }
 
     private fun extractComponentClassNames(pkgInfo: PackageInfo): Sequence<String> = sequence {

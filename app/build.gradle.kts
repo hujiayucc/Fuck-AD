@@ -35,7 +35,7 @@ android {
 
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
-        minSdk = 33
+        minSdk = 30
         targetSdk = 36
         versionCode = 10001
         versionName = "3.0.0.1"
