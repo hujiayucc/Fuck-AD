@@ -6,6 +6,10 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     signingConfigs {
         all {
@@ -33,8 +37,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 33
         targetSdk = 36
-        versionCode = 10000
-        versionName = "3.0.0"
+        versionCode = 10001
+        versionName = "3.0.0.1"
         buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
