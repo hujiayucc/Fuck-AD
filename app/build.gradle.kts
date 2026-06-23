@@ -31,6 +31,8 @@ android {
         "0x64"
     )
 
+    packaging.resources.merges += "META-INF/xposed/*"
+
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
         minSdk = 30
