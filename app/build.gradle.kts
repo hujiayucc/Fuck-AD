@@ -25,7 +25,7 @@ android {
     }
 
     namespace = "com.hujiayucc.hook"
-    compileSdk = 36
+    compileSdk = 37
 
     androidResources.additionalParameters += listOf(
         "--allow-reserved-package-id",
@@ -36,7 +36,7 @@ android {
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 10001
         versionName = "3.0.0.1"
         buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
