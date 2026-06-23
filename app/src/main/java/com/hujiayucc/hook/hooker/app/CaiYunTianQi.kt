@@ -13,30 +13,30 @@ object CaiYunTianQi : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         val userInfo = "com.nowcasting.entity.UserInfo".toClassOrNull()
         // 设置是会员
-        userInfo?.method("setVIP")
+        userInfo?.methodOrNull("setVIP")
             ?.hook {
-                replaceUnit {
-                    val mArgs = chain.args.toMutableList()
+                before {
+                    val mArgs = args.toMutableList()
                     mArgs[0] = true
-                    chain.proceedWith(chain.thisObject, mArgs.toTypedArray())
+                    result = proceedWith(mArgs.toTypedArray())
                 }
             }
         // 设置会员类型 超级会员
-        userInfo?.method("setVip_type")
+        userInfo?.methodOrNull("setVip_type")
             ?.hook {
-                replaceUnit {
-                    val mArgs = chain.args.toMutableList()
+                before {
+                    val mArgs = args.toMutableList()
                     mArgs[0] = "svip"
-                    chain.proceedWith(chain.thisObject, mArgs.toTypedArray())
+                    result = proceedWith(mArgs.toTypedArray())
                 }
             }
         // 设置超级会员到期时间
-        userInfo?.method("setSvip_expired_at")
+        userInfo?.methodOrNull("setSvip_expired_at")
             ?.hook {
-                replaceUnit {
-                    val mArgs = chain.args.toMutableList()
+                before {
+                    val mArgs = args.toMutableList()
                     mArgs[0] = 4701859200L
-                    chain.proceedWith(chain.thisObject, mArgs.toTypedArray())
+                    result = proceedWith(mArgs.toTypedArray())
                 }
             }
     }

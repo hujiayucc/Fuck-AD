@@ -69,7 +69,7 @@ abstract class Hooker {
 
         var realClassLoader: ClassLoader? = null
         module.hook(Application::class.java.method("attachBaseContext")).intercept { chain ->
-            val result = chain.proceedWith(chain.thisObject, chain.args.toTypedArray())
+            val result = chain.proceed()
             val context = chain.args[0] as Context
             realClassLoader = context.classLoader
             result
@@ -143,29 +143,36 @@ abstract class Hooker {
         }
     }
 
-    class HookDsl internal constructor() {
+    class HookDsl internal constructor(
+        private val onDuplicate: (String) -> Unit = {}
+    ) {
         internal var replaceBlock: (HookCallback.() -> Any?)? = null
         internal var replaceUnitBlock: (HookCallback.() -> Unit)? = null
         internal var beforeBlock: (HookCallback.() -> Unit)? = null
         internal var afterBlock: (HookCallback.() -> Unit)? = null
 
         fun replace(block: HookCallback.() -> Any?) {
+            if (replaceBlock != null) onDuplicate("replace/replaceTo")
             replaceBlock = block
         }
 
         fun replaceTo(value: Any?) {
+            if (replaceBlock != null) onDuplicate("replace/replaceTo")
             replaceBlock = { value }
         }
 
         fun replaceUnit(block: HookCallback.() -> Unit = {}) {
+            if (replaceUnitBlock != null) onDuplicate("replaceUnit")
             replaceUnitBlock = block
         }
 
         fun before(block: HookCallback.() -> Unit) {
+            if (beforeBlock != null) onDuplicate("before")
             beforeBlock = block
         }
 
         fun after(block: HookCallback.() -> Unit) {
+            if (afterBlock != null) onDuplicate("after")
             afterBlock = block
         }
     }
@@ -174,27 +181,86 @@ abstract class Hooker {
         module.hook(this).intercept { hookChain ->
             var currentResult: Any? = UnsetResult
             var originalExecuted = false
+
+            fun currentResultOrNull(): Any? {
+                return if (currentResult === UnsetResult) null else currentResult
+            }
+
+            fun proceedOriginalWithNonNull(thisObject: Any, args: Array<Any?>): Any? {
+                if (originalExecuted) {
+                    logHookError(
+                        "Original method already proceeded: ${toGenericString()}",
+                        IllegalStateException("Use HookCallback.result instead of proceeding twice.")
+                    )
+                    return currentResultOrNull()
+                }
+                originalExecuted = true
+                val proceededResult = hookChain.proceedWith(thisObject, args)
+                currentResult = proceededResult
+                return proceededResult
+            }
+
+            fun proceedOriginalWith(thisObject: Any?, args: Array<Any?>): Any? {
+                if (thisObject == null) {
+                    logHookError(
+                        "Cannot proceed with null thisObject: ${toGenericString()}",
+                        IllegalArgumentException("thisObject must be non-null for proceedWith.")
+                    )
+                    return currentResultOrNull()
+                }
+                return proceedOriginalWithNonNull(thisObject, args)
+            }
+
+            fun proceedOriginal(args: Array<Any?>? = null): Any? {
+                if (originalExecuted) {
+                    logHookError(
+                        "Original method already proceeded: ${toGenericString()}",
+                        IllegalStateException("Use HookCallback.result instead of proceeding twice.")
+                    )
+                    return currentResultOrNull()
+                }
+                if (args != null) return proceedOriginalWith(hookChain.thisObject, args)
+
+                originalExecuted = true
+                val proceededResult = hookChain.proceed()
+                currentResult = proceededResult
+                return proceededResult
+            }
+
             val callback = object : HookCallback {
                 override val chain: XposedInterface.Chain
                     get() = hookChain
+                override val thisObject: Any?
+                    get() = hookChain.thisObject
+                override val args: List<Any?>
+                    get() = hookChain.args
+                override val hasResult: Boolean
+                    get() = currentResult !== UnsetResult
                 override var result: Any?
-                    get() = if (currentResult === UnsetResult) null else currentResult
+                    get() = currentResultOrNull()
                     set(value) {
                         currentResult = value
                     }
-            }
 
-            fun proceedOriginal(): Any? {
-                originalExecuted = true
-                return hookChain.proceedWith(hookChain.thisObject, hookChain.args.toTypedArray())
+                override fun proceed(): Any? {
+                    return proceedOriginal()
+                }
+
+                override fun proceedWith(args: Array<Any?>): Any? {
+                    return proceedOriginal(args)
+                }
+
+                override fun proceedWith(thisObject: Any?, args: Array<Any?>): Any? {
+                    return proceedOriginalWith(thisObject, args)
+                }
             }
 
             dsl.replaceBlock?.let { replace ->
                 return@intercept try {
-                    replace.invoke(callback)
+                    replace.invoke(callback).also { currentResult = it }
                 } catch (error: Throwable) {
                     logHookError("Hook replace failed: ${toGenericString()}", error)
-                    proceedOriginal()
+                    callback.proceed()
                 }
             }
             dsl.replaceUnitBlock?.let { replaceUnit ->
@@ -203,7 +269,7 @@ abstract class Hooker {
                     null
                 } catch (error: Throwable) {
                     logHookError("Hook replaceUnit failed: ${toGenericString()}", error)
-                    proceedOriginal()
+                    callback.proceed()
                 }
             }
 
@@ -212,15 +278,13 @@ abstract class Hooker {
                     logHookError("Hook before failed: ${toGenericString()}", error)
                 }
             }
-            if (currentResult === UnsetResult) {
-                callback.result = proceedOriginal()
+            if (!callback.hasResult) {
+                callback.proceed()
             }
 
-            if (originalExecuted) {
-                dsl.afterBlock?.let { after ->
-                    runCatching { after.invoke(callback) }.onFailure { error ->
-                        logHookError("Hook after failed: ${toGenericString()}", error)
-                    }
+            dsl.afterBlock?.let { after ->
+                runCatching { after.invoke(callback) }.onFailure { error ->
+                    logHookError("Hook after failed: ${toGenericString()}", error)
                 }
             }
             callback.result
@@ -233,18 +297,40 @@ abstract class Hooker {
         return (replaceCount == 1 && callbackCount == 0) || (replaceCount == 0 && callbackCount > 0)
     }
 
-    private fun Executable.hookExecutable(block: HookDsl.() -> Unit) {
-        val dsl = runCatching { HookDsl().apply(block) }.getOrElse { error ->
-            logHookError("Failed to build Hook DSL: ${toGenericString()}", error)
-            return
-        }
+    private fun Executable.canReplaceUnit(): Boolean {
+        return this is Method && (returnType == Void.TYPE || returnType == Void::class.java)
+    }
+
+    private fun Executable.validateDsl(dsl: HookDsl): Boolean {
         if (!dsl.isValid()) {
             logHookError(
                 "Invalid Hook DSL: ${toGenericString()}",
                 IllegalArgumentException("Hook DSL requires replace/replaceTo/replaceUnit, or before/after.")
             )
+            return false
+        }
+        if (dsl.replaceUnitBlock != null && !canReplaceUnit()) {
+            logHookError(
+                "Suspicious replaceUnit target: ${toGenericString()}",
+                IllegalArgumentException("replaceUnit is safest with a void return type; use replace/replaceTo for explicit return values.")
+            )
+        }
+        return true
+    }
+
+    private fun Executable.hookExecutable(block: HookDsl.() -> Unit) {
+        val dsl = runCatching {
+            HookDsl { name ->
+                logHookError(
+                    "Duplicate Hook DSL callback $name: ${toGenericString()}",
+                    IllegalStateException("Only the last $name block is used.")
+                )
+            }.apply(block)
+        }.getOrElse { error ->
+            logHookError("Failed to build Hook DSL: ${toGenericString()}", error)
             return
         }
+        if (!validateDsl(dsl)) return
         runCatching { hookInternal(dsl) }.onFailure { error ->
             logHookError("Failed to install hook: ${toGenericString()}", error)
         }
@@ -335,7 +421,6 @@ abstract class Hooker {
         Handler(Looper.getMainLooper()).postDelayed({ function() }, delayMillis)
     }
 
-    val HookCallback.instance: Any get() = chain.thisObject
-    val HookCallback.args: List<Any?> get() = chain.args
-    fun <T> HookCallback.instance(): T = chain.thisObject as T
+    val HookCallback.instance: Any get() = thisObject as Any
+    fun <T> HookCallback.instance(): T = thisObject as T
 }
