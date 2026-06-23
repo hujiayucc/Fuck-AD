@@ -17,8 +17,8 @@ com.phoenix.read
 com.qiyi.video
 com.ss.android.ugc.aweme
 com.xiaobai.screen.record
-com.yaerxing.fkst
 com.yaxisvip.pubgtool.iueg
+com.yaerxing.fkst
 com.youdao.dict
 com.zuoyou.center
 info.muge.appshare

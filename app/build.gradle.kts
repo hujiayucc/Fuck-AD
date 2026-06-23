@@ -8,6 +8,59 @@ kotlin {
     jvmToolchain(17)
 }
 
+val xposedScopePackagesFile = layout.projectDirectory.file("src/main/xposed-scope/packages.txt")
+val xposedHookerRegistryFile = layout.projectDirectory.file(
+    "src/main/java/com/hujiayucc/hook/hooker/app/HookerRegistry.kt"
+)
+val xposedScopeListFile = layout.projectDirectory.file("src/main/resources/META-INF/xposed/scope.list")
+val generateXposedScopeList = tasks.register("generateXposedScopeList") {
+    inputs.file(xposedScopePackagesFile)
+    inputs.file(xposedHookerRegistryFile)
+    outputs.file(xposedScopeListFile)
+
+    doLast {
+        val packageNames = xposedScopePackagesFile.asFile.readLines()
+            .map { it.substringBefore('#').trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sorted()
+
+        check(packageNames.isNotEmpty()) {
+            "No Xposed scope packages found in ${xposedScopePackagesFile.asFile}"
+        }
+
+        val registryPackageNames = Regex("\"([^\"]+)\"\\s+to\\s+listOf")
+            .findAll(xposedHookerRegistryFile.asFile.readText())
+            .map { it.groupValues[1] }
+            .distinct()
+            .sorted()
+            .toList()
+
+        val missingInScope = registryPackageNames - packageNames.toSet()
+        val unknownInScope = packageNames - registryPackageNames.toSet()
+        check(missingInScope.isEmpty() && unknownInScope.isEmpty()) {
+            buildString {
+                if (missingInScope.isNotEmpty()) {
+                    appendLine("Missing scope packages: ${missingInScope.joinToString()}")
+                }
+                if (unknownInScope.isNotEmpty()) {
+                    appendLine("Unknown scope packages: ${unknownInScope.joinToString()}")
+                }
+            }
+        }
+
+        xposedScopeListFile.asFile.writeText(
+            packageNames.joinToString(separator = "\n", postfix = "\n")
+        )
+    }
+}
+
+tasks.configureEach {
+    if (name == "mergeDebugJavaResource" || name == "mergeReleaseJavaResource") {
+        dependsOn(generateXposedScopeList)
+    }
+}
+
 android {
     signingConfigs {
         all {
