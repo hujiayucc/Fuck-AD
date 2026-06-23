@@ -3,7 +3,6 @@ activity = "1.13.0"
 adsSdkPro = "6.8.2.0"
 agp = "9.2.1"
 dexkit = "2.0.7"
-kotlin = "2.3.20"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -18,7 +17,6 @@ libxposedService = "102.0.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
 [libraries]
 #noinspection Aligned16KB

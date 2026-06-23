@@ -26,10 +26,12 @@ class ModuleMain : XposedModule() {
         val SDK_HOOKERS = listOf(GDT, KW, Pangle)
         private val sdkHookerTargets = listOf(
             SdkHookerTarget(
+                name = "GDT",
                 hooker = GDT,
                 markerClasses = listOf("com.qq.e.comm.managers.plugin.PM\$a")
             ),
             SdkHookerTarget(
+                name = "KW",
                 hooker = KW,
                 markerClasses = listOf(
                     "com.duowan.kiwi.adsplash.view.AdSplashFragment",
@@ -37,6 +39,7 @@ class ModuleMain : XposedModule() {
                 )
             ),
             SdkHookerTarget(
+                name = "Pangle",
                 hooker = Pangle,
                 markerClasses = listOf(
                     "com.bytedance.sdk.openadsdk.TTAdSdk",
@@ -89,16 +92,29 @@ class ModuleMain : XposedModule() {
         packageName: String,
         classLoader: ClassLoader
     ): List<SdkHookerTarget> {
-        sdkHookerTargetCache[packageName]?.let { return it }
+        sdkHookerTargetCache[packageName]?.let { cachedTargets ->
+            logIfDebug("SDK fallback cache hit: $packageName -> ${cachedTargets.describe()}")
+            return cachedTargets
+        }
         val matchedTargets = sdkHookerTargets.filter { target ->
             target.markerClasses.any { className -> classLoader.hasClass(className) }
         }
         sdkHookerTargetCache[packageName] = matchedTargets
+        logIfDebug("SDK fallback resolved: $packageName -> ${matchedTargets.describe()}")
         return matchedTargets
+    }
+
+    private fun List<SdkHookerTarget>.describe(): String {
+        return if (isEmpty()) "none" else joinToString { it.name }
     }
 
     private fun ClassLoader.hasClass(className: String): Boolean {
         return runCatching { loadClass(className) }.isSuccess
+    }
+
+    private fun logIfDebug(message: String) {
+        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
+        if (shouldLog) log(Log.DEBUG, TAG, message, null)
     }
 
     private fun logIfDebug(stage: String, error: Throwable) {
@@ -107,6 +123,7 @@ class ModuleMain : XposedModule() {
     }
 
     private data class SdkHookerTarget(
+        val name: String,
         val hooker: Hooker,
         val markerClasses: List<String>
     )

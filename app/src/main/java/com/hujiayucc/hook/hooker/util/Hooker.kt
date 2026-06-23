@@ -18,10 +18,13 @@ import io.github.libxposed.api.XposedModuleInterface
 import java.lang.reflect.Constructor
 import java.lang.reflect.Executable
 import java.lang.reflect.Method
+import java.util.Collections
 
 @Suppress("UNCHECKED_CAST")
 abstract class Hooker {
     private object UnsetResult
+
+    private val hookHandles = Collections.synchronizedList(mutableListOf<RegisteredHook>())
 
     protected var appName: String = javaClass.simpleName
     protected var action: String = "Hook"
@@ -178,7 +181,7 @@ abstract class Hooker {
     }
 
     private fun Executable.hookInternal(dsl: HookDsl) {
-        module.hook(this).intercept { hookChain ->
+        val handle = module.hook(this).intercept { hookChain ->
             var currentResult: Any? = UnsetResult
             var originalExecuted = false
 
@@ -289,7 +292,25 @@ abstract class Hooker {
             }
             callback.result
         }
+        registerHookHandle(this, handle)
     }
+
+    private fun registerHookHandle(executable: Executable, handle: Any) {
+        hookHandles += RegisteredHook(
+            owner = appName,
+            executable = executable.toGenericString(),
+            handle = handle
+        )
+        if (hookHandles.size > 1) {
+            logHookDebug("Registered ${hookHandles.size} hook handles for $appName")
+        }
+    }
+
+    private data class RegisteredHook(
+        val owner: String,
+        val executable: String,
+        val handle: Any
+    )
 
     private fun HookDsl.isValid(): Boolean {
         val replaceCount = listOf(replaceBlock, replaceUnitBlock).count { it != null }
@@ -406,6 +427,11 @@ abstract class Hooker {
 
     protected fun logW(message: String, throwable: Throwable? = null) {
         module.log(Log.WARN, "Fuck AD", message, throwable)
+    }
+
+    private fun logHookDebug(message: String) {
+        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
+        if (shouldLog) runCatching { logD(message) }
     }
 
     private fun logHookError(message: String, throwable: Throwable? = null) {

@@ -9,14 +9,17 @@ kotlin {
 }
 
 val xposedScopePackagesFile = layout.projectDirectory.file("src/main/xposed-scope/packages.txt")
+val xposedMetadataSourceDir = layout.projectDirectory.dir("src/main/resources/META-INF/xposed")
 val xposedHookerRegistryFile = layout.projectDirectory.file(
     "src/main/java/com/hujiayucc/hook/hooker/app/HookerRegistry.kt"
 )
-val xposedScopeListFile = layout.projectDirectory.file("src/main/resources/META-INF/xposed/scope.list")
+val generatedXposedResourcesDir = layout.buildDirectory.dir("generated/xposedResources")
 val generateXposedScopeList = tasks.register("generateXposedScopeList") {
     inputs.file(xposedScopePackagesFile)
     inputs.file(xposedHookerRegistryFile)
-    outputs.file(xposedScopeListFile)
+    inputs.file(xposedMetadataSourceDir.file("java_init.list"))
+    inputs.file(xposedMetadataSourceDir.file("module.prop"))
+    outputs.dir(generatedXposedResourcesDir)
 
     doLast {
         val packageNames = xposedScopePackagesFile.asFile.readLines()
@@ -49,7 +52,17 @@ val generateXposedScopeList = tasks.register("generateXposedScopeList") {
             }
         }
 
-        xposedScopeListFile.asFile.writeText(
+        val xposedOutputDir = generatedXposedResourcesDir.get().dir("META-INF/xposed").asFile
+        xposedOutputDir.mkdirs()
+        xposedMetadataSourceDir.file("java_init.list").asFile.copyTo(
+            xposedOutputDir.resolve("java_init.list"),
+            overwrite = true
+        )
+        xposedMetadataSourceDir.file("module.prop").asFile.copyTo(
+            xposedOutputDir.resolve("module.prop"),
+            overwrite = true
+        )
+        xposedOutputDir.resolve("scope.list").writeText(
             packageNames.joinToString(separator = "\n", postfix = "\n")
         )
     }
@@ -91,6 +104,12 @@ android {
     )
 
     packaging.resources.merges += "META-INF/xposed/*"
+
+    sourceSets {
+        getByName("main") {
+            resources.setSrcDirs(listOf(generatedXposedResourcesDir))
+        }
+    }
 
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
