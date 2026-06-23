@@ -461,7 +461,8 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     override fun onServiceStateChanged(service: XposedService?) {
-
+        super.onServiceStateChanged(service)
+        adapter.refreshScopeState()
     }
 
     companion object {

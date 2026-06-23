@@ -32,6 +32,10 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
         refreshSorted()
     }
 
+    fun refreshScopeState() {
+        refreshSorted()
+    }
+
     override fun getCount(): Int = filteredList.size
     override fun getItem(position: Int): Item2 = filteredList[position]
     override fun getItemId(position: Int): Long = position.toLong()

@@ -71,7 +71,10 @@ class ModuleMain : XposedModule() {
 
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
         try {
-            if (!param.isBaseApk()) return
+            if (!param.isBaseApk()) {
+                logIfDebug("Skip non-base APK: ${param.packageName} -> ${param.applicationInfo.sourceDir}")
+                return
+            }
             val appHookers = HookerRegistry.create(param.packageName)
             (BUILTIN_HOOKERS + appHookers).forEach { it.call(param) }
             if (appHookers.isEmpty()) {

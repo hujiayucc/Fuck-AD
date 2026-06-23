@@ -32,6 +32,7 @@ import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter
 import com.hujiayucc.hook.utils.LanguageUtils
+import io.github.libxposed.service.XposedService
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -45,6 +46,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private lateinit var listView: ListView
     private val disposables = CompositeDisposable()
     private lateinit var author: Author
+    private var appListAdapter: AppListAdapter? = null
 
     private val allAppPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         when {
@@ -127,7 +129,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             Observable.fromCallable {
                 AppList(applicationContext).appList
             }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ list -> listView.adapter = AppListAdapter(list) }, { error -> showDataLoadError(error) })
+                .subscribe({ list ->
+                    appListAdapter = AppListAdapter(list)
+                    listView.adapter = appListAdapter
+                }, { error -> showDataLoadError(error) })
         )
     }
 
@@ -169,6 +174,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     override fun onDestroy() {
+        appListAdapter = null
         disposables.clear()
         super.onDestroy()
     }
@@ -290,6 +296,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
 
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    override fun onServiceStateChanged(service: XposedService?) {
+        super.onServiceStateChanged(service)
+        appListAdapter?.refreshScopeState()
+        if (::author.isInitialized) {
+            service?.apply { updateFrameworkStatus(frameworkName, apiVersion) }
         }
     }
 

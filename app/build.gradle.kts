@@ -104,10 +104,9 @@ android {
     )
 
     packaging.resources.merges += "META-INF/xposed/*"
-
     sourceSets {
         getByName("main") {
-            resources.setSrcDirs(listOf(generatedXposedResourcesDir))
+            resources.directories.add(generatedXposedResourcesDir.get().asFile.path)
         }
     }
 
@@ -133,11 +132,10 @@ android {
         }
 
         getByName("debug") {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             // 版本后缀
             // versionNameSuffix = "-debug"
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
     compileOptions {

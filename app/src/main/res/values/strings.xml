@@ -52,4 +52,5 @@
     <string name="close">Close</string>
     <string name="tip">Tip</string>
     <string name="error_log">Error log</string>
+    <string name="scope_service_unavailable">LSPosed service is not connected. Unable to request scope.</string>
 </resources>

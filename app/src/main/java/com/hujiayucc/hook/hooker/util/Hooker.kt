@@ -301,9 +301,47 @@ abstract class Hooker {
             executable = executable.toGenericString(),
             handle = handle
         )
-        if (hookHandles.size > 1) {
-            logHookDebug("Registered ${hookHandles.size} hook handles for $appName")
+        val ownerHandleCount = hookHandleCount(appName)
+        if (ownerHandleCount > 1) {
+            logHookDebug("Registered $ownerHandleCount hook handles for $appName")
         }
+    }
+
+    protected fun hookHandleCount(owner: String = appName): Int {
+        return synchronized(hookHandles) {
+            hookHandles.count { registeredHook -> registeredHook.owner == owner }
+        }
+    }
+
+    protected fun hookHandleExecutables(owner: String = appName): List<String> {
+        return synchronized(hookHandles) {
+            hookHandles
+                .filter { registeredHook -> registeredHook.owner == owner }
+                .map { registeredHook -> registeredHook.executable }
+        }
+    }
+
+    protected fun logHookHandles(owner: String = appName) {
+        val executables = hookHandleExecutables(owner)
+        logHookDebug("Registered ${executables.size} hook handles for $owner")
+        executables.forEach { executable ->
+            logHookDebug("Hook handle for $owner: $executable")
+        }
+    }
+
+    protected fun clearHookHandleRecords(owner: String = appName): Int {
+        var removedCount = 0
+        synchronized(hookHandles) {
+            val iterator = hookHandles.iterator()
+            while (iterator.hasNext()) {
+                if (iterator.next().owner == owner) {
+                    iterator.remove()
+                    removedCount++
+                }
+            }
+        }
+        logHookDebug("Cleared $removedCount hook handle records for $owner")
+        return removedCount
     }
 
     private data class RegisteredHook(

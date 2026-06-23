@@ -21,6 +21,10 @@ class AppListAdapter(private val appList: List<Item>) : BaseAdapter() {
         sortByScope()
     }
 
+    fun refreshScopeState() {
+        refreshSorted()
+    }
+
     override fun getCount(): Int = displayList.size
     override fun getItem(position: Int): Item = displayList[position]
     override fun getItemId(position: Int): Long = position.toLong()
