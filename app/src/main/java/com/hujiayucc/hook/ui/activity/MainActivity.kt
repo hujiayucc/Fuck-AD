@@ -298,7 +298,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         try {
             val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
             for (appTask in manager.appTasks) {
-                if (appTask.taskInfo.taskId == taskId) {
+                if (appTask.taskInfo?.taskId == taskId) {
                     appTask.setExcludeFromRecents(exclude)
                 }
             }
