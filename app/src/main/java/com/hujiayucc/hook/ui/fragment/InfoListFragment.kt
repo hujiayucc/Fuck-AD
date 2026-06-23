@@ -3,6 +3,7 @@ package com.hujiayucc.hook.ui.fragment
 import android.annotation.SuppressLint
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -54,9 +55,17 @@ class InfoListFragment : Fragment() {
         super.onCreate(savedInstanceState)
         arguments?.let {
             packageName = it.getString(ARG_PACKAGE_NAME) ?: ""
-            componentType = it.getSerializable(ARG_COMPONENT_TYPE) as? InfoListAdapter.ComponentType
-                ?: InfoListAdapter.ComponentType.ACTIVITY
+            componentType = getComponentType(it)
         }
+    }
+
+    private fun getComponentType(args: Bundle): InfoListAdapter.ComponentType {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            args.getSerializable(ARG_COMPONENT_TYPE, InfoListAdapter.ComponentType::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            args.getSerializable(ARG_COMPONENT_TYPE) as? InfoListAdapter.ComponentType
+        } ?: InfoListAdapter.ComponentType.ACTIVITY
     }
 
     override fun onCreateView(

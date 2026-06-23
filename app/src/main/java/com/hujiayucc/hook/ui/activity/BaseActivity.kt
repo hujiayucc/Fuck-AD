@@ -15,7 +15,7 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
     protected var service: XposedService? = null
     private val configChangeListener = object : ComponentCallbacks2 {
         override fun onConfigurationChanged(newConfig: Configuration) {
-            if (newConfig.locale != Locale.getDefault()) {
+            if (newConfig.locales[0] != Locale.getDefault()) {
                 handleLanguageChange()
             }
         }
