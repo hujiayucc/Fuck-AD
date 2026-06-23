@@ -11,8 +11,8 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object HGMFDJ : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "com.dragon.read.user.model.VipInfoModel".toClass()
-            .constructor()?.forEach { constructor ->
+        "com.dragon.read.user.model.VipInfoModel".toClassOrNull()
+            ?.constructor()?.forEach { constructor ->
                 constructor.hook {
                     after {
                         setField(instance, "expireTime", "4102444799")

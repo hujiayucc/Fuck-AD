@@ -12,12 +12,13 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object FQXS : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "com.dragon.read.user.model.VipInfoModel".toClass().constructor()
+        "com.dragon.read.user.model.VipInfoModel".toClassOrNull()
+            ?.constructor()
             ?.forEach { constructor ->
                 constructor.hook {
                     after {
                         val expireTime = "2099-12-31".formatTime()
-                        setField(instance, "expireTime","${expireTime.time / 1000}")
+                        setField(instance, "expireTime", "${expireTime.time / 1000}")
                         setField(instance, "isAdVip", true)
                         setField(instance, "isVip", "1")
                         setField(instance, "leftTime", "${expireTime.time / 1000}")

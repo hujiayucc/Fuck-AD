@@ -13,22 +13,24 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object TieBa : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "com.baidu.sdk.container.widget.RectangleCountDownView".toClass().method("onDraw").hook {
-            after {
-                val textView = instance as TextView
-                val text = textView.text.toString()
-                val regex = Regex("^跳过(.*)\\d$")
-                if (regex.matches(text)) {
-                    textView.performClick()
+        "com.baidu.sdk.container.widget.RectangleCountDownView".toClassOrNull()
+            ?.methodOrNull("onDraw")
+            ?.hook {
+                after {
+                    val textView = instance as? TextView ?: return@after
+                    val text = textView.text.toString()
+                    val regex = Regex("^跳过(.*)\\d$")
+                    if (regex.matches(text)) {
+                        textView.performClick()
+                    }
                 }
             }
-        }
 
-        "com.baidu.tieba.recapp.lego.view.AdCardBaseView".toClass()
-            .constructor()?.forEach { constructor ->
+        "com.baidu.tieba.recapp.lego.view.AdCardBaseView".toClassOrNull()
+            ?.constructor()?.forEach { constructor ->
                 constructor.hook {
                     after {
-                        val view = instance as View
+                        val view = instance as? View ?: return@after
                         view.visibility = View.GONE
                     }
                 }

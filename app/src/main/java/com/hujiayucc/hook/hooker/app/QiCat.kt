@@ -66,25 +66,28 @@ object QiCat : Hooker() {
             bridge.close()
         }
 
-        val baseInfo = "com.qimao.qmuser.model.entity.mine_v2.BaseInfo".toClass()
+        val baseInfo = "com.qimao.qmuser.model.entity.mine_v2.BaseInfo".toClassOrNull()
         val methods = arrayOf("isVipExpired", "isVipState", "isShowYearVip")
 
         for (method in methods) {
-            baseInfo.method(method).hook { replaceTo(true) }
+            baseInfo?.methodOrNull(method)?.hook { replaceTo(true) }
         }
 
-        "com.qimao.qmuser.model.entity.AdDataConfig".toClass().method("getAdvertiser")
-            .hook { replaceTo(null) }
+        "com.qimao.qmuser.model.entity.AdDataConfig".toClassOrNull()
+            ?.methodOrNull("getAdvertiser")
+            ?.hook { replaceTo(null) }
 
-        "com.qimao.qmuser.model.entity.AdPositionData".toClass().method("getAdv")
-            .hook { replaceTo(null) }
+        "com.qimao.qmuser.model.entity.AdPositionData".toClassOrNull()
+            ?.methodOrNull("getAdv")
+            ?.hook { replaceTo(null) }
 
-        "com.qimao.qmuser.view.bonus.LoginGuidePopupTask".toClass().method("addPopup")
-            .hook { replaceUnit { } }
+        "com.qimao.qmuser.view.bonus.LoginGuidePopupTask".toClassOrNull()
+            ?.methodOrNull("addPopup")
+            ?.hook { replaceUnit { } }
 
-        "com.qimao.qmuser.view.VipStatusView".toClass()
-            .method("init")
-            .hook {
+        "com.qimao.qmuser.view.VipStatusView".toClassOrNull()
+            ?.methodOrNull("init")
+            ?.hook {
                 after {
                     instance<View>().visibility = View.GONE
                 }

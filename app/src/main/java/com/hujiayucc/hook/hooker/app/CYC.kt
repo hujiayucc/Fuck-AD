@@ -14,9 +14,9 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object CYC : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "com.windmill.sdk.a.m$12$1".toClass()
-            .method("run")
-            .hook {
+        "com.windmill.sdk.a.m$12$1".toClassOrNull()
+            ?.methodOrNull("run")
+            ?.hook {
                 replaceUnit {}
             }
     }

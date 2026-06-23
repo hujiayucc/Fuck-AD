@@ -19,25 +19,25 @@ object BaiduPan : Hooker() {
     @SuppressLint("ResourceType")
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         loadSdk(this, pangle = true)
-        "com.qumeng.advlib.__remote__.ui.elements.SplashCountdownView".toClass()
-            .methods.hook {
+        "com.qumeng.advlib.__remote__.ui.elements.SplashCountdownView".toClassOrNull()
+            ?.methods.hook {
                 after {
                     val view = instance<View>()
                     if (view.isClickable) view.performClick()
                 }
             }
 
-        "com.beizi.fusion.widget.SkipView".toClass()
-            .method("onTextChanged")
-            .hook {
+        "com.beizi.fusion.widget.SkipView".toClassOrNull()
+            ?.methodOrNull("onTextChanged")
+            ?.hook {
                 after {
                     val view = instance<TextView>()
                     view.performClick()
                 }
             }
 
-        "com.baidu.sdk.container.widget.RectangleCountDownView".toClass()
-            .methods.hook {
+        "com.baidu.sdk.container.widget.RectangleCountDownView".toClassOrNull()
+            ?.methods.hook {
                 after {
                     val view = instance<View>()
                     if (view.isClickable) view.performClick()

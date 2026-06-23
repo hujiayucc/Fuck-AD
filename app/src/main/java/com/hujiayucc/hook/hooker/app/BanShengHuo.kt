@@ -16,8 +16,8 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object BanShengHuo : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "com.banshenghuo.mobile.modules.SplashActivity".toClass()
-            .methods("initData")
+        "com.banshenghuo.mobile.modules.SplashActivity".toClassOrNull()
+            ?.methods("initData")
             .hook {
                 replaceUnit {
                     val activity = instance<Activity>()

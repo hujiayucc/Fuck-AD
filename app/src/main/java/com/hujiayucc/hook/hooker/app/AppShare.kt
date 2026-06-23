@@ -14,7 +14,8 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object AppShare : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "info.muge.appshare.view.launch.LaunchBean".toClass().methods("getHaveAd")
+        "info.muge.appshare.view.launch.LaunchBean".toClassOrNull()
+            ?.methods("getHaveAd")
             .hook {
                 replaceTo(false)
             }

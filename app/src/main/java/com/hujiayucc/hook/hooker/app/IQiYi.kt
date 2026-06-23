@@ -15,11 +15,11 @@ import io.github.libxposed.api.XposedModuleInterface
 )
 object IQiYi : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
-        "com.qiyi.video.qysplashscreen.ad.g".toClass()
-            .method("B1")
-            .hook {
+        "com.qiyi.video.qysplashscreen.ad.g".toClassOrNull()
+            ?.methodOrNull("B1")
+            ?.hook {
                 after {
-                    val view = getField(instance, "t") as View
+                    val view = getField(instance, "t") as? View ?: return@after
                     view.performClick()
                 }
             }
