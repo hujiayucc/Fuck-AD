@@ -45,7 +45,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private lateinit var listView: ListView
     private val disposables = CompositeDisposable()
     private lateinit var author: Author
-    private lateinit var language: String
 
     private val allAppPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         when {
@@ -90,8 +89,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             )
             listView = appList
         }
-
-        language = prefsBridge.getString("language", "system") ?: "system"
     }
 
     private fun setupClickListeners() {
@@ -198,7 +195,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        prefsBridge.getString(language, "system")?.let { updateLanguageSelection(menu, it) }
+        prefsBridge.getString(LANGUAGE_PREF_KEY, "system")?.let { updateLanguageSelection(menu, it) }
         menu.findItem(R.id.menu_click_info)?.isChecked = prefsBridge.getBoolean("clickInfo", false)
         menu.findItem(R.id.menu_stack_track)?.isChecked = prefsBridge.getBoolean("stackTrack", false)
         menu.findItem(R.id.menu_error_log)?.isChecked = prefsBridge.getBoolean("errorLog", false)
@@ -211,9 +208,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     private fun saveLanguage(locale: Locale? = null) {
-        locale?.apply { prefsBridge.edit { putString(language, toLanguageTag()) } } ?: run {
-            prefsBridge.edit(commit = true) { putString(language, "system") }
-        }
+        val languageTag = locale?.toLanguageTag() ?: "system"
+        prefsBridge.edit(commit = true) { putString(LANGUAGE_PREF_KEY, languageTag) }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -313,5 +309,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     companion object {
         const val TAG = "MainActivity"
+        private const val LANGUAGE_PREF_KEY = "language"
     }
 }
