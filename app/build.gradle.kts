@@ -56,7 +56,13 @@ val generateXposedScopeList = tasks.register("generateXposedScopeList") {
 }
 
 tasks.configureEach {
-    if (name == "mergeDebugJavaResource" || name == "mergeReleaseJavaResource") {
+    if (name in setOf(
+            "mergeDebugJavaResource",
+            "mergeReleaseJavaResource",
+            "processDebugJavaRes",
+            "processReleaseJavaRes"
+        )
+    ) {
         dependsOn(generateXposedScopeList)
     }
 }
