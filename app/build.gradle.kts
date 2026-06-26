@@ -81,19 +81,6 @@ tasks.configureEach {
 }
 
 android {
-    signingConfigs {
-        all {
-            print("Loading signingConfigs...")
-            val properties = rootProject.file("local.properties").inputStream().use {
-                Properties().apply { load(it) }
-            }
-            storeFile = file(properties.getProperty("storeFile"))
-            storePassword = properties.getProperty("storePassword")
-            keyAlias = properties.getProperty("keyAlias")
-            keyPassword = properties.getProperty("keyPassword")
-        }
-    }
-
     namespace = "com.hujiayucc.hook"
     compileSdk = 37
 
@@ -114,8 +101,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 30
         targetSdk = 37
-        versionCode = 10001
-        versionName = "3.0.0.1"
+        versionCode = 10100
+        versionName = "3.0.1"
         buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -150,7 +137,7 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

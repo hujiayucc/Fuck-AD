@@ -25,6 +25,8 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
     private var lastQuery: String = ""
     private val mainHandler = Handler(Looper.getMainLooper())
     private var packageCheckExecutor: ExecutorService? = null
+    private var searchMenuItem: MenuItem? = null
+    
     private val pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
         override fun onPageSelected(position: Int) {
             dispatchSearchQuery(lastQuery)
@@ -69,6 +71,7 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_app_info, menu)
         val item = menu.findItem(R.id.action_search)
+        searchMenuItem = item
         val sv = item.actionView as? SearchView
 
         sv?.queryHint = getString(R.string.app_info_search_hint)
@@ -88,15 +91,27 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
         })
 
         item.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
-            override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
+            override fun onMenuItemActionExpand(item: MenuItem): Boolean {
+                setCustomBackEnabled(true)
+                return true
+            }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
                 lastQuery = ""
                 dispatchSearchQuery("")
+                setCustomBackEnabled(false)
                 return true
             }
         })
         return true
+    }
+
+    override fun onBackAction() {
+        if (searchMenuItem?.isActionViewExpanded == true) {
+            searchMenuItem?.collapseActionView()
+        } else {
+            super.onBackAction()
+        }
     }
 
     @SuppressLint("SetTextI18n")

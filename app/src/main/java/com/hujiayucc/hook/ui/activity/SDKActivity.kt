@@ -51,6 +51,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private val saveExecutor = Executors.newSingleThreadScheduledExecutor()
     private var pendingSave: ScheduledFuture<*>? = null
     private var pendingSaveSnapshot: PendingSave? = null
+    private var searchMenuItem: MenuItem? = null
 
     private data class AppEntry(val appInfo: ApplicationInfo, val label: String)
     private data class CacheItem(val appName: String, val packageName: String, val action: String)
@@ -82,6 +83,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         listView = binding.appList
         textView = binding.textView
         adapter = AppListAdapter2(itemList)
+
         listView.adapter = adapter
         hideListView()
         loadSdkItems()
@@ -95,6 +97,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_sdk, menu)
         val item = menu.findItem(R.id.action_search)
+        searchMenuItem = item
         val sv = item.actionView as? SearchView
         sv?.queryHint = getString(R.string.sdk_search_hint)
         sv?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -107,14 +110,26 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         })
 
         item.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
-            override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
+            override fun onMenuItemActionExpand(item: MenuItem): Boolean {
+                setCustomBackEnabled(true)
+                return true
+            }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
                 adapter.filter.filter("")
+                setCustomBackEnabled(false)
                 return true
             }
         })
         return true
+    }
+
+    override fun onBackAction() {
+        if (searchMenuItem?.isActionViewExpanded == true) {
+            searchMenuItem?.collapseActionView()
+        } else {
+            super.onBackAction()
+        }
     }
 
     override fun onDestroy() {
