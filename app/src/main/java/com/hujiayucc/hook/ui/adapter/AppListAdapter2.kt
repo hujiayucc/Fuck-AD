@@ -14,6 +14,7 @@ import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.databinding.AppRuleBinding
 import com.hujiayucc.hook.ui.activity.AppInfoActivity
+import com.hujiayucc.hook.ui.activity.BaseActivity
 import java.util.*
 
 class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filterable {
@@ -88,6 +89,7 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
             action.text = rule.action
             ScopeAdapterUtils.bindScopeSwitch(context, switchButton, rule.packageName, ::refreshSorted)
             root.setOnClickListener {
+                (context as? BaseActivity<*>)?.preparePreviousPagePreview(AppInfoActivity::class.java)
                 val intent = Intent(context, AppInfoActivity::class.java)
                 intent.putExtra("packageName", rule.packageName)
                 intent.putExtra("appName", rule.appName)

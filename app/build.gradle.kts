@@ -8,6 +8,12 @@ kotlin {
     jvmToolchain(17)
 }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
+}
+
 val xposedScopePackagesFile = layout.projectDirectory.file("src/main/xposed-scope/packages.txt")
 val xposedMetadataSourceDir = layout.projectDirectory.dir("src/main/resources/META-INF/xposed")
 val xposedHookerRegistryFile = layout.projectDirectory.file(
@@ -84,6 +90,28 @@ android {
     namespace = "com.hujiayucc.hook"
     compileSdk = 37
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+            enableV1Signing = false
+            enableV2Signing = false
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+        
+        getByName("debug") {
+            enableV1Signing = false
+            enableV2Signing = false
+            enableV3Signing = true  
+            enableV4Signing = true
+        }
+    }
+
     androidResources.additionalParameters += listOf(
         "--allow-reserved-package-id",
         "--package-id",
@@ -116,6 +144,13 @@ android {
             // 版本后缀
             // versionNameSuffix = "-release"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // 如果没有检测到配置文件，临时降级为 debug 签名以保证能成功编译
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
 
         getByName("debug") {

@@ -22,3 +22,5 @@ local.properties
 /FuckAD-Author/FuckAD-Author.iml
 
 .backup/
+keystore.properties
+*.jks
