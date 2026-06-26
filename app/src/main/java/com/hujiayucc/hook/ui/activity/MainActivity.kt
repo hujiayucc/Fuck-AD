@@ -284,6 +284,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
 
             R.id.menu_sdk -> {
+                preparePreviousPagePreview(SDKActivity::class.java)
                 val intent = Intent(this, SDKActivity::class.java)
                 startActivity(intent)
                 true

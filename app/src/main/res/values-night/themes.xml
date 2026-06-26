@@ -5,6 +5,9 @@
         <item name="android:navigationBarColor">?attr/BackgroundColor</item>
         <item name="android:statusBarColor">?attr/BackgroundColor</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
         <item name="headerTextColor">@color/text</item>
         <item name="menuColor">@color/text</item>
         <item name="BackgroundColor">#4D000000</item>

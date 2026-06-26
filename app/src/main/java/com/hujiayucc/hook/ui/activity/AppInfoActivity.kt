@@ -106,9 +106,10 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
         return true
     }
 
-    override fun onBackAction() {
-        if (searchMenuItem?.isActionViewExpanded == true) {
+    override fun onBackAction(): Boolean {
+        return if (searchMenuItem?.isActionViewExpanded == true) {
             searchMenuItem?.collapseActionView()
+            false
         } else {
             super.onBackAction()
         }
