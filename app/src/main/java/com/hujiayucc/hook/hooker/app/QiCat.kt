@@ -12,6 +12,12 @@ import org.luckypray.dexkit.DexKitBridge
     action = "开屏广告"
 )
 object QiCat : Hooker() {
+    override val jiaGuMarkerClasses = listOf(
+        "com.qimao.qmuser.model.entity.mine_v2.BaseInfo",
+        "com.qimao.qmuser.model.entity.AdDataConfig",
+        "com.qimao.qmuser.model.entity.AdPositionData"
+    )
+
     private fun DexKitBridge.add(
         searchPackages: String,
         method: String,

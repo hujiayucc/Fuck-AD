@@ -17,6 +17,10 @@ import io.github.libxposed.api.XposedModuleInterface
     ]
 )
 object Kook : Hooker() {
+    override val jiaGuMarkerClasses = listOf(
+        "cj.mobile.jt.core.ui.widget.CountdownView"
+    )
+
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         TextView::class.java.method("onDraw").hook {
             after {
