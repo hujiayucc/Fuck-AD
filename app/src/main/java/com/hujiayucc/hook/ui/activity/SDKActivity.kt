@@ -136,7 +136,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     override fun onDestroy() {
         disposables.clear()
         flushPendingSave()
-        saveExecutor.shutdown()
+        shutdownSaveExecutor()
         super.onDestroy()
     }
 
@@ -404,6 +404,11 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         saveItemsSnapshot(pending.items, packageSnapshot, commit = true)
         pendingSaveSnapshot = null
         pendingSave = null
+    }
+
+    private fun shutdownSaveExecutor() {
+        pendingSave = null
+        saveExecutor.shutdown()
     }
 
     private fun saveItemsSnapshot(items: List<CacheItem>, scannedPackages: Set<String>, commit: Boolean = false) {
