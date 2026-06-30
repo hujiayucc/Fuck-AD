@@ -99,9 +99,18 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
         }
 
         @Deprecated("Deprecated in Java")
-        override fun onLowMemory() {}
+        override fun onLowMemory() {
+            clearPreviousPageBitmaps()
+        }
 
-        override fun onTrimMemory(level: Int) {}
+        override fun onTrimMemory(level: Int) {
+            if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
+                level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
+                level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
+            ) {
+                clearPreviousPageBitmaps()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -455,6 +464,10 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
         createBackPreviewBitmap()?.let { preview ->
             previousPageBitmaps[targetName] = preview
         }
+    }
+
+    private fun clearPreviousPageBitmaps() {
+        previousPageBitmaps.clear()
     }
 
     private fun clearPreviousPagePreview() {
