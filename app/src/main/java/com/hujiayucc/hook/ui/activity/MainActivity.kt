@@ -45,6 +45,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var listView: ListView
     private val disposables = CompositeDisposable()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val initializeRunnable = Runnable {
+        initializeUI()
+        setupClickListeners()
+        checkPermissions()
+        author = Author(this, true, prefsBridge)
+        author.check(binding.mainActiveStatus, binding.mainStatus, BuildConfig.VERSION_CODE)
+        service?.apply { updateFrameworkStatus(frameworkName, apiVersion) }
+    }
     private lateinit var author: Author
     private var appListAdapter: AppListAdapter? = null
 
@@ -65,14 +74,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     override fun onStart() {
         super.onStart()
-        Handler(Looper.getMainLooper()).postDelayed({
-            initializeUI()
-            setupClickListeners()
-            checkPermissions()
-            author = Author(this, true, prefsBridge)
-            author.check(binding.mainActiveStatus, binding.mainStatus, BuildConfig.VERSION_CODE)
-            service?.apply { updateFrameworkStatus(frameworkName, apiVersion) }
-        }, 500)
+        mainHandler.postDelayed(initializeRunnable, 500)
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -174,6 +176,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(initializeRunnable)
         appListAdapter = null
         disposables.clear()
         super.onDestroy()
