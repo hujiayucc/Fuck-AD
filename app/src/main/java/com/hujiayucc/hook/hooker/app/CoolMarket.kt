@@ -14,7 +14,22 @@ import io.github.libxposed.api.XposedModuleInterface
     action = "禁用SDK, 信息流广告"
 )
 object CoolMarket : Hooker() {
+    override val jiaGuMarkerClasses = listOf(
+        "androidx.appcompat.widget.AppCompatImageView",
+        "com.bytedance.sdk.openadsdk.TTAdSdk",
+        "com.bytedance.sdk.openadsdk.TTInitializer",
+        "com.bytedance.sdk.openadsdk.TTAdNative",
+        "com.bytedance.sdk.openadsdk.TTAdManager",
+        "com.bytedance.sdk.openadsdk.CSJSplashAd",
+        "com.bytedance.sdk.openadsdk.c.a.a\$a",
+        "com.bytedance.sdk.openadsdk.api.a\$c",
+        "com.bytedance.sdk.openadsdk.c.a.a.b",
+        "com.bytedance.sdk.openadsdk.core.AdSdkInitializerHolder"
+    )
+
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
+        if (!isMainProcess(this)) return
+
         loadSdk(this, pangle = true)
         "androidx.appcompat.widget.AppCompatImageView".toClassOrNull()
             ?.method("hasOverlappingRendering")

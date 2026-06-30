@@ -47,10 +47,17 @@ class ModuleMain : XposedModule() {
                 hooker = Pangle,
                 markerClasses = listOf(
                     "com.bytedance.sdk.openadsdk.TTAdSdk",
-                    "com.bytedance.sdk.openadsdk.api.ln",
-                    "com.bytedance.sdk.openadsdk.core.AdSdkInitializerHolder",
+                    "com.bytedance.sdk.openadsdk.TTInitializer",
+                    "com.bytedance.sdk.openadsdk.TTAdNative",
+                    "com.bytedance.sdk.openadsdk.TTAdManager",
+                    "com.bytedance.sdk.openadsdk.CSJSplashAd",
+                    "com.bytedance.sdk.openadsdk.c.a.a\$a",
+                    "com.bytedance.sdk.openadsdk.api.a\$c",
+                    "com.bytedance.sdk.openadsdk.c.a.a.b",
                     "com.bytedance.sdk.openadsdk.CSJConfig",
                     "com.bytedance.sdk.openadsdk.AdSlot\$Builder",
+                    "com.bytedance.sdk.openadsdk.api.ln",
+                    "com.bytedance.sdk.openadsdk.core.AdSdkInitializerHolder",
                     "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle",
                     "com.bytedance.sdk.openadsdk.core.component.splash.e.r\$1"
                 )

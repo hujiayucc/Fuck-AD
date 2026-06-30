@@ -2,7 +2,9 @@ package com.hujiayucc.hook.hooker.util
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.app.Instrumentation
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -19,6 +21,7 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.Executable
 import java.lang.reflect.Method
 import java.util.Collections
+import dalvik.system.BaseDexClassLoader
 
 @Suppress("UNCHECKED_CAST")
 abstract class Hooker {
@@ -29,6 +32,9 @@ abstract class Hooker {
     protected var appName: String = javaClass.simpleName
     protected var action: String = "Hook"
     protected var classLoader: ClassLoader? = null
+    protected open val jiaGuMarkerClasses: List<String> = emptyList()
+    protected open val jiaGuRetryDelays: List<Long> = listOf(100L, 300L, 800L, 1500L)
+    protected open val jiaGuEnableLoadClassProbe: Boolean = true
 
     abstract fun XposedModuleInterface.PackageReadyParam.onPackageReady()
     fun call(param: XposedModuleInterface.PackageReadyParam) {
@@ -36,13 +42,19 @@ abstract class Hooker {
         val isJiaGu = readHookMetadata()
 
         if (isJiaGu) {
-            runCatching {
-                classLoader = getRealClassLoader()
-            }.onFailure { error ->
-                logHookError("Failed to get real ClassLoader for $appName", error)
-            }
+            param.runJiaGuHook()
+            return
         }
 
+        param.runHook()
+    }
+
+    internal fun callWithClassLoader(
+        param: XposedModuleInterface.PackageReadyParam,
+        loader: ClassLoader?
+    ) {
+        classLoader = loader ?: param.classLoader
+        readHookMetadata()
         param.runHook()
     }
 
@@ -65,32 +77,207 @@ abstract class Hooker {
         return isJiaGu
     }
 
-    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
-    private fun getRealClassLoader(): ClassLoader {
-        val threadCl = Thread.currentThread().contextClassLoader
-        if (threadCl != null && threadCl !== classLoader) return threadCl
-
-        var realClassLoader: ClassLoader? = null
-        module.hook(Application::class.java.method("attachBaseContext")).intercept { chain ->
-            val result = chain.proceed()
-            val context = chain.args[0] as Context
-            realClassLoader = context.classLoader
-            result
+    private fun XposedModuleInterface.PackageReadyParam.runJiaGuHook() {
+        if (jiaGuMarkerClasses.isEmpty()) {
+            logHookError(
+                "Skip $appName JiaGu hook because marker classes are empty",
+                IllegalStateException("@RunJiaGu requires marker classes for real ClassLoader verification.")
+            )
+            return
         }
 
-        if (realClassLoader != null && realClassLoader !== classLoader) return realClassLoader
+        val state = JiaGuHookState(this)
+        if (state.tryClassLoader(paramClassLoader = classLoader, source = "PackageReadyParam")) return
+        state.installLifecycleHooks()
+        state.installDexClassLoaderHooks()
+        state.scheduleRetries()
+        if (jiaGuEnableLoadClassProbe) state.installLoadClassProbe()
+    }
 
-        try {
-            val activityThread = Class.forName("android.app.ActivityThread")
-            val currentApp = activityThread.getDeclaredMethod("currentApplication").invoke(null) as? Application
-            currentApp?.classLoader?.let { appCl ->
-                if (appCl !== classLoader) return appCl
+    private inner class JiaGuHookState(
+        private val param: XposedModuleInterface.PackageReadyParam
+    ) {
+        @Volatile
+        private var executed = false
+        @Volatile
+        private var verifyingMarker = false
+
+        fun installLifecycleHooks() {
+            runCatching {
+                ContextWrapper::class.java.method("attachBaseContext", Context::class.java).hook {
+                    after {
+                        (instance as? Application)?.let { application ->
+                            collectFromApplication(application, "Application.attachBaseContext")
+                        }
+                        (args.firstOrNull() as? Context)?.let { context ->
+                            tryClassLoader(context.classLoader, "Application.attachBaseContext context")
+                            collectFromLoadedApk(context, "Application.attachBaseContext loadedApk")
+                        }
+                    }
+                }
+            }.onFailure { error ->
+                logHookError("Failed to install attachBaseContext probe for $appName", error)
             }
-        } catch (error: Throwable) {
-            logHookError("Failed to query ActivityThread currentApplication for $appName", error)
+
+            runCatching {
+                Application::class.java.method("onCreate").hook {
+                    after {
+                        collectFromApplication(instance<Application>(), "Application.onCreate")
+                    }
+                }
+            }.onFailure { error ->
+                logHookError("Failed to install Application.onCreate probe for $appName", error)
+            }
+
+            runCatching {
+                Instrumentation::class.java.method(
+                    "callApplicationOnCreate",
+                    Application::class.java
+                ).hook {
+                    after {
+                        (args.firstOrNull() as? Application)?.let { application ->
+                            collectFromApplication(application, "Instrumentation.callApplicationOnCreate")
+                        }
+                    }
+                }
+            }.onFailure { error ->
+                logHookError("Failed to install Instrumentation.callApplicationOnCreate probe for $appName", error)
+            }
+
+            installLoadedApkHook()
         }
 
-        return classLoader ?: throw IllegalStateException("Package ClassLoader is null for $appName")
+        private fun installLoadedApkHook() {
+            runCatching {
+                val loadedApkClass = Class.forName("android.app.LoadedApk")
+                loadedApkClass.declaredMethods
+                    .filter { method ->
+                        method.name == "makeApplication" &&
+                            Application::class.java.isAssignableFrom(method.returnType)
+                    }
+                    .forEach { method ->
+                        method.hook {
+                            after {
+                                (result as? Application)?.let { application ->
+                                    collectFromApplication(application, "LoadedApk.makeApplication")
+                                }
+                                tryClassLoader(
+                                    getField(instance, "mClassLoader") as? ClassLoader,
+                                    "LoadedApk.makeApplication mClassLoader"
+                                )
+                            }
+                        }
+                    }
+            }.onFailure { error ->
+                logHookError("Failed to install LoadedApk.makeApplication probe for $appName", error)
+            }
+        }
+
+        fun scheduleRetries() {
+            jiaGuRetryDelays.forEach { delay ->
+                runMainDelayed(delay) {
+                    if (!executed) collectCurrentLoaders("retry ${delay}ms")
+                }
+            }
+        }
+
+        fun installDexClassLoaderHooks() {
+            runCatching {
+                BaseDexClassLoader::class.java.constructor()?.forEach { constructor ->
+                    constructor.hook {
+                        after {
+                            tryClassLoader(instance<ClassLoader>(), "BaseDexClassLoader.constructor")
+                        }
+                    }
+                }
+            }.onFailure { error ->
+                logHookError("Failed to install BaseDexClassLoader constructor probe for $appName", error)
+            }
+        }
+
+        fun installLoadClassProbe() {
+            runCatching {
+                ClassLoader::class.java.method("loadClass", String::class.java).hook {
+                    after {
+                        if (executed || verifyingMarker) return@after
+                        val className = args.firstOrNull() as? String ?: return@after
+                        if (className !in jiaGuMarkerClasses) return@after
+                        tryClassLoader(instance<ClassLoader>(), "ClassLoader.loadClass($className)")
+                    }
+                }
+            }.onFailure { error ->
+                logHookError("Failed to install ClassLoader.loadClass probe for $appName", error)
+            }
+        }
+
+        fun tryClassLoader(paramClassLoader: ClassLoader?, source: String): Boolean {
+            if (executed) return true
+            val loader = paramClassLoader ?: return false
+            val marker = firstLoadableMarker(loader) ?: return false
+            return runWithClassLoader(loader, source, marker)
+        }
+
+        private fun collectCurrentLoaders(source: String) {
+            tryClassLoader(classLoader, "$source current")
+            tryClassLoader(param.classLoader, "$source param")
+            tryClassLoader(Thread.currentThread().contextClassLoader, "$source thread")
+            runCatching {
+                val activityThread = Class.forName("android.app.ActivityThread")
+                val currentApp = activityThread.getDeclaredMethod("currentApplication").invoke(null) as? Application
+                currentApp?.let { collectFromApplication(it, "$source currentApplication") }
+            }.onFailure { error ->
+                logHookError("Failed to query currentApplication for $appName", error)
+            }
+        }
+
+        private fun collectFromApplication(application: Application, source: String) {
+            tryClassLoader(application.classLoader, "$source application")
+            application.baseContext?.let { baseContext ->
+                tryClassLoader(baseContext.classLoader, "$source baseContext")
+                collectFromLoadedApk(baseContext, "$source baseContext loadedApk")
+            }
+            collectFromLoadedApk(application, "$source loadedApk")
+        }
+
+        @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
+        private fun collectFromLoadedApk(context: Context, source: String) {
+            runCatching {
+                val contextImplClass = Class.forName("android.app.ContextImpl")
+                if (!contextImplClass.isInstance(context)) return@runCatching
+                val packageInfo = contextImplClass.getDeclaredField("mPackageInfo")
+                    .apply { isAccessible = true }
+                    .get(context)
+                val loadedApkClass = Class.forName("android.app.LoadedApk")
+                val loadedApkClassLoader = loadedApkClass.getDeclaredField("mClassLoader")
+                    .apply { isAccessible = true }
+                    .get(packageInfo) as? ClassLoader
+                tryClassLoader(loadedApkClassLoader, source)
+            }.onFailure { error ->
+                logHookError("Failed to collect LoadedApk ClassLoader for $appName from $source", error)
+            }
+        }
+
+        private fun firstLoadableMarker(loader: ClassLoader): String? {
+            return jiaGuMarkerClasses.firstOrNull { marker ->
+                runCatching {
+                    verifyingMarker = true
+                    Class.forName(marker, false, loader)
+                    true
+                }.getOrDefault(false).also {
+                    verifyingMarker = false
+                }
+            }
+        }
+
+        @Synchronized
+        private fun runWithClassLoader(loader: ClassLoader, source: String, marker: String): Boolean {
+            if (executed) return true
+            executed = true
+            classLoader = loader
+            logHookDebug("JiaGu ClassLoader ready for $appName from $source by $marker: ${loader.javaClass.name}")
+            param.runHook()
+            return true
+        }
     }
 
     fun XposedModuleInterface.PackageReadyParam.runHook() {
@@ -98,6 +285,7 @@ abstract class Hooker {
             onPackageReady()
         }.onSuccess {
             runCatching { module.log(Log.INFO, "Fuck AD", "$appName => $action") }
+            logHookHandleSummary()
         }.onFailure { error ->
             logHookError("Failed to run ${this@Hooker.javaClass.name} for $appName => $action", error)
         }
@@ -311,9 +499,12 @@ abstract class Hooker {
             executable = executable.toGenericString(),
             handle = handle
         )
-        val ownerHandleCount = hookHandleCount(appName)
-        if (ownerHandleCount > 1) {
-            logHookDebug("Registered $ownerHandleCount hook handles for $appName")
+    }
+
+    private fun logHookHandleSummary(owner: String = appName) {
+        val ownerHandleCount = hookHandleCount(owner)
+        if (ownerHandleCount > 0) {
+            logHookDebug("Registered $ownerHandleCount hook handles for $owner")
         }
     }
 
@@ -453,21 +644,39 @@ abstract class Hooker {
         }
     }
 
+    fun isMainProcess(param: XposedModuleInterface.PackageReadyParam): Boolean {
+        val packageName = param.packageName
+        val processName = currentProcessName() ?: return true
+        return processName == packageName
+    }
+
+    private fun currentProcessName(): String? {
+        return runCatching {
+            Application.getProcessName()
+        }.getOrNull() ?: runCatching {
+            Class.forName("android.app.ActivityThread")
+                .getDeclaredMethod("currentProcessName")
+                .invoke(null) as? String
+        }.getOrNull()
+    }
+
     fun loadSdk(
         param: XposedModuleInterface.PackageReadyParam,
         pangle: Boolean = false,
         gdt: Boolean = false,
         kw: Boolean = false
     ) {
-        if (pangle) Pangle.call(param)
-        if (gdt) GDT.call(param)
-        if (kw) KW.call(param)
+        val currentClassLoader = classLoader
+        if (pangle) Pangle.callWithClassLoader(param, currentClassLoader)
+        if (gdt) GDT.callWithClassLoader(param, currentClassLoader)
+        if (kw) KW.callWithClassLoader(param, currentClassLoader)
     }
 
     fun loadAllSDK(param: XposedModuleInterface.PackageReadyParam) {
-        GDT.call(param)
-        KW.call(param)
-        Pangle.call(param)
+        val currentClassLoader = classLoader
+        GDT.callWithClassLoader(param, currentClassLoader)
+        KW.callWithClassLoader(param, currentClassLoader)
+        Pangle.callWithClassLoader(param, currentClassLoader)
     }
 
     protected fun logI(message: String, throwable: Throwable? = null) {
