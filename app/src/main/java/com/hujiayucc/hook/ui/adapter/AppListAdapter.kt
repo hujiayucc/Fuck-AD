@@ -64,6 +64,8 @@ class AppListAdapter(private val appList: List<Item>) : BaseAdapter() {
             appName.text = rule.appName
             appPackage.text = rule.packageName
             action.text = "${rule.action} $version"
+            infoButton.visibility = View.GONE
+            sdkSwitchContainer.visibility = View.GONE
             ScopeAdapterUtils.bindScopeSwitch(context, switchButton, rule.packageName, ::refreshSorted)
             root.setOnClickListener {
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(rule.packageName)

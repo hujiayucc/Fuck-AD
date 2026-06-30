@@ -21,6 +21,7 @@ import androidx.core.content.edit
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.data.Item2
+import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter2
 import io.github.libxposed.service.XposedService
@@ -54,7 +55,12 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private var searchMenuItem: MenuItem? = null
 
     private data class AppEntry(val appInfo: ApplicationInfo, val label: String)
-    private data class CacheItem(val appName: String, val packageName: String, val action: String)
+    private data class CacheItem(
+        val appName: String,
+        val packageName: String,
+        val action: String,
+        val sdkIds: List<String>
+    )
     private data class PendingSave(val items: List<CacheItem>, val scannedPackages: Set<String>?)
     private data class CachedResult(
         val scannedPackages: Set<String>,
@@ -68,9 +74,9 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     private val sdkComponentPrefixMap = linkedMapOf(
-        "com.bytedance.sdk.openadsdk." to "穿山甲",
-        "com.qq.e.ads" to "腾讯广告",
-        "com.kwad.sdk." to "快手广告",
+        "com.bytedance.sdk.openadsdk." to SdkHookerConfig.PANGLE,
+        "com.qq.e.ads" to SdkHookerConfig.GDT,
+        "com.kwad.sdk." to SdkHookerConfig.KW,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,7 +110,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             override fun onQueryTextSubmit(query: String?): Boolean = false
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                adapter.filter.filter(newText)
+                adapter.filterByQuery(newText)
                 return true
             }
         })
@@ -116,7 +122,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                adapter.filter.filter("")
+                adapter.filterByQuery("")
                 setCustomBackEnabled(false)
                 return true
             }
@@ -188,16 +194,17 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                     val total = apps.size
                     Observable.fromIterable(apps).concatMapEager({ entry: AppEntry ->
                         Observable.defer {
-                            val action = getSDKs(entry.appInfo)
+                            val sdkIds = getSDKIds(entry.appInfo)
                             val current = processedCount.incrementAndGet()
                             updateProgressThrottled(current, total, lastUiUpdateAt)
-                            if (action.isNotEmpty()) {
+                            if (sdkIds.isNotEmpty()) {
                                 val icon = getAppIcon(entry.appInfo.packageName)
                                 Observable.just(
                                     Item2(
                                         appName = entry.label,
                                         packageName = entry.appInfo.packageName,
-                                        action = action,
+                                        action = SdkHookerConfig.actionText(sdkIds),
+                                        sdkIds = sdkIds,
                                         appIcon = icon
                                     )
                                 )
@@ -241,17 +248,21 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     fun getSDKs(appInfo: ApplicationInfo): String {
+        return SdkHookerConfig.actionText(getSDKIds(appInfo))
+    }
+
+    private fun getSDKIds(appInfo: ApplicationInfo): List<String> {
         return try {
             val pkgInfo = getPackageInfoCompat(appInfo.packageName)
             val componentNames = extractComponentClassNames(pkgInfo).toList()
 
             val hits = LinkedHashSet<String>()
-            for ((prefix, name) in sdkComponentPrefixMap) {
-                if (componentNames.any { it.startsWith(prefix) }) hits.add(name)
+            for ((prefix, sdkId) in sdkComponentPrefixMap) {
+                if (componentNames.any { it.startsWith(prefix) }) hits.add(sdkId)
             }
-            if (hits.isNotEmpty()) hits.joinToString(prefix = "[", postfix = "]") else ""
+            hits.toList()
         } catch (_: Exception) {
-            ""
+            emptyList()
         }
     }
 
@@ -272,11 +283,16 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                         val pkg = obj.optString("packageName")
                         val name = obj.optString("appName")
                         val action = obj.optString("action")
+                        val sdkIds = readSdkIds(obj, action)
                         if (pkg.isNotEmpty() && currentInstalled.contains(pkg)) {
                             val icon = getAppIcon(pkg)
                             items.add(
                                 Item2(
-                                    appName = name, packageName = pkg, action = action, appIcon = icon
+                                    appName = name,
+                                    packageName = pkg,
+                                    action = action,
+                                    sdkIds = sdkIds,
+                                    appIcon = icon
                                 )
                             )
                         }
@@ -294,6 +310,13 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                 hasItemCache = hasItemCache,
                 hasScanCache = hasScanCache
             )
+        }
+    }
+
+    private fun readSdkIds(obj: JSONObject, action: String): List<String> {
+        val sdkIds = obj.optJSONArray("sdkIds") ?: return SdkHookerConfig.idsFromAction(action)
+        return (0 until sdkIds.length()).mapNotNull { index ->
+            sdkIds.optString(index).takeIf { it.isNotEmpty() }
         }
     }
 
@@ -355,14 +378,15 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         val maxConcurrency = min(4, max(2, Runtime.getRuntime().availableProcessors() - 1))
         return Observable.fromIterable(entries).concatMapEager({ entry ->
             Observable.defer {
-                val action = getSDKs(entry.appInfo)
-                if (action.isNotEmpty()) {
+                val sdkIds = getSDKIds(entry.appInfo)
+                if (sdkIds.isNotEmpty()) {
                     val icon = getAppIcon(entry.appInfo.packageName)
                     Observable.just(
                         Item2(
                             appName = entry.label,
                             packageName = entry.appInfo.packageName,
-                            action = action,
+                            action = SdkHookerConfig.actionText(sdkIds),
+                            sdkIds = sdkIds,
                             appIcon = icon
                         )
                     )
@@ -383,7 +407,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private fun requestSaveItems(scannedPackages: Set<String>? = null, delayMs: Long = 600L) {
         pendingSave?.cancel(false)
         val pending = PendingSave(
-            items = itemList.map { CacheItem(it.appName, it.packageName, it.action) },
+            items = itemList.map { CacheItem(it.appName, it.packageName, it.action, it.sdkIds) },
             scannedPackages = scannedPackages
         )
         pendingSaveSnapshot = pending
@@ -420,6 +444,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             obj.put("appName", item.appName)
             obj.put("packageName", item.packageName)
             obj.put("action", item.action)
+            obj.put("sdkIds", JSONArray(item.sdkIds))
             itemArr.put(obj)
         }
         prefsBridge.edit(commit = commit) {
