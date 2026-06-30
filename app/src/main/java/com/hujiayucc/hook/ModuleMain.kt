@@ -2,6 +2,7 @@ package com.hujiayucc.hook
 
 import android.content.SharedPreferences
 import android.util.Log
+import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.hooker.app.HookerRegistry
 import com.hujiayucc.hook.hooker.sdk.GDT
 import com.hujiayucc.hook.hooker.sdk.KW
@@ -26,11 +27,13 @@ class ModuleMain : XposedModule() {
         val SDK_HOOKERS = listOf(GDT, KW, Pangle)
         private val sdkHookerTargets = listOf(
             SdkHookerTarget(
+                id = SdkHookerConfig.GDT,
                 name = "GDT",
                 hooker = GDT,
                 markerClasses = listOf("com.qq.e.comm.managers.plugin.PM\$a")
             ),
             SdkHookerTarget(
+                id = SdkHookerConfig.KW,
                 name = "KW",
                 hooker = KW,
                 markerClasses = listOf(
@@ -39,6 +42,7 @@ class ModuleMain : XposedModule() {
                 )
             ),
             SdkHookerTarget(
+                id = SdkHookerConfig.PANGLE,
                 name = "Pangle",
                 hooker = Pangle,
                 markerClasses = listOf(
@@ -79,7 +83,11 @@ class ModuleMain : XposedModule() {
             (BUILTIN_HOOKERS + appHookers).forEach { it.call(param) }
             if (appHookers.isEmpty()) {
                 resolveSdkHookerTargets(param.packageName, param.classLoader).forEach { target ->
-                    target.hooker.call(param)
+                    if (SdkHookerConfig.isEnabled(prefs, param.packageName, target.id)) {
+                        target.hooker.call(param)
+                    } else {
+                        logIfDebug("Skip SDK hooker disabled: ${param.packageName} -> ${target.name}")
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -126,6 +134,7 @@ class ModuleMain : XposedModule() {
     }
 
     private data class SdkHookerTarget(
+        val id: String,
         val name: String,
         val hooker: Hooker,
         val markerClasses: List<String>

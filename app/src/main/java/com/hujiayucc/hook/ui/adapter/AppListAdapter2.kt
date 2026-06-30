@@ -10,8 +10,12 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Filter
 import android.widget.Filterable
+import android.widget.CheckBox
+import android.widget.LinearLayout
 import com.hujiayucc.hook.R
+import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.data.Item2
+import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.databinding.AppRuleBinding
 import com.hujiayucc.hook.ui.activity.AppInfoActivity
 import com.hujiayucc.hook.ui.activity.BaseActivity
@@ -19,6 +23,7 @@ import java.util.*
 
 class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filterable {
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val expandedPackages = mutableSetOf<String>()
     private var displayList: List<Item2> = appList
     private var filteredList: List<Item2> = appList
     private var currentFilterQuery: String = ""
@@ -35,6 +40,12 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
 
     fun refreshScopeState() {
         refreshSorted()
+    }
+
+    fun filterByQuery(query: String?) {
+        currentFilterQuery = query.orEmpty()
+        applyFilter(currentFilterQuery)
+        notifyDataSetChanged()
     }
 
     override fun getCount(): Int = filteredList.size
@@ -88,16 +99,56 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
             appPackage.text = rule.packageName
             action.text = rule.action
             ScopeAdapterUtils.bindScopeSwitch(context, switchButton, rule.packageName, ::refreshSorted)
+            bindSdkSwitches(context, sdkSwitchContainer, rule)
+            infoButton.setOnClickListener {
+                openAppInfo(context, rule)
+            }
             root.setOnClickListener {
-                (context as? BaseActivity<*>)?.preparePreviousPagePreview(AppInfoActivity::class.java)
-                val intent = Intent(context, AppInfoActivity::class.java)
-                intent.putExtra("packageName", rule.packageName)
-                intent.putExtra("appName", rule.appName)
-                context.startActivity(intent)
+                toggleExpanded(rule.packageName)
             }
         }
 
         return binding.root
+    }
+
+    private fun openAppInfo(context: android.content.Context, rule: Item2) {
+        (context as? BaseActivity<*>)?.preparePreviousPagePreview(AppInfoActivity::class.java)
+        val intent = Intent(context, AppInfoActivity::class.java)
+        intent.putExtra("packageName", rule.packageName)
+        intent.putExtra("appName", rule.appName)
+        context.startActivity(intent)
+    }
+
+    private fun bindSdkSwitches(context: android.content.Context, container: LinearLayout, rule: Item2) {
+        container.removeAllViews()
+        container.visibility = if (expandedPackages.contains(rule.packageName)) View.VISIBLE else View.GONE
+        if (container.visibility != View.VISIBLE) return
+
+        rule.sdkIds.forEach { sdkId ->
+            val sdkName = SdkHookerConfig.sdkNames[sdkId] ?: sdkId
+            val checkBox = CheckBox(context).apply {
+                text = sdkName
+                isChecked = SdkHookerConfig.isEnabled(context.prefsBridge, rule.packageName, sdkId)
+                setOnClickListener { view ->
+                    val enabled = (view as CheckBox).isChecked
+                    SdkHookerConfig.setEnabled(context.prefsBridge, rule.packageName, sdkId, enabled)
+                }
+            }
+            container.addView(
+                checkBox,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
+    }
+
+    private fun toggleExpanded(packageName: String) {
+        if (!expandedPackages.add(packageName)) {
+            expandedPackages.remove(packageName)
+        }
+        notifyDataSetChanged()
     }
 
     override fun getFilter(): Filter {

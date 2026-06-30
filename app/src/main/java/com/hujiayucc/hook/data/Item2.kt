@@ -6,6 +6,7 @@ data class Item2(
     val appName: String,
     val packageName: String,
     val action: String,
+    val sdkIds: List<String>,
     var appIcon: Drawable
 ) {
     override fun equals(other: Any?): Boolean {
@@ -15,6 +16,7 @@ data class Item2(
         if (appName != other.appName) return false
         if (packageName != other.packageName) return false
         if (action != other.action) return false
+        if (sdkIds != other.sdkIds) return false
         if (appIcon != other.appIcon) return false
         return true
     }
@@ -23,6 +25,7 @@ data class Item2(
         var result = appName.hashCode()
         result = 31 * result + packageName.hashCode()
         result = 31 * result + action.hashCode()
+        result = 31 * result + sdkIds.hashCode()
         result = 31 * result + appIcon.hashCode()
         return result
     }
