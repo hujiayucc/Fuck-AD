@@ -14,6 +14,7 @@ import java.util.Locale
 
 object ScopeAdapterUtils {
     private val appNameCollator = Collator.getInstance(Locale.CHINA)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun <T> sortByScope(
         items: List<T>,
@@ -34,7 +35,6 @@ object ScopeAdapterUtils {
         packageName: String,
         refreshSorted: (Set<String>?) -> Unit
     ) {
-        val mainHandler = Handler(Looper.getMainLooper())
         val currentService = XYApplication.mService
         if (currentService == null) {
             switchButton.setOnClickListener(null)
