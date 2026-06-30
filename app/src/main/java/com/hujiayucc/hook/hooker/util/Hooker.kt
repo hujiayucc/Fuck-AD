@@ -86,9 +86,11 @@ abstract class Hooker {
             currentApp?.classLoader?.let { appCl ->
                 if (appCl !== classLoader) return appCl
             }
-        } catch (_: Throwable) {}
+        } catch (error: Throwable) {
+            logHookError("Failed to query ActivityThread currentApplication for $appName", error)
+        }
 
-        return classLoader!!
+        return classLoader ?: throw IllegalStateException("Package ClassLoader is null for $appName")
     }
 
     fun XposedModuleInterface.PackageReadyParam.runHook() {
@@ -123,6 +125,14 @@ abstract class Hooker {
 
     fun Class<*>.methodOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
         return runCatching { method(name, *parameterTypes) }.getOrNull()
+    }
+
+    fun Class<*>.methodExact(name: String, vararg parameterTypes: Class<*>): Method {
+        return getDeclaredMethod(name, *parameterTypes)
+    }
+
+    fun Class<*>.methodExactOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
+        return runCatching { methodExact(name, *parameterTypes) }.getOrNull()
     }
 
     fun Class<*>.constructor(): Array<out Constructor<*>>? {
@@ -356,6 +366,15 @@ abstract class Hooker {
         return (replaceCount == 1 && callbackCount == 0) || (replaceCount == 0 && callbackCount > 0)
     }
 
+    private fun HookDsl.describeCallbacks(): String {
+        val callbacks = mutableListOf<String>()
+        if (replaceBlock != null) callbacks += "replace"
+        if (replaceUnitBlock != null) callbacks += "replaceUnit"
+        if (beforeBlock != null) callbacks += "before"
+        if (afterBlock != null) callbacks += "after"
+        return if (callbacks.isEmpty()) "none" else callbacks.joinToString()
+    }
+
     private fun Executable.canReplaceUnit(): Boolean {
         return this is Method && (returnType == Void.TYPE || returnType == Void::class.java)
     }
@@ -363,14 +382,14 @@ abstract class Hooker {
     private fun Executable.validateDsl(dsl: HookDsl): Boolean {
         if (!dsl.isValid()) {
             logHookError(
-                "Invalid Hook DSL: ${toGenericString()}",
+                "Invalid Hook DSL: ${toGenericString()} callbacks=${dsl.describeCallbacks()}",
                 IllegalArgumentException("Hook DSL requires replace/replaceTo/replaceUnit, or before/after.")
             )
             return false
         }
         if (dsl.replaceUnitBlock != null && !canReplaceUnit()) {
             logHookError(
-                "Suspicious replaceUnit target: ${toGenericString()}",
+                "Suspicious replaceUnit target: ${toGenericString()} callbacks=${dsl.describeCallbacks()}",
                 IllegalArgumentException("replaceUnit is safest with a void return type; use replace/replaceTo for explicit return values.")
             )
         }
