@@ -187,6 +187,37 @@ object Pangle : Hooker() {
             }
     }
 
+    private fun hookAdObjects() {
+        listOf(
+            "com.bytedance.sdk.openadsdk.c.a.a.h",
+            "com.bytedance.sdk.openadsdk.c.a.a.i",
+            "com.bytedance.sdk.openadsdk.c.a.a.l"
+        ).forEach { className ->
+            className.toClassOrNull()
+                ?.hookMethods(
+                    "getAdView",
+                    "registerViewForInteraction",
+                    "render",
+                    "showInteractionExpressAd",
+                    "destroy"
+                )
+        }
+
+        "com.bytedance.sdk.openadsdk.c.a.a.m".toClassOrNull()
+            ?.hookMethods(
+                "getExpressAdView",
+                "render",
+                "showInteractionExpressAd",
+                "destroy"
+            )
+
+        "com.bytedance.sdk.openadsdk.c.a.a.j".toClassOrNull()
+            ?.hookMethods("showFullScreenVideoAd")
+
+        "com.bytedance.sdk.openadsdk.c.a.a.n".toClassOrNull()
+            ?.hookMethods("showRewardVideoAd")
+    }
+
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         hookLegacySdkGuards()
         hookSdkInit()
@@ -194,5 +225,6 @@ object Pangle : Hooker() {
         hookAdSlot()
         hookAdRequests()
         hookSplashAd()
+        hookAdObjects()
     }
 }
