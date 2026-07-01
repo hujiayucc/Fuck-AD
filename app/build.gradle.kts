@@ -129,8 +129,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 30
         targetSdk = 37
-        versionCode = 10120
-        versionName = "3.0.1.2"
+        versionCode = 10130
+        versionName = "3.0.1.3"
         buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -184,6 +184,13 @@ dependencies {
     compileOnly(libs.libxposed.api)
     implementation(libs.libxposed.service)
     compileOnly(libs.ads.sdk.pro)
+    compileOnly(libs.gdt.union)
+    compileOnly(libs.google.mobile.ads)
+    compileOnly(libs.applovin.sdk)
+    compileOnly(libs.unity.ads)
+    compileOnly(libs.vungle.ads)
+    compileOnly(libs.levelplay)
+    compileOnly(fileTree("libs") { include("ks_adsdk*.aar") })
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

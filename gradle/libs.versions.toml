@@ -2,6 +2,7 @@
 activity = "1.13.0"
 adsSdkPro = "6.8.2.0"
 agp = "9.2.1"
+applovin = "13.6.3"
 dexkit = "2.0.7"
 core = "1.18.0"
 junit = "4.13.2"
@@ -10,8 +11,13 @@ espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.13.0"
 okhttp = "5.3.2"
+gdtUnion = "4.640.1510"
+googleMobileAds = "25.4.0"
+levelplay = "9.4.4"
 rxandroid = "3.0.2"
 rxjava = "3.1.12"
+unityAds = "4.19.0"
+vungleAds = "7.7.4"
 libxposed = "102.0.0"
 
 [plugins]
@@ -20,6 +26,12 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 [libraries]
 #noinspection Aligned16KB
 ads-sdk-pro = { module = "com.pangle.cn:ads-sdk-pro", version.ref = "adsSdkPro" }
+applovin-sdk = { module = "com.applovin:applovin-sdk", version.ref = "applovin" }
+gdt-union = { module = "com.qq.e.union:union", version.ref = "gdtUnion" }
+google-mobile-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "googleMobileAds" }
+levelplay = { module = "com.unity3d.ads-mediation:mediation-sdk", version.ref = "levelplay" }
+unity-ads = { module = "com.unity3d.ads:unity-ads", version.ref = "unityAds" }
+vungle-ads = { module = "com.vungle:vungle-ads", version.ref = "vungleAds" }
 androidx-activity = { group = "androidx.activity", name="activity", version.ref = "activity" }
 androidx-core = { group = "androidx.core", name = "core", version.ref = "core" }
 libxposed-api = { group = "io.github.libxposed", name="api", version.ref = "libxposed" }
