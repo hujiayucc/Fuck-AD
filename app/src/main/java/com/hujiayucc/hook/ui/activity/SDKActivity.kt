@@ -67,17 +67,18 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         val installedPackages: Set<String>,
         val items: List<Item2>,
         val hasItemCache: Boolean,
-        val hasScanCache: Boolean
+        val hasScanCache: Boolean,
+        val isSignatureCurrent: Boolean
     )
     private data class PackageDiff(val addedPackages: Set<String>, val removedPackages: Set<String>) {
         val hasChanges: Boolean get() = addedPackages.isNotEmpty() || removedPackages.isNotEmpty()
     }
 
-    private val sdkComponentPrefixMap = linkedMapOf(
-        "com.bytedance.sdk.openadsdk." to SdkHookerConfig.PANGLE,
-        "com.qq.e.ads" to SdkHookerConfig.GDT,
-        "com.kwad.sdk." to SdkHookerConfig.KW,
-    )
+    private val sdkComponentPrefixMap = SdkHookerConfig.sdkComponentPrefixes
+        .flatMap { (sdkId, prefixes) -> prefixes.map { prefix -> prefix to sdkId } }
+        .toMap(LinkedHashMap())
+    private val sdkScanSignature = SdkHookerConfig.sdkComponentPrefixes
+        .entries.joinToString("|") { (sdkId, prefixes) -> "$sdkId:${prefixes.joinToString(",")}" }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,8 +160,8 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         disposables.add(
             loadCachedItemsAsync().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ result ->
-                    if (result.hasItemCache) showCachedItems(result.items)
-                    if (result.hasItemCache && result.hasScanCache) updateFromDiffAsync(result)
+                    if (result.hasItemCache && result.isSignatureCurrent) showCachedItems(result.items)
+                    if (result.hasItemCache && result.hasScanCache && result.isSignatureCurrent) updateFromDiffAsync(result)
                     else loadApps()
                 }, {
                     loadApps()
@@ -270,6 +271,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         return Observable.fromCallable {
             val currentInstalled = currentInstalledPackages()
             val (hasScanCache, scannedPackages) = readPackageSet(PREF_SDK_SCANNED_PACKAGES)
+            val isSignatureCurrent = prefsBridge.getString(PREF_SDK_SCAN_SIGNATURE, "") == sdkScanSignature
             val items = ArrayList<Item2>()
             var hasItemCache = false
 
@@ -308,7 +310,8 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                 installedPackages = currentInstalled,
                 items = items,
                 hasItemCache = hasItemCache,
-                hasScanCache = hasScanCache
+                hasScanCache = hasScanCache,
+                isSignatureCurrent = isSignatureCurrent
             )
         }
     }
@@ -451,6 +454,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             putString(PREF_SDK_LIST, pkgArr.toString())
             putString(PREF_SDK_ITEMS, itemArr.toString())
             putString(PREF_SDK_SCANNED_PACKAGES, scannedPkgArr.toString())
+            putString(PREF_SDK_SCAN_SIGNATURE, sdkScanSignature)
             putLong(PREF_SDK_CACHE_UPDATED_AT, System.currentTimeMillis())
         }
     }
@@ -515,6 +519,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         private const val PREF_SDK_LIST = "sdkList"
         private const val PREF_SDK_ITEMS = "sdkItems"
         private const val PREF_SDK_SCANNED_PACKAGES = "sdkScannedPackages"
+        private const val PREF_SDK_SCAN_SIGNATURE = "sdkScanSignature"
         private const val PREF_SDK_CACHE_UPDATED_AT = "sdkCacheUpdatedAt"
     }
 }
