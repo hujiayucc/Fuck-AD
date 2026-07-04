@@ -26,6 +26,7 @@ As the name implies, this is an ad-blocking Xposed module
 - [libxposed-service](https://github.com/libxposed/service)
 - [LSPosed](https://github.com/LSPosed/LSPosed)
 - [Shizuku](https://github.com/thedjchi/Shizuku)
+- [KernelSu](https://kernelsu.org/)
 - ...
 
 ### Submit App

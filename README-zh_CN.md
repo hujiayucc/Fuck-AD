@@ -27,6 +27,7 @@
 - [libxposed-service](https://github.com/libxposed/service)
 - [LSPosed](https://github.com/LSPosed/LSPosed)
 - [Shizuku](https://github.com/thedjchi/Shizuku)
+- [KernelSu](https://kernelsu.org/)
 - ...
 
 ### 提交应用
