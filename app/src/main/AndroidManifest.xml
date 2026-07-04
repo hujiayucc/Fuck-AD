@@ -7,6 +7,7 @@
             android:name="android.permission.QUERY_ALL_PACKAGES"
             tools:ignore="QueryAllPackagesPermission"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23"/>
 
     <queries>
         <intent>
@@ -24,6 +25,14 @@
             android:enableOnBackInvokedCallback="true"
             android:theme="@style/Theme.XYHook"
             android:localeConfig="@xml/locales">
+
+        <provider
+                android:name="rikka.shizuku.ShizukuProvider"
+                android:authorities="${applicationId}.shizuku"
+                android:enabled="true"
+                android:exported="true"
+                android:multiprocess="false"
+                android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"/>
 
         <activity
                 android:name=".ui.activity.MainActivity"

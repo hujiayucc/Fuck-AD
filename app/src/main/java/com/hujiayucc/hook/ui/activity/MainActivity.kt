@@ -1,11 +1,9 @@
 package com.hujiayucc.hook.ui.activity
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -18,9 +16,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.ListView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -32,14 +28,16 @@ import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.databinding.ActivityMainBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter
 import com.hujiayucc.hook.utils.LanguageUtils
+import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor
+import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor.GrantResult
 import io.github.libxposed.service.XposedService
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import rikka.shizuku.Shizuku
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.system.exitProcess
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
     private lateinit var binding: ActivityMainBinding
@@ -56,15 +54,21 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
     private lateinit var author: Author
     private var appListAdapter: AppListAdapter? = null
-
-    private val allAppPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        when {
-            granted -> loadAppList()
-            shouldShowRequestPermissionRationale(Manifest.permission.QUERY_ALL_PACKAGES) -> showEssentialPermissionRationale()
-
-            else -> showEssentialPermissionSettingsGuide()
+    private var autoGrantInProgress = false
+    private var shizukuListenersRegistered = false
+    private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
+        if (requestCode == PrivilegedPermissionGrantor.SHIZUKU_PERMISSION_REQUEST_CODE) {
+            runAutoGrantQueryAllPackages()
         }
     }
+    private val shizukuBinderReceivedListener = Shizuku.OnBinderReceivedListener {
+        checkPermissions()
+    }
+    private val shizukuBinderDeadListener = Shizuku.OnBinderDeadListener {
+        autoGrantInProgress = false
+    }
+
+    // QUERY_ALL_PACKAGES is handled by Shizuku/root AppOps instead of runtime permission APIs.
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +97,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             )
             listView = appList
         }
+        registerShizukuListeners()
+    }
+
+    private fun registerShizukuListeners() {
+        if (shizukuListenersRegistered) return
+        runCatching { Shizuku.addRequestPermissionResultListener(shizukuPermissionListener) }
+        runCatching { Shizuku.addBinderReceivedListenerSticky(shizukuBinderReceivedListener) }
+        runCatching { Shizuku.addBinderDeadListener(shizukuBinderDeadListener) }
+        shizukuListenersRegistered = true
     }
 
     private fun setupClickListeners() {
@@ -116,13 +129,53 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private fun checkPermissions() {
         when {
-            ContextCompat.checkSelfPermission(
-                this, Manifest.permission.QUERY_ALL_PACKAGES
-            ) == PERMISSION_GRANTED -> {
+            hasQueryAllPackagesPermission() -> loadAppList()
+            autoGrantInProgress -> Unit
+            else -> tryAutoGrantQueryAllPackages()
+        }
+    }
+
+    private fun hasQueryAllPackagesPermission(): Boolean {
+        return PrivilegedPermissionGrantor.hasQueryAllPackages(this)
+    }
+
+    private fun tryAutoGrantQueryAllPackages() {
+        if (PrivilegedPermissionGrantor.requestShizukuPermissionIfNeeded()) {
+            handleAutoGrantResult(GrantResult.WAITING_FOR_SHIZUKU)
+            return
+        }
+        runAutoGrantQueryAllPackages()
+    }
+
+    private fun runAutoGrantQueryAllPackages() {
+        autoGrantInProgress = true
+        disposables.add(
+            Observable.fromCallable {
+                PrivilegedPermissionGrantor.ensureQueryAllPackages(applicationContext)
+            }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ result ->
+                    handleAutoGrantResult(result)
+                }, {
+                    handleAutoGrantResult(GrantResult.FAILED)
+                })
+        )
+    }
+
+    private fun handleAutoGrantResult(result: GrantResult) {
+        when {
+            result == GrantResult.GRANTED || hasQueryAllPackagesPermission() -> {
+                autoGrantInProgress = false
                 loadAppList()
             }
 
-            shouldShowRequestPermissionRationale(Manifest.permission.QUERY_ALL_PACKAGES) -> showEssentialPermissionRationale()
+            result == GrantResult.WAITING_FOR_SHIZUKU -> {
+                autoGrantInProgress = false
+            }
+
+            else -> {
+                autoGrantInProgress = false
+                showEssentialPermissionSettingsGuide()
+            }
         }
     }
 
@@ -136,19 +189,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                     listView.adapter = appListAdapter
                 }, { error -> showDataLoadError(error) })
         )
-    }
-
-    private fun showEssentialPermissionRationale() {
-        MaterialAlertDialogBuilder(this).setTitle(R.string.essential_permission_title)
-            .setMessage(R.string.essential_permission_message)
-            .setPositiveButton(R.string.understand_and_grant) { _, _ ->
-                allAppPermission.launch(Manifest.permission.QUERY_ALL_PACKAGES)
-            }.setNegativeButton(R.string.exit_app) { _, _ ->
-                finish()
-                Handler(Looper.getMainLooper()).postDelayed({
-                    exitProcess(0)
-                }, 1000)
-            }.show()
     }
 
     private fun showEssentialPermissionSettingsGuide() {
@@ -176,6 +216,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     override fun onDestroy() {
+        runCatching { Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener) }
+        runCatching { Shizuku.removeBinderReceivedListener(shizukuBinderReceivedListener) }
+        runCatching { Shizuku.removeBinderDeadListener(shizukuBinderDeadListener) }
         mainHandler.removeCallbacks(initializeRunnable)
         appListAdapter = null
         disposables.clear()

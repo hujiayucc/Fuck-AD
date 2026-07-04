@@ -16,6 +16,7 @@ googleMobileAds = "25.4.0"
 levelplay = "9.4.4"
 rxandroid = "3.0.2"
 rxjava = "3.1.12"
+shizuku = "13.1.5"
 unityAds = "4.19.0"
 vungleAds = "7.7.4"
 libxposed = "102.0.0"
@@ -39,6 +40,8 @@ libxposed-service = { group = "io.github.libxposed", name="service", version.ref
 dexkit = { group = "org.luckypray", name="dexkit", version.ref = "dexkit" }
 okhttp = { group = "com.squareup.okhttp3", name="okhttp", version.ref = "okhttp" }
 rxjava = { group = "io.reactivex.rxjava3", name="rxjava", version.ref = "rxjava" }
+shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 rxandroid = { group = "io.reactivex.rxjava3", name="rxandroid", version.ref = "rxandroid" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

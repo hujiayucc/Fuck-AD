@@ -17,6 +17,7 @@ object HookerRegistry {
         "com.douban.frodo" to listOf({ DouBan }),
         "com.ss.android.ugc.aweme" to listOf({ DouYin }),
         "com.dragon.read" to listOf({ FQXS }),
+        "com.diershoubing.erbing" to listOf({ ErBing }),
         "com.yaerxing.fkst" to listOf({ FengKuangShuaTi }),
         "com.ganji.android.haoche_c" to listOf({ GuaZiErShouChe }),
         "com.phoenix.read" to listOf({ HGMFDJ }),

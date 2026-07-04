@@ -25,11 +25,14 @@ import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter2
 import com.hujiayucc.hook.utils.LanguageUtils
+import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor
+import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor.GrantResult
 import io.github.libxposed.service.XposedService
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import rikka.shizuku.Shizuku
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
@@ -54,6 +57,20 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private var pendingSave: ScheduledFuture<*>? = null
     private var pendingSaveSnapshot: PendingSave? = null
     private var searchMenuItem: MenuItem? = null
+    private var autoGrantInProgress = false
+    private var sdkItemsLoading = false
+    private var shizukuListenersRegistered = false
+    private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
+        if (requestCode == PrivilegedPermissionGrantor.SHIZUKU_PERMISSION_REQUEST_CODE) {
+            runAutoGrantQueryAllPackages()
+        }
+    }
+    private val shizukuBinderReceivedListener = Shizuku.OnBinderReceivedListener {
+        ensurePermissionAndLoadSdkItems()
+    }
+    private val shizukuBinderDeadListener = Shizuku.OnBinderDeadListener {
+        autoGrantInProgress = false
+    }
 
     private data class AppEntry(val appInfo: ApplicationInfo, val label: String)
     private data class CacheItem(
@@ -94,12 +111,62 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
         listView.adapter = adapter
         hideListView()
-        loadSdkItems()
+        registerShizukuListeners()
+        ensurePermissionAndLoadSdkItems()
     }
 
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
+    }
+
+    private fun registerShizukuListeners() {
+        if (shizukuListenersRegistered) return
+        runCatching { Shizuku.addRequestPermissionResultListener(shizukuPermissionListener) }
+        runCatching { Shizuku.addBinderReceivedListenerSticky(shizukuBinderReceivedListener) }
+        runCatching { Shizuku.addBinderDeadListener(shizukuBinderDeadListener) }
+        shizukuListenersRegistered = true
+    }
+
+    private fun ensurePermissionAndLoadSdkItems() {
+        when {
+            PrivilegedPermissionGrantor.hasQueryAllPackages(this) -> loadSdkItems()
+            autoGrantInProgress -> Unit
+            PrivilegedPermissionGrantor.requestShizukuPermissionIfNeeded() -> handleAutoGrantResult(GrantResult.WAITING_FOR_SHIZUKU)
+            else -> runAutoGrantQueryAllPackages()
+        }
+    }
+
+    private fun runAutoGrantQueryAllPackages() {
+        autoGrantInProgress = true
+        disposables.add(
+            Observable.fromCallable {
+                PrivilegedPermissionGrantor.ensureQueryAllPackages(applicationContext)
+            }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ result ->
+                    handleAutoGrantResult(result)
+                }, {
+                    handleAutoGrantResult(GrantResult.FAILED)
+                })
+        )
+    }
+
+    private fun handleAutoGrantResult(result: GrantResult) {
+        when {
+            result == GrantResult.GRANTED || PrivilegedPermissionGrantor.hasQueryAllPackages(this) -> {
+                autoGrantInProgress = false
+                loadSdkItems()
+            }
+
+            result == GrantResult.WAITING_FOR_SHIZUKU -> {
+                autoGrantInProgress = false
+            }
+
+            else -> {
+                autoGrantInProgress = false
+                showMessage(getString(R.string.permission_denied_forever_message))
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -142,6 +209,9 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     override fun onDestroy() {
+        runCatching { Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener) }
+        runCatching { Shizuku.removeBinderReceivedListener(shizukuBinderReceivedListener) }
+        runCatching { Shizuku.removeBinderDeadListener(shizukuBinderDeadListener) }
         disposables.clear()
         flushPendingSave()
         shutdownSaveExecutor()
@@ -158,6 +228,8 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     private fun loadSdkItems() {
+        if (sdkItemsLoading) return
+        sdkItemsLoading = true
         disposables.add(
             loadCachedItemsAsync().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ result ->
@@ -172,10 +244,18 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
     private fun showCachedItems(items: List<Item2>) {
         itemList.clear()
-        itemList.addAll(items)
-        itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
-        adapter.updateData(itemList)
+        mergeSdkItems(items)
         showListView()
+    }
+
+    private fun mergeSdkItems(items: List<Item2>) {
+        if (items.isEmpty()) return
+        val merged = LinkedHashMap<String, Item2>()
+        itemList.forEach { item -> merged[item.packageName] = item }
+        items.forEach { item -> merged[item.packageName] = item }
+        itemList.clear()
+        itemList.addAll(merged.values.sortedBy { item -> item.appName.lowercase(Locale.getDefault()) })
+        adapter.updateData(itemList)
     }
 
     @SuppressLint("CheckResult", "SetTextI18n")
@@ -217,13 +297,14 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                     }, maxConcurrency, 128)
                 }.buffer(32).observeOn(AndroidSchedulers.mainThread()).subscribe({ batch ->
                     if (batch.isNotEmpty()) {
-                        itemList.addAll(batch)
-                        adapter.updateData(itemList)
+                        mergeSdkItems(batch)
                     }
                 }, { error ->
+                    sdkItemsLoading = false
                     Toast.makeText(this, "加载应用列表失败: ${error.message}", Toast.LENGTH_SHORT).show()
                     showListView()
                 }, {
+                    sdkItemsLoading = false
                     showListView()
                     requestSaveItems(scannedPackages.get())
                 })
@@ -241,6 +322,13 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         progressBar.visibility = View.GONE
         textView.visibility = View.GONE
         listView.visibility = View.VISIBLE
+    }
+
+    private fun showMessage(message: String) {
+        progressBar.visibility = View.GONE
+        listView.visibility = View.GONE
+        textView.text = message
+        textView.visibility = View.VISIBLE
     }
 
     private fun hideListView() {
@@ -344,13 +432,13 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                 scan.map { newItems -> diff to newItems }
             }.observeOn(AndroidSchedulers.mainThread()).subscribe({ (diff, newItems) ->
                 if (newItems.isNotEmpty()) {
-                    itemList.addAll(newItems)
-                    itemList.sortBy { it.appName.lowercase(Locale.getDefault()) }
-                    adapter.updateData(itemList)
+                    mergeSdkItems(newItems)
                 }
                 if (diff.hasChanges) requestSaveItems(result.installedPackages)
+                sdkItemsLoading = false
                 showListView()
             }, {
+                sdkItemsLoading = false
                 showListView()
             })
         )

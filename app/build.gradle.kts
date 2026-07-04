@@ -14,48 +14,27 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
-val xposedScopePackagesFile = layout.projectDirectory.file("src/main/xposed-scope/packages.txt")
 val xposedMetadataSourceDir = layout.projectDirectory.dir("src/main/resources/META-INF/xposed")
 val xposedHookerRegistryFile = layout.projectDirectory.file(
     "src/main/java/com/hujiayucc/hook/hooker/app/HookerRegistry.kt"
 )
-val generatedXposedResourcesDir = layout.buildDirectory.dir("generated/xposedResources")
+val generatedXposedResourcesDir = layout.buildDirectory.dir("xposedResources")
 val generateXposedScopeList = tasks.register("generateXposedScopeList") {
-    inputs.file(xposedScopePackagesFile)
     inputs.file(xposedHookerRegistryFile)
     inputs.file(xposedMetadataSourceDir.file("java_init.list"))
     inputs.file(xposedMetadataSourceDir.file("module.prop"))
     outputs.dir(generatedXposedResourcesDir)
 
     doLast {
-        val packageNames = xposedScopePackagesFile.asFile.readLines()
-            .map { it.substringBefore('#').trim() }
-            .filter { it.isNotEmpty() }
-            .distinct()
-            .sorted()
-
-        check(packageNames.isNotEmpty()) {
-            "No Xposed scope packages found in ${xposedScopePackagesFile.asFile}"
-        }
-
-        val registryPackageNames = Regex("\"([^\"]+)\"\\s+to\\s+listOf")
+        val packageNames = Regex("\"([^\"]+)\"\\s+to\\s+listOf")
             .findAll(xposedHookerRegistryFile.asFile.readText())
             .map { it.groupValues[1] }
             .distinct()
             .sorted()
             .toList()
 
-        val missingInScope = registryPackageNames - packageNames.toSet()
-        val unknownInScope = packageNames - registryPackageNames.toSet()
-        check(missingInScope.isEmpty() && unknownInScope.isEmpty()) {
-            buildString {
-                if (missingInScope.isNotEmpty()) {
-                    appendLine("Missing scope packages: ${missingInScope.joinToString()}")
-                }
-                if (unknownInScope.isNotEmpty()) {
-                    appendLine("Unknown scope packages: ${unknownInScope.joinToString()}")
-                }
-            }
+        check(packageNames.isNotEmpty()) {
+            "No Xposed scope packages found in ${xposedHookerRegistryFile.asFile}"
         }
 
         val xposedOutputDir = generatedXposedResourcesDir.get().dir("META-INF/xposed").asFile
@@ -121,7 +100,7 @@ android {
     packaging.resources.merges += "META-INF/xposed/*"
     sourceSets {
         getByName("main") {
-            resources.directories.add(generatedXposedResourcesDir.get().asFile.path)
+            resources.setSrcDirs(listOf(generatedXposedResourcesDir.get().asFile.path))
         }
     }
 
@@ -183,6 +162,8 @@ dependencies {
 
     compileOnly(libs.libxposed.api)
     implementation(libs.libxposed.service)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     compileOnly(libs.ads.sdk.pro)
     compileOnly(libs.gdt.union)
     compileOnly(libs.google.mobile.ads)
