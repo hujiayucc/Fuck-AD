@@ -3,6 +3,10 @@ package com.hujiayucc.hook.utils
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.res.Configuration
+import android.content.res.Resources
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.hujiayucc.hook.ui.activity.MainActivity
@@ -18,6 +22,42 @@ object LanguageUtils {
     /** 重置为系统语言 */
     fun resetToSystemLanguage(context: Context) {
         applyLanguage(context, LocaleListCompat.getEmptyLocaleList())
+    }
+
+    fun localizedAppLabel(context: Context, appInfo: ApplicationInfo): String {
+        val packageManager = context.packageManager
+        val labelRes = appInfo.labelRes
+        if (labelRes == 0) return appInfo.loadLabel(packageManager).toString()
+
+        return runCatching {
+            val appResources = packageManager.getResourcesForApplication(appInfo)
+            val configuration = Configuration(appResources.configuration)
+            currentLocaleList().takeIf { !it.isEmpty }?.let { locales ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    configuration.setLocales(android.os.LocaleList.forLanguageTags(locales.toLanguageTags()))
+                } else {
+                    @Suppress("DEPRECATION")
+                    configuration.locale = Locale.forLanguageTag(locales[0]?.toLanguageTag().orEmpty())
+                }
+            }
+            val localizedResources = Resources(
+                appResources.assets,
+                appResources.displayMetrics,
+                configuration
+            )
+            localizedResources.getText(labelRes).toString()
+        }.getOrElse {
+            appInfo.loadLabel(packageManager).toString()
+        }
+    }
+
+    fun appLanguageSignature(): String {
+        return currentLocaleList().toLanguageTags().ifEmpty { "system" }
+    }
+
+    private fun currentLocaleList(): LocaleListCompat {
+        return AppCompatDelegate.getApplicationLocales().takeIf { !it.isEmpty }
+            ?: LocaleListCompat.getDefault()
     }
 
     private fun applyLanguage(context: Context, locales: LocaleListCompat) {

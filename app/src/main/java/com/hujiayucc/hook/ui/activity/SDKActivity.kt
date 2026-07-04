@@ -24,6 +24,7 @@ import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter2
+import com.hujiayucc.hook.utils.LanguageUtils
 import io.github.libxposed.service.XposedService
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
@@ -271,7 +272,8 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         return Observable.fromCallable {
             val currentInstalled = currentInstalledPackages()
             val (hasScanCache, scannedPackages) = readPackageSet(PREF_SDK_SCANNED_PACKAGES)
-            val isSignatureCurrent = prefsBridge.getString(PREF_SDK_SCAN_SIGNATURE, "") == sdkScanSignature
+            val isSignatureCurrent = prefsBridge.getString(PREF_SDK_SCAN_SIGNATURE, "") == sdkScanSignature &&
+                prefsBridge.getString(PREF_SDK_LABEL_LANGUAGE, "") == LanguageUtils.appLanguageSignature()
             val items = ArrayList<Item2>()
             var hasItemCache = false
 
@@ -371,7 +373,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         val entries = packages.mapNotNull { pkg ->
             try {
                 val info = packageManager.getApplicationInfo(pkg, 0)
-                AppEntry(info, info.loadLabel(packageManager).toString())
+                AppEntry(info, LanguageUtils.localizedAppLabel(this, info))
             } catch (_: Exception) {
                 null
             }
@@ -455,6 +457,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             putString(PREF_SDK_ITEMS, itemArr.toString())
             putString(PREF_SDK_SCANNED_PACKAGES, scannedPkgArr.toString())
             putString(PREF_SDK_SCAN_SIGNATURE, sdkScanSignature)
+            putString(PREF_SDK_LABEL_LANGUAGE, LanguageUtils.appLanguageSignature())
             putLong(PREF_SDK_CACHE_UPDATED_AT, System.currentTimeMillis())
         }
     }
@@ -478,7 +481,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private fun buildAppsList(): List<AppEntry> {
         return packageManager.getInstalledApplications(0).asSequence()
             .filter { appInfo -> (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
-            .map { appInfo -> AppEntry(appInfo, appInfo.loadLabel(packageManager).toString()) }
+            .map { appInfo -> AppEntry(appInfo, LanguageUtils.localizedAppLabel(this, appInfo)) }
             .sortedBy { entry -> entry.label.lowercase(Locale.getDefault()) }.toList()
     }
 
@@ -520,6 +523,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         private const val PREF_SDK_ITEMS = "sdkItems"
         private const val PREF_SDK_SCANNED_PACKAGES = "sdkScannedPackages"
         private const val PREF_SDK_SCAN_SIGNATURE = "sdkScanSignature"
+        private const val PREF_SDK_LABEL_LANGUAGE = "sdkLabelLanguage"
         private const val PREF_SDK_CACHE_UPDATED_AT = "sdkCacheUpdatedAt"
     }
 }

@@ -15,6 +15,7 @@ import com.google.android.material.tabs.TabLayoutMediator
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.databinding.ActivityAppInfoBinding
 import com.hujiayucc.hook.ui.adapter.InfoPagerAdapter
+import com.hujiayucc.hook.utils.LanguageUtils
 import io.github.libxposed.service.XposedService
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -47,9 +48,7 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         packageName = intent.getStringExtra("packageName") ?: ""
-        val appName = intent.getStringExtra("appName") ?: packageName
-
-        supportActionBar?.title = appName
+        supportActionBar?.title = intent.getStringExtra("appName") ?: packageName
 
         checkPackageAndSetupViewPager()
     }
@@ -136,7 +135,10 @@ class AppInfoActivity : BaseActivity<ActivityAppInfoBinding>() {
             }
             mainHandler.post {
                 if (packageCheckExecutor !== executor) return@post
-                result.onSuccess {
+                result.onSuccess { packageInfo ->
+                    packageInfo.applicationInfo?.let { appInfo ->
+                        supportActionBar?.title = LanguageUtils.localizedAppLabel(this, appInfo)
+                    }
                     setupViewPager()
                     binding.progressBar.visibility = View.GONE
                     binding.textView.visibility = View.GONE

@@ -32,7 +32,6 @@ class ModuleMain : XposedModule() {
 
         private const val TAG = "ModuleMain"
         private const val PREFS_NAME = "config"
-        private const val BASE_APK_SUFFIX = "/base.apk"
         val BUILTIN_HOOKERS = listOf(Loader, ClickInfo)
         val SDK_HOOKERS = listOf(
             GDT,
@@ -318,13 +317,8 @@ class ModuleMain : XposedModule() {
             logIfDebug("onModuleLoaded", e)
         }
     }
-
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
         try {
-            if (!param.isBaseApk()) {
-                logIfDebug("Skip non-base APK: ${param.packageName} -> ${param.applicationInfo.sourceDir}")
-                return
-            }
             val appHookers = HookerRegistry.create(param.packageName)
             (BUILTIN_HOOKERS + appHookers).forEach { it.call(param) }
             if (appHookers.isEmpty()) {
@@ -341,9 +335,6 @@ class ModuleMain : XposedModule() {
         }
     }
 
-    private fun XposedModuleInterface.PackageReadyParam.isBaseApk(): Boolean {
-        return applicationInfo.sourceDir.endsWith(BASE_APK_SUFFIX)
-    }
 
     private fun resolveSdkHookerTargets(
         packageName: String,

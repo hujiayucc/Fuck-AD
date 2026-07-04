@@ -20,10 +20,15 @@ object ClickInfo : Hooker() {
                 before { handleClick(instance as View) }
             }
 
-        "android.view.View.DeclaredOnClickListener".toClassOrNull()
-            ?.method("onClick")
-            ?.hook {
+        View::class.java.method("callOnClick")
+            .hook {
                 before { handleClick(instance as View) }
+            }
+
+        "android.view.View.DeclaredOnClickListener".toClassOrNull()
+            ?.method("onClick", View::class.java)
+            ?.hook {
+                before { (args.firstOrNull() as? View)?.let(::handleClick) }
             }
     }
 
