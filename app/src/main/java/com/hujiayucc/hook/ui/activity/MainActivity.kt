@@ -44,16 +44,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private lateinit var listView: ListView
     private val disposables = CompositeDisposable()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val initializeRunnable = Runnable {
-        initializeUI()
-        setupClickListeners()
-        checkPermissions()
-        author = Author(this, true, prefsBridge)
-        author.check(binding.mainActiveStatus, binding.mainStatus, BuildConfig.VERSION_CODE)
-        service?.apply { updateFrameworkStatus(frameworkName, apiVersion) }
-    }
+    private val initializeRunnable = Runnable { initializeOnce() }
     private lateinit var author: Author
     private var appListAdapter: AppListAdapter? = null
+    private var initialized = false
+    private var appListLoading = false
     private var autoGrantInProgress = false
     private var shizukuListenersRegistered = false
     private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
@@ -78,7 +73,35 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     override fun onStart() {
         super.onStart()
-        mainHandler.postDelayed(initializeRunnable, 500)
+        if (initialized) {
+            refreshStatus()
+        } else {
+            mainHandler.postDelayed(initializeRunnable, 500)
+        }
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    private fun initializeOnce() {
+        if (initialized) {
+            refreshStatus()
+            return
+        }
+        initializeUI()
+        author = Author(this, true, prefsBridge)
+        setupClickListeners()
+        initialized = true
+        checkPermissions()
+        refreshStatus()
+    }
+
+    private fun refreshStatus() {
+        if (!::author.isInitialized) return
+        val currentService = service
+        if (currentService == null) {
+            author.check(binding.mainActiveStatus, binding.mainStatus, BuildConfig.VERSION_CODE)
+        } else {
+            updateFrameworkStatus(currentService.frameworkName, currentService.apiVersion)
+        }
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -180,14 +203,20 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     private fun loadAppList() {
+        if (appListAdapter != null || appListLoading) return
+        appListLoading = true
         disposables.add(
             Observable.fromCallable {
                 AppList(applicationContext).appList
             }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ list ->
+                    appListLoading = false
                     appListAdapter = AppListAdapter(list)
                     listView.adapter = appListAdapter
-                }, { error -> showDataLoadError(error) })
+                }, { error ->
+                    appListLoading = false
+                    showDataLoadError(error)
+                })
         )
     }
 
@@ -332,6 +361,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             R.id.menu_sdk -> {
                 preparePreviousPagePreview(SDKActivity::class.java)
                 val intent = Intent(this, SDKActivity::class.java)
+                startActivity(intent)
+                true
+            }
+
+            R.id.menu_auto_skip_rules -> {
+                preparePreviousPagePreview(AutoSkipRulesActivity::class.java)
+                val intent = Intent(this, AutoSkipRulesActivity::class.java)
                 startActivity(intent)
                 true
             }

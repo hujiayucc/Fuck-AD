@@ -480,10 +480,22 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
 
     private fun createBackPreviewBitmap(): Bitmap? {
         val target = backAnimationTarget() ?: return null
-        if (target.width == 0 || target.height == 0) return null
+        val width = target.width
+        val height = target.height
+        if (width == 0 || height == 0) return null
+        val scale = minOf(
+            1f,
+            BACK_PREVIEW_MAX_WIDTH.toFloat() / width,
+            BACK_PREVIEW_MAX_HEIGHT.toFloat() / height
+        )
+        val bitmapWidth = (width * scale).toInt().coerceAtLeast(1)
+        val bitmapHeight = (height * scale).toInt().coerceAtLeast(1)
         return runCatching {
-            Bitmap.createBitmap(target.width, target.height, Bitmap.Config.ARGB_8888).also { bitmap ->
-                target.draw(Canvas(bitmap))
+            Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.RGB_565).also { bitmap ->
+                Canvas(bitmap).apply {
+                    scale(scale, scale)
+                    target.draw(this)
+                }
             }
         }.getOrNull()
     }
@@ -513,6 +525,8 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
         private const val PAGE_ALPHA_DELTA = 0f
         private const val PREVIOUS_PAGE_OFFSET_RATIO = 0.36f
         private const val PREVIOUS_PAGE_MIN_ALPHA = 0.92f
+        private const val BACK_PREVIEW_MAX_WIDTH = 720
+        private const val BACK_PREVIEW_MAX_HEIGHT = 1280
         private const val BACK_BUTTON_PROGRESS = 0.42f
         private const val BACK_PRESS_ANIMATION_DURATION_MS = 150L
         private const val BACK_COMMIT_ANIMATION_DURATION_MS = 130L

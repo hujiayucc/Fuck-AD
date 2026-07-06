@@ -75,6 +75,28 @@
                 android:name=".ui.activity.AppInfoActivity"
                 android:exported="false"/>
 
+        <activity
+                android:name=".ui.activity.AutoSkipRulesActivity"
+                android:exported="false"
+                android:label="@string/auto_skip_rules"/>
+
+        <activity
+                android:name=".ui.activity.AutoSkipAppListActivity"
+                android:exported="false"
+                android:label="@string/auto_skip_app_switches"/>
+
+        <service
+                android:name=".autoskip.AutoSkipAccessibilityService"
+                android:exported="true"
+                android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                    android:name="android.accessibilityservice"
+                    android:resource="@xml/auto_skip_accessibility_service"/>
+        </service>
+
         <service
                 android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
                 android:enabled="false"

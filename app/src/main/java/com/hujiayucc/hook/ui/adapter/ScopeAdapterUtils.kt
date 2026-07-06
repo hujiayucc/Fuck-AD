@@ -13,7 +13,6 @@ import java.text.Collator
 import java.util.Locale
 
 object ScopeAdapterUtils {
-    private val appNameCollator = Collator.getInstance(Locale.CHINA)
     private val mainHandler = Handler(Looper.getMainLooper())
 
     fun <T> sortByScope(
@@ -23,6 +22,7 @@ object ScopeAdapterUtils {
         appNameOf: (T) -> String
     ): List<T> {
         val currentScoped = scopedPackages ?: XYApplication.mService?.let { currentScopeSet(it) }.orEmpty()
+        val appNameCollator = Collator.getInstance(Locale.CHINA)
         return items.sortedWith { a, b ->
             val scopeCompare = compareValues(packageNameOf(a) !in currentScoped, packageNameOf(b) !in currentScoped)
             if (scopeCompare != 0) scopeCompare else appNameCollator.compare(appNameOf(a), appNameOf(b))

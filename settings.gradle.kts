@@ -35,6 +35,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-
 rootProject.name = "Fuck AD"
-include(":app", ":FuckAD-Author")
+include(":app", ":FuckAD-Author", ":gkd-selector")
+

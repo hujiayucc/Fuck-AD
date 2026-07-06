@@ -38,14 +38,15 @@ class AppListAdapter2(private var appList: List<Item2>) : BaseAdapter(), Filtera
         refreshSorted()
     }
 
-    fun refreshScopeState() {
-        refreshSorted()
-    }
-
-    fun filterByQuery(query: String?) {
-        currentFilterQuery = query.orEmpty()
+    fun updateSortedData(newList: List<Item2>) {
+        appList = newList
+        displayList = newList
         applyFilter(currentFilterQuery)
         notifyDataSetChanged()
+    }
+
+    fun refreshScopeState() {
+        refreshSorted()
     }
 
     override fun getCount(): Int = filteredList.size

@@ -46,6 +46,10 @@
             android:checkable="true"/>
 
     <item
+            android:id="@+id/menu_auto_skip_rules"
+            android:title="@string/auto_skip_rules"/>
+
+    <item
             android:id="@+id/menu_sdk"
             android:title="@string/sdks"
             app:showAsAction="always" />

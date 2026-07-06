@@ -2,10 +2,13 @@ package com.hujiayucc.hook.utils
 
 import android.Manifest
 import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process as AndroidProcess
+import android.provider.Settings
+import android.text.TextUtils
 import androidx.core.content.ContextCompat
 import rikka.shizuku.Shizuku
 import java.lang.reflect.Method
@@ -38,6 +41,51 @@ object PrivilegedPermissionGrantor {
         GRANTED,
         WAITING_FOR_SHIZUKU,
         FAILED
+    }
+
+    fun ensureAccessibilityServiceEnabled(context: Context, serviceClass: Class<*>): GrantResult {
+        val componentName = ComponentName(context, serviceClass).flattenToString()
+        if (isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
+
+        val currentServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty()
+        val updatedServices = mergeColonList(currentServices, componentName)
+        val enabledFlag = Settings.Secure.getInt(
+            context.contentResolver,
+            Settings.Secure.ACCESSIBILITY_ENABLED,
+            0
+        )
+        val commands = listOf(
+            arrayOf("settings", "put", "secure", Settings.Secure.ACCESSIBILITY_ENABLED, "1"),
+            arrayOf("settings", "put", "secure", Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updatedServices)
+        )
+        val shizukuResult = runAccessibilityEnableCommands(commands)
+        if (shizukuResult == GrantResult.WAITING_FOR_SHIZUKU) return shizukuResult
+        if (isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
+
+        val rootSucceeded = runRootCommands(commands)
+        if (rootSucceeded && isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
+
+        rollbackAccessibilityEnabledIfNeeded(enabledFlag)
+        return GrantResult.FAILED
+    }
+
+    fun isAccessibilityServiceEnabled(context: Context, componentName: String): Boolean {
+        if (Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) != 1) {
+            return false
+        }
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(enabledServices)
+        splitter.forEach { serviceName ->
+            if (serviceName.equals(componentName, ignoreCase = true)) return true
+        }
+        return false
     }
 
     fun ensureQueryAllPackages(context: Context): GrantResult {
@@ -173,6 +221,50 @@ object PrivilegedPermissionGrantor {
         }
         if (ranAnyCommand) runner(arrayOf("appops", "write-settings"))
         return hasQueryAllPackages(context)
+    }
+
+    private fun runAccessibilityEnableCommands(commands: List<Array<String>>): GrantResult {
+        if (!isShizukuAvailable()) return GrantResult.FAILED
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) return GrantResult.FAILED
+        return if (commands.all(::runShizukuCommand)) GrantResult.GRANTED else GrantResult.FAILED
+    }
+
+    private fun runRootCommands(commands: List<Array<String>>): Boolean {
+        return commands.all { command ->
+            runCatching {
+                Runtime.getRuntime().exec(arrayOf("su", "-c", shellCommand(command))).waitForSuccess()
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun rollbackAccessibilityEnabledIfNeeded(previousValue: Int) {
+        if (previousValue != 0) return
+        val rollbackCommands = commandsOf(Settings.Secure.ACCESSIBILITY_ENABLED, previousValue.toString())
+        if (runAccessibilityEnableCommands(rollbackCommands) == GrantResult.GRANTED) return
+        runRootCommands(rollbackCommands)
+    }
+
+    private fun mergeColonList(current: String, entry: String): String {
+        val values = current
+            .split(':')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toMutableList()
+        if (values.none { it.equals(entry, ignoreCase = true) }) values += entry
+        return values.joinToString(":")
+    }
+
+    private fun commandsOf(settingName: String, value: String): List<Array<String>> {
+        return listOf(arrayOf("settings", "put", "secure", settingName, value))
+    }
+
+    private fun shellCommand(command: Array<String>): String {
+        return command.joinToString(" ") { argument -> shellQuote(argument) }
+    }
+
+    private fun shellQuote(argument: String): String {
+        if (argument.all { it.isLetterOrDigit() || it in "_./:@=-" }) return argument
+        return "'" + argument.replace("'", "'\"'\"'") + "'"
     }
 
     private fun grantCommands(context: Context): List<Array<String>> {

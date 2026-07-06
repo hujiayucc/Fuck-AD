@@ -24,6 +24,7 @@ import com.hujiayucc.hook.data.Item2
 import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.databinding.ActivitySdkBinding
 import com.hujiayucc.hook.ui.adapter.AppListAdapter2
+import com.hujiayucc.hook.ui.adapter.ScopeAdapterUtils
 import com.hujiayucc.hook.utils.LanguageUtils
 import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor
 import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor.GrantResult
@@ -59,6 +60,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private var searchMenuItem: MenuItem? = null
     private var autoGrantInProgress = false
     private var sdkItemsLoading = false
+    private var sdkItemsLoadStarted = false
     private var shizukuListenersRegistered = false
     private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
         if (requestCode == PrivilegedPermissionGrantor.SHIZUKU_PERMISSION_REQUEST_CODE) {
@@ -129,6 +131,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     private fun ensurePermissionAndLoadSdkItems() {
+        if (sdkItemsLoadStarted || sdkItemsLoading) return
         when {
             PrivilegedPermissionGrantor.hasQueryAllPackages(this) -> loadSdkItems()
             autoGrantInProgress -> Unit
@@ -179,7 +182,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             override fun onQueryTextSubmit(query: String?): Boolean = false
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                adapter.filterByQuery(newText)
+                adapter.filter.filter(newText.orEmpty())
                 return true
             }
         })
@@ -191,7 +194,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             }
 
             override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                adapter.filterByQuery("")
+                adapter.filter.filter("")
                 setCustomBackEnabled(false)
                 return true
             }
@@ -228,14 +231,16 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     private fun loadSdkItems() {
-        if (sdkItemsLoading) return
+        if (sdkItemsLoading || sdkItemsLoadStarted) return
         sdkItemsLoading = true
+        sdkItemsLoadStarted = true
         disposables.add(
             loadCachedItemsAsync().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ result ->
-                    if (result.hasItemCache && result.isSignatureCurrent) showCachedItems(result.items)
-                    if (result.hasItemCache && result.hasScanCache && result.isSignatureCurrent) updateFromDiffAsync(result)
-                    else loadApps()
+                    val hasCurrentCache = result.hasItemCache && result.isSignatureCurrent
+                    if (hasCurrentCache) showCachedItems(result.items)
+                    if (hasCurrentCache && result.hasScanCache) updateFromDiffAsync(result)
+                    else loadApps(showLoadingState = !hasCurrentCache)
                 }, {
                     loadApps()
                 })
@@ -244,8 +249,36 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
     private fun showCachedItems(items: List<Item2>) {
         itemList.clear()
-        mergeSdkItems(items)
+        replaceSdkItems(items, alreadySorted = true)
         showListView()
+    }
+
+    private fun replaceSdkItems(items: List<Item2>, alreadySorted: Boolean = false) {
+        val uniqueItems = uniqueSdkItems(items)
+        val displayItems = if (alreadySorted) uniqueItems else sortSdkItemsByScope(uniqueItems)
+        itemList.clear()
+        itemList.addAll(displayItems)
+        adapter.updateSortedData(itemList)
+    }
+
+    private fun uniqueSdkItems(items: List<Item2>): List<Item2> {
+        if (items.size < 2) return items
+        val unique = LinkedHashMap<String, Item2>()
+        items.forEach { item ->
+            if (item.packageName.isNotEmpty() && !unique.containsKey(item.packageName)) {
+                unique[item.packageName] = item
+            }
+        }
+        return unique.values.toList()
+    }
+
+    private fun sortSdkItemsByScope(items: List<Item2>): List<Item2> {
+        return ScopeAdapterUtils.sortByScope(
+            items = items,
+            scopedPackages = null,
+            packageNameOf = { it.packageName },
+            appNameOf = { it.appName }
+        )
     }
 
     private fun mergeSdkItems(items: List<Item2>) {
@@ -254,12 +287,12 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         itemList.forEach { item -> merged[item.packageName] = item }
         items.forEach { item -> merged[item.packageName] = item }
         itemList.clear()
-        itemList.addAll(merged.values.sortedBy { item -> item.appName.lowercase(Locale.getDefault()) })
-        adapter.updateData(itemList)
+        itemList.addAll(sortSdkItemsByScope(uniqueSdkItems(merged.values.toList())))
+        adapter.updateSortedData(itemList)
     }
 
     @SuppressLint("CheckResult", "SetTextI18n")
-    private fun loadApps() {
+    private fun loadApps(showLoadingState: Boolean = true) {
         val maxConcurrency = min(4, max(2, Runtime.getRuntime().availableProcessors() - 1))
         val processedCount = AtomicInteger(0)
         val lastUiUpdateAt = AtomicLong(0L)
@@ -267,10 +300,10 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
         disposables.add(
             Observable.fromCallable { buildAppsList() }.subscribeOn(Schedulers.io())
-                .doOnSubscribe { hideListView() }.observeOn(AndroidSchedulers.mainThread())
+                .doOnSubscribe { if (showLoadingState) hideListView() }.observeOn(AndroidSchedulers.mainThread())
                 .doOnNext { apps ->
                     scannedPackages.set(apps.map { it.appInfo.packageName }.toSet())
-                    clearProgress(apps.size)
+                    if (showLoadingState) clearProgress(apps.size)
                 }.observeOn(Schedulers.io())
                 .flatMap { apps: List<AppEntry> ->
                     val total = apps.size
@@ -295,18 +328,17 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
                             }
                         }.subscribeOn(Schedulers.io())
                     }, maxConcurrency, 128)
-                }.buffer(32).observeOn(AndroidSchedulers.mainThread()).subscribe({ batch ->
-                    if (batch.isNotEmpty()) {
-                        mergeSdkItems(batch)
-                    }
+                }.toList().map { items ->
+                    sortSdkItemsByScope(uniqueSdkItems(items))
+                }.toObservable().observeOn(AndroidSchedulers.mainThread()).subscribe({ items ->
+                    replaceSdkItems(items, alreadySorted = true)
+                    sdkItemsLoading = false
+                    showListView()
+                    requestSaveItems(scannedPackages.get())
                 }, { error ->
                     sdkItemsLoading = false
                     Toast.makeText(this, "加载应用列表失败: ${error.message}", Toast.LENGTH_SHORT).show()
                     showListView()
-                }, {
-                    sdkItemsLoading = false
-                    showListView()
-                    requestSaveItems(scannedPackages.get())
                 })
         )
     }
@@ -398,7 +430,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             CachedResult(
                 scannedPackages = scannedPackages,
                 installedPackages = currentInstalled,
-                items = items,
+                items = sortSdkItemsByScope(uniqueSdkItems(items)),
                 hasItemCache = hasItemCache,
                 hasScanCache = hasScanCache,
                 isSignatureCurrent = isSignatureCurrent
@@ -465,7 +497,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             } catch (_: Exception) {
                 null
             }
-        }
+        }.distinctBy { entry -> entry.appInfo.packageName }
         if (entries.isEmpty()) return Observable.just(emptyList())
 
         val maxConcurrency = min(4, max(2, Runtime.getRuntime().availableProcessors() - 1))
@@ -517,10 +549,14 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private fun flushPendingSave() {
         val pending = pendingSaveSnapshot ?: return
         pendingSave?.cancel(false)
-        val packageSnapshot = pending.scannedPackages ?: currentInstalledPackages()
-        saveItemsSnapshot(pending.items, packageSnapshot, commit = true)
-        pendingSaveSnapshot = null
-        pendingSave = null
+        pendingSave = saveExecutor.schedule({
+            try {
+                val packageSnapshot = pending.scannedPackages ?: currentInstalledPackages()
+                saveItemsSnapshot(pending.items, packageSnapshot)
+                if (pendingSaveSnapshot === pending) pendingSaveSnapshot = null
+            } catch (_: Exception) {
+            }
+        }, 0L, TimeUnit.MILLISECONDS)
     }
 
     private fun shutdownSaveExecutor() {
@@ -528,7 +564,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         saveExecutor.shutdown()
     }
 
-    private fun saveItemsSnapshot(items: List<CacheItem>, scannedPackages: Set<String>, commit: Boolean = false) {
+    private fun saveItemsSnapshot(items: List<CacheItem>, scannedPackages: Set<String>) {
         val pkgArr = JSONArray(items.map { it.packageName })
         val scannedPkgArr = JSONArray(scannedPackages.sorted())
         val itemArr = JSONArray()
@@ -540,7 +576,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
             obj.put("sdkIds", JSONArray(item.sdkIds))
             itemArr.put(obj)
         }
-        prefsBridge.edit(commit = commit) {
+        prefsBridge.edit {
             putString(PREF_SDK_LIST, pkgArr.toString())
             putString(PREF_SDK_ITEMS, itemArr.toString())
             putString(PREF_SDK_SCANNED_PACKAGES, scannedPkgArr.toString())
@@ -569,6 +605,7 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     private fun buildAppsList(): List<AppEntry> {
         return packageManager.getInstalledApplications(0).asSequence()
             .filter { appInfo -> (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .distinctBy { appInfo -> appInfo.packageName }
             .map { appInfo -> AppEntry(appInfo, LanguageUtils.localizedAppLabel(this, appInfo)) }
             .sortedBy { entry -> entry.label.lowercase(Locale.getDefault()) }.toList()
     }

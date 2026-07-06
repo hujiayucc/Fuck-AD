@@ -1,4 +1,6 @@
 [versions]
+kotlin = "2.4.0"
+serialization = "1.11.0"
 activity = "1.13.0"
 adsSdkPro = "6.8.2.0"
 agp = "9.2.1"
@@ -23,8 +25,13 @@ libxposed = "102.0.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
 [libraries]
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 #noinspection Aligned16KB
 ads-sdk-pro = { module = "com.pangle.cn:ads-sdk-pro", version.ref = "adsSdkPro" }
 applovin-sdk = { module = "com.applovin:applovin-sdk", version.ref = "applovin" }
