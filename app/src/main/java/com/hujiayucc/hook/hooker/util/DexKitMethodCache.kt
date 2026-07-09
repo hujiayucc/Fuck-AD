@@ -3,11 +3,21 @@ package com.hujiayucc.hook.hooker.util
 import android.content.SharedPreferences
 import java.io.File
 import java.lang.reflect.Method
+import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONArray
 import org.json.JSONObject
 
 object DexKitMethodCache {
     private const val PREF_KEY = "dexKitMethodCache"
+    private const val MAX_METHOD_CACHE_SIZE = 64
+
+    @Volatile
+    private var rawCache: String? = null
+
+    @Volatile
+    private var rootCache: JSONObject = JSONObject()
+
+    private val methodCache = ConcurrentHashMap<String, Method>()
 
     fun get(
         prefs: SharedPreferences,
@@ -16,9 +26,10 @@ object DexKitMethodCache {
         queryId: String,
         classLoader: ClassLoader?
     ): Method? {
-        val entry = entry(prefs, cacheKey(packageName, apkPath, queryId)) ?: return null
+        val key = cacheKey(packageName, apkPath, queryId)
+        val entry = entry(prefs, key) ?: return null
         if (!entry.matches(apkPath)) return null
-        return entry.toMethod(classLoader)
+        return methodForEntry(entry, classLoader, key)
     }
 
     fun put(
@@ -28,9 +39,16 @@ object DexKitMethodCache {
         queryId: String,
         method: Method
     ) {
-        val root = root(prefs)
-        root.put(cacheKey(packageName, apkPath, queryId), MethodEntry.from(apkPath, method).toJson())
+        val root = JSONObject(root(prefs).toString())
+        val key = cacheKey(packageName, apkPath, queryId)
+        val entry = MethodEntry.from(apkPath, method)
+        root.put(key, entry.toJson())
         prefs.edit().putString(PREF_KEY, root.toString()).apply()
+        synchronized(this) {
+            rawCache = null
+            rootCache = JSONObject()
+        }
+        cacheMethod(key, method.declaringClass.classLoader, entry, method)
     }
 
     private fun entry(prefs: SharedPreferences, key: String): MethodEntry? {
@@ -39,12 +57,53 @@ object DexKitMethodCache {
 
     private fun root(prefs: SharedPreferences): JSONObject {
         val json = prefs.getString(PREF_KEY, "").orEmpty()
+        rawCache?.let { cachedRaw ->
+            if (cachedRaw == json) return rootCache
+        }
+        return synchronized(this) {
+            if (rawCache == json) {
+                rootCache
+            } else {
+                parseRoot(json).also { parsed ->
+                    rawCache = json
+                    rootCache = parsed
+                }
+            }
+        }
+    }
+
+    private fun parseRoot(json: String): JSONObject {
         if (json.isBlank()) return JSONObject()
         return runCatching { JSONObject(json) }.getOrDefault(JSONObject())
     }
 
     private fun cacheKey(packageName: String, apkPath: String, queryId: String): String {
         return "$packageName|${File(apkPath).name}|$queryId"
+    }
+
+    private fun methodCacheKey(key: String, loader: ClassLoader, entry: MethodEntry): String {
+        return "$key|${System.identityHashCode(loader)}|${entry.apkLength}|${entry.apkLastModified}|${entry.className}.${entry.methodName}"
+    }
+
+    private fun cacheMethod(key: String, loader: ClassLoader?, entry: MethodEntry, method: Method) {
+        loader ?: return
+        if (methodCache.size >= MAX_METHOD_CACHE_SIZE) methodCache.clear()
+        methodCache[methodCacheKey(key, loader, entry)] = method
+    }
+
+    private fun methodForEntry(entry: MethodEntry, classLoader: ClassLoader?, key: String): Method? {
+        val loader = classLoader ?: return null
+        val methodKey = methodCacheKey(key, loader, entry)
+        methodCache[methodKey]?.let { return it }
+        return runCatching {
+            val clazz = loader.loadClass(entry.className)
+            clazz.declaredMethods.firstOrNull { method ->
+                method.name == entry.methodName &&
+                    method.returnType.name == entry.returnTypeName &&
+                    method.parameterTypes.map { it.name } == entry.parameterTypeNames
+            }?.apply { isAccessible = true }
+                ?.also { method -> cacheMethod(key, loader, entry, method) }
+        }.getOrNull()
     }
 
     private data class MethodEntry(
@@ -62,18 +121,6 @@ object DexKitMethodCache {
                 apk.isFile &&
                 apk.length() == apkLength &&
                 apk.lastModified() == apkLastModified
-        }
-
-        fun toMethod(classLoader: ClassLoader?): Method? {
-            val loader = classLoader ?: return null
-            return runCatching {
-                val clazz = loader.loadClass(className)
-                clazz.declaredMethods.firstOrNull { method ->
-                    method.name == methodName &&
-                        method.returnType.name == returnTypeName &&
-                        method.parameterTypes.map { it.name } == parameterTypeNames
-                }?.apply { isAccessible = true }
-            }.getOrNull()
         }
 
         fun toJson(): JSONObject {
