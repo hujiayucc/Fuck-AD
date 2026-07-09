@@ -2,6 +2,7 @@ package com.hujiayucc.hook.autoskip
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import java.util.concurrent.ConcurrentHashMap
 
 internal class GkdSelectorMatcher(
     private val screenWidth: Int,
@@ -482,10 +483,21 @@ private class GkdComparisonExpression(
     private fun matchesRegex(left: GkdValue, right: GkdValue, negate: Boolean): Boolean {
         val value = (left as? GkdValue.StringValue)?.value ?: return false
         val pattern = (right as? GkdValue.StringValue)?.value ?: return false
-        val matched = runCatching { Regex(pattern).matches(value) }.getOrDefault(false)
+        val matched = cachedRegex(pattern)?.matches(value) == true
         return if (negate) !matched else matched
     }
 }
+
+private fun cachedRegex(pattern: String): Regex? {
+    regexCache[pattern]?.let { return it }
+    return runCatching { Regex(pattern) }.getOrNull()?.also { regex ->
+        if (regexCache.size >= MAX_REGEX_CACHE_SIZE) regexCache.clear()
+        regexCache[pattern] = regex
+    }
+}
+
+private val regexCache = ConcurrentHashMap<String, Regex>()
+private const val MAX_REGEX_CACHE_SIZE = 128
 
 private interface GkdValueExpression {
     fun eval(context: GkdEvalContext): GkdValue
