@@ -2,8 +2,10 @@ package com.hujiayucc.hook.hooker.app
 
 import com.hujiayucc.hook.ModuleMain
 import com.hujiayucc.hook.annotation.Run
+import com.hujiayucc.hook.hooker.util.DexKitMethodCache
 import com.hujiayucc.hook.hooker.util.Hooker
 import io.github.libxposed.api.XposedModuleInterface
+import java.lang.reflect.Method
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
 
@@ -13,37 +15,62 @@ import org.luckypray.dexkit.query.enums.StringMatchType
     action = "解锁会员"
 )
 object XiaoBaiRecord : Hooker() {
+    private const val QUERY_FORCE_VIP = "force_vip"
+    private const val QUERY_IS_LOGIN = "is_login"
+
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
+        val apkPath = applicationInfo.sourceDir
+        val cachedMethods = listOf(
+            cachedMethod(apkPath, QUERY_FORCE_VIP),
+            cachedMethod(apkPath, QUERY_IS_LOGIN)
+        )
+        if (cachedMethods.all { it != null }) {
+            cachedMethods.filterNotNull().forEach { method -> method.hook { replaceTo(true) } }
+            return
+        }
+
         if (!ModuleMain.ensureDexKitLoaded()) {
             logHookDebug("Skip $appName because DexKit native library is unavailable")
             return
         }
 
-        DexKitBridge.create(applicationInfo.sourceDir).use { bridge ->
-            // 设置会员
-            bridge.findMethod {
-                // com.dream.era.global.cn.network.SettingsManager.d()
-                searchPackages("com.dream.era.global.cn.network")
-                matcher {
-                    returnType = "boolean"
-                    addUsingString("key_debug_force_vip", StringMatchType.Equals)
-                }
-            }.forEach { method ->
-                method.getMethodInstance(classLoader).hook { replaceTo(true) }
+        DexKitBridge.create(apkPath).use { bridge ->
+            bridge.findForceVipMethod()?.also { method ->
+                cacheMethod(apkPath, QUERY_FORCE_VIP, method)
+                method.hook { replaceTo(true) }
             }
-
-            // 免登录
-            bridge.findMethod {
-                // com.dream.era.global.cn.keep.GlobalSDKImpl.isLogin()
-                searchPackages("com.dream.era.global.cn.keep")
-                matcher {
-                    name = "isLogin"
-                    returnType = "boolean"
-                }
-            }.forEach { method ->
-                method.getMethodInstance(classLoader).hook { replaceTo(true) }
+            bridge.findLoginMethod()?.also { method ->
+                cacheMethod(apkPath, QUERY_IS_LOGIN, method)
+                method.hook { replaceTo(true) }
             }
-            bridge.close()
         }
+    }
+
+    private fun cachedMethod(apkPath: String, queryId: String): Method? {
+        return DexKitMethodCache.get(ModuleMain.prefs, packageName, apkPath, queryId, classLoader)
+    }
+
+    private fun cacheMethod(apkPath: String, queryId: String, method: Method) {
+        DexKitMethodCache.put(ModuleMain.prefs, packageName, apkPath, queryId, method)
+    }
+
+    private fun DexKitBridge.findForceVipMethod(): Method? {
+        return findMethod {
+            searchPackages("com.dream.era.global.cn.network")
+            matcher {
+                returnType = "boolean"
+                addUsingString("key_debug_force_vip", StringMatchType.Equals)
+            }
+        }.firstOrNull()?.getMethodInstance(classLoader)
+    }
+
+    private fun DexKitBridge.findLoginMethod(): Method? {
+        return findMethod {
+            searchPackages("com.dream.era.global.cn.keep")
+            matcher {
+                name = "isLogin"
+                returnType = "boolean"
+            }
+        }.firstOrNull()?.getMethodInstance(classLoader)
     }
 }
