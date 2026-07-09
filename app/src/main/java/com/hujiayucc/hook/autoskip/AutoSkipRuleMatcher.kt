@@ -13,6 +13,7 @@ class AutoSkipRuleMatcher(
 
     fun findMatch(root: AccessibilityNodeInfo, rules: List<AutoSkipRule>): AutoSkipMatchResult? {
         val selectorSnapshot = gkdMatcher.snapshot(root)
+        var nodeSnapshot: AutoSkipNodeSnapshot? = null
         rules.forEach { rule ->
             findGkdMatchingNode(selectorSnapshot, rule)?.let { selectorMatch ->
                 if (selectorMatch.node != null) {
@@ -21,9 +22,10 @@ class AutoSkipRuleMatcher(
                 }
                 if (selectorMatch.attempted) return@forEach
             }
-            findMatchingNode(root, rule)?.let { node ->
-                val points = tapPoints(node, rule)
-                if (points.isNotEmpty()) return AutoSkipMatchResult(rule, node, points)
+            val snapshot = nodeSnapshot ?: AutoSkipNodeSnapshot(root).also { nodeSnapshot = it }
+            findMatchingNode(snapshot, rule)?.let { ref ->
+                val points = tapPoints(ref, rule)
+                if (points.isNotEmpty()) return AutoSkipMatchResult(rule, ref.node, points)
             }
         }
         return null
@@ -35,39 +37,32 @@ class AutoSkipRuleMatcher(
         return gkdMatcher.findFirst(snapshot, rule.match.gkdSelectors, rule.match.visible, rule.match.region)
     }
 
-    private fun findMatchingNode(node: AccessibilityNodeInfo?, rule: AutoSkipRule): AccessibilityNodeInfo? {
-        if (node == null) return null
-        if (matches(node, rule)) return node
-        for (index in 0 until node.childCount) {
-            findMatchingNode(node.getChild(index), rule)?.let { return it }
-        }
-        return null
+    private fun findMatchingNode(snapshot: AutoSkipNodeSnapshot, rule: AutoSkipRule): AutoSkipNodeRef? {
+        return snapshot.nodes.firstOrNull { ref -> matches(ref, rule) }
     }
 
-    private fun matches(node: AccessibilityNodeInfo, rule: AutoSkipRule): Boolean {
-        val bounds = node.bounds()
-        if (rule.match.visible && !node.isVisibleToUser) return false
+    private fun matches(ref: AutoSkipNodeRef, rule: AutoSkipRule): Boolean {
+        val bounds = ref.bounds
+        if (rule.match.visible && !ref.visibleToUser) return false
         if (!isReasonableBounds(bounds)) return false
         if (rule.match.region?.contains(bounds, screenWidth, screenHeight) == false) return false
-        if (matchesExcludedField(node, rule.match)) return false
-        return matchesPositiveField(node, rule.match)
+        if (matchesExcludedField(ref, rule.match)) return false
+        return matchesPositiveField(ref, rule.match)
     }
 
-    private fun matchesExcludedField(node: AccessibilityNodeInfo, match: AutoSkipMatch): Boolean {
-        return listOf(
-            match.excludeText.isNotEmpty() && matchesAny(node.text?.toString(), match.excludeText),
-            match.excludeDesc.isNotEmpty() && matchesAny(node.contentDescription?.toString(), match.excludeDesc),
-            match.excludeResourceId.isNotEmpty() && matchesAny(node.viewIdResourceName, match.excludeResourceId)
-        ).any { it }
+    private fun matchesExcludedField(ref: AutoSkipNodeRef, match: AutoSkipMatch): Boolean {
+        if (match.excludeText.isNotEmpty() && matchesAny(ref.text, match.excludeText)) return true
+        if (match.excludeDesc.isNotEmpty() && matchesAny(ref.desc, match.excludeDesc)) return true
+        if (match.excludeResourceId.isNotEmpty() && matchesAny(ref.resourceId, match.excludeResourceId)) return true
+        return false
     }
 
-    private fun matchesPositiveField(node: AccessibilityNodeInfo, match: AutoSkipMatch): Boolean {
-        return listOf(
-            match.text.isNotEmpty() && matchesAny(node.text?.toString(), match.text),
-            match.desc.isNotEmpty() && matchesAny(node.contentDescription?.toString(), match.desc),
-            match.resourceId.isNotEmpty() && matchesAny(node.viewIdResourceName, match.resourceId),
-            match.className.isNotEmpty() && matchesAny(node.className?.toString(), match.className)
-        ).any { it }
+    private fun matchesPositiveField(ref: AutoSkipNodeRef, match: AutoSkipMatch): Boolean {
+        if (match.text.isNotEmpty() && matchesAny(ref.text, match.text)) return true
+        if (match.desc.isNotEmpty() && matchesAny(ref.desc, match.desc)) return true
+        if (match.resourceId.isNotEmpty() && matchesAny(ref.resourceId, match.resourceId)) return true
+        if (match.className.isNotEmpty() && matchesAny(ref.className, match.className)) return true
+        return false
     }
 
     private fun matchesAny(value: String?, patterns: List<String>): Boolean {
@@ -80,6 +75,18 @@ class AutoSkipRuleMatcher(
         }
     }
 
+    private fun tapPoints(ref: AutoSkipNodeRef, rule: AutoSkipRule): List<Point> {
+        val bounds = clickableBounds(ref)
+        if (!isReasonableBounds(bounds)) return emptyList()
+        return when (rule.action.tapStrategy) {
+            AutoSkipTapStrategy.CENTER -> listOf(bounds.pointAt(0.5f, 0.5f))
+            AutoSkipTapStrategy.TOP_RIGHT -> listOf(bounds.pointAt(0.86f, 0.28f))
+            AutoSkipTapStrategy.BOTTOM_RIGHT -> listOf(bounds.pointAt(0.86f, 0.72f))
+            AutoSkipTapStrategy.CUSTOM_RATIO -> listOf(bounds.pointAt(rule.action.customXRatio, rule.action.customYRatio))
+            AutoSkipTapStrategy.PROBE -> probePoints(ref)
+        }.filter { point -> point.x in 0 until screenWidth && point.y in 0 until screenHeight }.distinctBy { it.x to it.y }
+    }
+
     private fun tapPoints(node: AccessibilityNodeInfo, rule: AutoSkipRule): List<Point> {
         val bounds = clickableBounds(node)
         if (!isReasonableBounds(bounds)) return emptyList()
@@ -90,6 +97,29 @@ class AutoSkipRuleMatcher(
             AutoSkipTapStrategy.CUSTOM_RATIO -> listOf(bounds.pointAt(rule.action.customXRatio, rule.action.customYRatio))
             AutoSkipTapStrategy.PROBE -> probePoints(node)
         }.filter { point -> point.x in 0 until screenWidth && point.y in 0 until screenHeight }.distinctBy { it.x to it.y }
+    }
+
+    private fun probePoints(ref: AutoSkipNodeRef): List<Point> {
+        val points = ArrayList<Point>()
+        val own = ref.bounds
+        if (isReasonableBounds(own)) {
+            points.add(own.pointAt(0.5f, 0.5f))
+            points.add(own.pointAt(0.86f, 0.32f))
+            points.add(own.pointAt(0.86f, 0.68f))
+        }
+        var parent = ref.parent
+        var depth = 0
+        while (parent != null && depth < 3) {
+            val bounds = parent.bounds
+            if (isReasonableBounds(bounds)) {
+                points.add(bounds.pointAt(0.5f, 0.5f))
+                points.add(bounds.pointAt(0.86f, 0.32f))
+            }
+            if (parent.clickable) break
+            parent = parent.parent
+            depth += 1
+        }
+        return points
     }
 
     private fun probePoints(node: AccessibilityNodeInfo): List<Point> {
@@ -113,6 +143,18 @@ class AutoSkipRuleMatcher(
             depth += 1
         }
         return points
+    }
+
+    private fun clickableBounds(ref: AutoSkipNodeRef): Rect {
+        var candidate: AutoSkipNodeRef? = ref
+        var depth = 0
+        while (candidate != null && depth < 3) {
+            val bounds = candidate.bounds
+            if (candidate.clickable && isReasonableBounds(bounds)) return bounds
+            candidate = candidate.parent
+            depth += 1
+        }
+        return ref.bounds
     }
 
     private fun clickableBounds(node: AccessibilityNodeInfo): Rect {
@@ -149,6 +191,46 @@ class AutoSkipRuleMatcher(
             (top + height() * yRatio.coerceIn(0f, 1f)).toInt()
         )
     }
+
+    private inner class AutoSkipNodeSnapshot(root: AccessibilityNodeInfo) {
+        val nodes = ArrayList<AutoSkipNodeRef>()
+
+        init {
+            append(root, parent = null)
+        }
+
+        private fun append(node: AccessibilityNodeInfo, parent: AutoSkipNodeRef?): AutoSkipNodeRef {
+            val ref = AutoSkipNodeRef(
+                node = node,
+                parent = parent,
+                bounds = node.bounds(),
+                text = node.text?.toString(),
+                desc = node.contentDescription?.toString(),
+                resourceId = node.viewIdResourceName,
+                className = node.className?.toString(),
+                visibleToUser = node.isVisibleToUser,
+                clickable = node.isClickable
+            )
+            nodes.add(ref)
+            for (childIndex in 0 until node.childCount) {
+                val child = node.getChild(childIndex) ?: continue
+                append(child, ref)
+            }
+            return ref
+        }
+    }
+
+    private class AutoSkipNodeRef(
+        val node: AccessibilityNodeInfo,
+        val parent: AutoSkipNodeRef?,
+        val bounds: Rect,
+        val text: String?,
+        val desc: String?,
+        val resourceId: String?,
+        val className: String?,
+        val visibleToUser: Boolean,
+        val clickable: Boolean
+    )
 }
 
 data class AutoSkipMatchResult(
