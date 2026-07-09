@@ -19,6 +19,7 @@ import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface
 import java.lang.reflect.Constructor
 import java.lang.reflect.Executable
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -33,6 +34,7 @@ abstract class Hooker {
         private val publicMethodCache = ConcurrentHashMap<Class<*>, Array<Method>>()
         private val exactMethodCache = ConcurrentHashMap<MethodLookupKey, Method>()
         private val declaredConstructorCache = ConcurrentHashMap<Class<*>, Array<out Constructor<*>>>()
+        private val declaredFieldCache = ConcurrentHashMap<FieldLookupKey, Field>()
     }
 
     private object UnsetResult
@@ -254,12 +256,10 @@ abstract class Hooker {
             runCatching {
                 val contextImplClass = Class.forName("android.app.ContextImpl")
                 if (!contextImplClass.isInstance(context)) return@runCatching
-                val packageInfo = contextImplClass.getDeclaredField("mPackageInfo")
-                    .apply { isAccessible = true }
+                val packageInfo = cachedDeclaredField(contextImplClass, "mPackageInfo")
                     .get(context)
                 val loadedApkClass = Class.forName("android.app.LoadedApk")
-                val loadedApkClassLoader = loadedApkClass.getDeclaredField("mClassLoader")
-                    .apply { isAccessible = true }
+                val loadedApkClassLoader = cachedDeclaredField(loadedApkClass, "mClassLoader")
                     .get(packageInfo) as? ClassLoader
                 tryClassLoader(loadedApkClassLoader, source)
             }.onFailure { error ->
@@ -385,6 +385,13 @@ abstract class Hooker {
 
     private fun Class<*>.cachedDeclaredConstructors(): Array<out Constructor<*>> {
         return declaredConstructorCache.getOrPut(this) { declaredConstructors }
+    }
+
+    private fun cachedDeclaredField(clazz: Class<*>, name: String): Field {
+        val key = FieldLookupKey(clazz, name)
+        return declaredFieldCache.getOrPut(key) {
+            clazz.getDeclaredField(name).apply { isAccessible = true }
+        }
     }
 
     class HookDsl internal constructor(
@@ -617,6 +624,11 @@ abstract class Hooker {
         val parameterTypes: List<Class<*>>
     )
 
+    private data class FieldLookupKey(
+        val clazz: Class<*>,
+        val name: String
+    )
+
     private fun HookDsl.isValid(): Boolean {
         val replaceCount = listOf(replaceBlock, replaceUnitBlock).count { it != null }
         val callbackCount = listOf(beforeBlock, afterBlock).count { it != null }
@@ -695,7 +707,7 @@ abstract class Hooker {
 
     fun getField(obj: Any, fieldName: String): Any? {
         return runCatching {
-            obj.javaClass.getDeclaredField(fieldName).apply { isAccessible = true }.get(obj)
+            cachedDeclaredField(obj.javaClass, fieldName).get(obj)
         }.getOrElse { error ->
             logHookError("Failed to get field $fieldName: ${obj.javaClass.name}", error)
             null
@@ -704,7 +716,7 @@ abstract class Hooker {
 
     fun setField(obj: Any, fieldName: String, value: Any?) {
         runCatching {
-            obj.javaClass.getDeclaredField(fieldName).apply { isAccessible = true }.set(obj, value)
+            cachedDeclaredField(obj.javaClass, fieldName).set(obj, value)
         }.onFailure { error ->
             logHookError("Failed to set field $fieldName: ${obj.javaClass.name}", error)
         }
