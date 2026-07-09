@@ -108,8 +108,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 30
         targetSdk = 37
-        versionCode = 10200
-        versionName = "3.0.2"
+        versionCode = 10300
+        versionName = "3.0.3"
         buildConfigField("Long", "BUILD_TIME", "${System.currentTimeMillis()}L")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
