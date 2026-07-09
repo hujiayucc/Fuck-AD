@@ -51,17 +51,17 @@ class AutoSkipRuleMatcher(
     }
 
     private fun matchesExcludedField(ref: AutoSkipNodeRef, match: AutoSkipMatch): Boolean {
-        if (match.excludeText.isNotEmpty() && matchesAny(ref.text, match.excludeText)) return true
-        if (match.excludeDesc.isNotEmpty() && matchesAny(ref.desc, match.excludeDesc)) return true
-        if (match.excludeResourceId.isNotEmpty() && matchesAny(ref.resourceId, match.excludeResourceId)) return true
+        if (match.normalizedExcludeText.isNotEmpty() && matchesAny(ref.text, match.normalizedExcludeText)) return true
+        if (match.normalizedExcludeDesc.isNotEmpty() && matchesAny(ref.desc, match.normalizedExcludeDesc)) return true
+        if (match.normalizedExcludeResourceId.isNotEmpty() && matchesAny(ref.resourceId, match.normalizedExcludeResourceId)) return true
         return false
     }
 
     private fun matchesPositiveField(ref: AutoSkipNodeRef, match: AutoSkipMatch): Boolean {
-        if (match.text.isNotEmpty() && matchesAny(ref.text, match.text)) return true
-        if (match.desc.isNotEmpty() && matchesAny(ref.desc, match.desc)) return true
-        if (match.resourceId.isNotEmpty() && matchesAny(ref.resourceId, match.resourceId)) return true
-        if (match.className.isNotEmpty() && matchesAny(ref.className, match.className)) return true
+        if (match.normalizedText.isNotEmpty() && matchesAny(ref.text, match.normalizedText)) return true
+        if (match.normalizedDesc.isNotEmpty() && matchesAny(ref.desc, match.normalizedDesc)) return true
+        if (match.normalizedResourceId.isNotEmpty() && matchesAny(ref.resourceId, match.normalizedResourceId)) return true
+        if (match.normalizedClassName.isNotEmpty() && matchesAny(ref.className, match.normalizedClassName)) return true
         return false
     }
 
@@ -70,8 +70,7 @@ class AutoSkipRuleMatcher(
         val target = value?.trim().orEmpty()
         if (target.isEmpty()) return false
         return patterns.any { pattern ->
-            val normalized = pattern.trim()
-            target.equals(normalized, ignoreCase = true) || target.contains(normalized, ignoreCase = true)
+            target.equals(pattern, ignoreCase = true) || target.contains(pattern, ignoreCase = true)
         }
     }
 

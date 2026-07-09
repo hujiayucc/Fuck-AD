@@ -39,12 +39,14 @@ data class AutoSkipRule(
     val source: AutoSkipRuleSource,
     val sourceId: String = "builtin"
 ) {
+    val activityValues = activity.split(',', '|', ';', '\n')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && it != "*" }
+    private val matchesAllActivities = activity == "*" || activityValues.isEmpty()
+
     fun appliesTo(packageName: String, className: String?): Boolean {
         val packageMatches = this.packageName == "*" || this.packageName == packageName
-        val activityValues = activity.split(',', '|', ';', '\n')
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && it != "*" }
-        val activityMatches = activity == "*" || activityValues.isEmpty() || activityValues.any { value ->
+        val activityMatches = matchesAllActivities || activityValues.any { value ->
             className.orEmpty().contains(value)
         }
         return enabled && packageMatches && activityMatches
@@ -113,6 +115,14 @@ data class AutoSkipMatch(
     val visible: Boolean = true,
     val region: AutoSkipRegion? = null
 ) {
+    val normalizedText = text.normalizedPatterns()
+    val normalizedDesc = desc.normalizedPatterns()
+    val normalizedResourceId = resourceId.normalizedPatterns()
+    val normalizedClassName = className.normalizedPatterns()
+    val normalizedExcludeText = excludeText.normalizedPatterns()
+    val normalizedExcludeDesc = excludeDesc.normalizedPatterns()
+    val normalizedExcludeResourceId = excludeResourceId.normalizedPatterns()
+
     fun toJson(): JSONObject {
         return JSONObject().apply {
             put("text", JSONArray(text))
@@ -269,6 +279,10 @@ data class AutoSkipRuleSourceConfig(
             )
         }
     }
+}
+
+private fun List<String>.normalizedPatterns(): List<String> {
+    return map { it.trim() }.filter { it.isNotEmpty() }
 }
 
 private fun JSONObject.optStringList(key: String): List<String> {
