@@ -12,8 +12,9 @@ class AutoSkipRuleMatcher(
     private val gkdMatcher = GkdOfficialSelectorMatcher(screenWidth, screenHeight, legacyGkdMatcher)
 
     fun findMatch(root: AccessibilityNodeInfo, rules: List<AutoSkipRule>): AutoSkipMatchResult? {
+        val selectorSnapshot = gkdMatcher.snapshot(root)
         rules.forEach { rule ->
-            findGkdMatchingNode(root, rule)?.let { selectorMatch ->
+            findGkdMatchingNode(selectorSnapshot, rule)?.let { selectorMatch ->
                 if (selectorMatch.node != null) {
                     val points = tapPoints(selectorMatch.node, rule)
                     if (points.isNotEmpty()) return AutoSkipMatchResult(rule, selectorMatch.node, points)
@@ -28,10 +29,10 @@ class AutoSkipRuleMatcher(
         return null
     }
 
-    private fun findGkdMatchingNode(root: AccessibilityNodeInfo, rule: AutoSkipRule): GkdSelectorMatch? {
+    private fun findGkdMatchingNode(snapshot: GkdSelectorSnapshot, rule: AutoSkipRule): GkdSelectorMatch? {
         if (rule.match.gkdSelectors.isEmpty() && rule.match.excludeGkdSelectors.isEmpty()) return null
-        if (gkdMatcher.hasAny(root, rule.match.excludeGkdSelectors)) return GkdSelectorMatch(null, attempted = true)
-        return gkdMatcher.findFirst(root, rule.match.gkdSelectors, rule.match.visible, rule.match.region)
+        if (gkdMatcher.hasAny(snapshot, rule.match.excludeGkdSelectors)) return GkdSelectorMatch(null, attempted = true)
+        return gkdMatcher.findFirst(snapshot, rule.match.gkdSelectors, rule.match.visible, rule.match.region)
     }
 
     private fun findMatchingNode(node: AccessibilityNodeInfo?, rule: AutoSkipRule): AccessibilityNodeInfo? {

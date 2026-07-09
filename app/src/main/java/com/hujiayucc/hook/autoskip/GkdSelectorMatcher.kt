@@ -9,14 +9,27 @@ internal class GkdSelectorMatcher(
 ) {
     private val expressionCache = HashMap<String, GkdSelectorExpression?>()
 
+    fun snapshot(root: AccessibilityNodeInfo): GkdLegacySelectorSnapshot {
+        return GkdLegacySelectorSnapshotImpl(root)
+    }
+
     fun findFirst(
         root: AccessibilityNodeInfo,
         selectors: List<String>,
         visible: Boolean,
         region: AutoSkipRegion?
     ): GkdSelectorMatch {
+        return findFirst(snapshot(root), selectors, visible, region)
+    }
+
+    fun findFirst(
+        snapshot: GkdLegacySelectorSnapshot,
+        selectors: List<String>,
+        visible: Boolean,
+        region: AutoSkipRegion?
+    ): GkdSelectorMatch {
         if (selectors.isEmpty()) return GkdSelectorMatch(null, attempted = false)
-        val nodeIndex = GkdNodeIndex(root)
+        val nodeIndex = snapshot.nodeIndexOrNull() ?: return GkdSelectorMatch(null, attempted = false)
         var attempted = false
         selectors.forEach { selector ->
             val expression = expression(selector) ?: return@forEach
@@ -29,8 +42,12 @@ internal class GkdSelectorMatcher(
     }
 
     fun hasAny(root: AccessibilityNodeInfo, selectors: List<String>): Boolean {
+        return hasAny(snapshot(root), selectors)
+    }
+
+    fun hasAny(snapshot: GkdLegacySelectorSnapshot, selectors: List<String>): Boolean {
         if (selectors.isEmpty()) return false
-        val nodeIndex = GkdNodeIndex(root)
+        val nodeIndex = snapshot.nodeIndexOrNull() ?: return false
         return selectors.any { selector ->
             expression(selector)?.match(nodeIndex).orEmpty().isNotEmpty()
         }
@@ -64,6 +81,16 @@ internal data class GkdSelectorMatch(
     val node: AccessibilityNodeInfo?,
     val attempted: Boolean
 )
+
+internal interface GkdLegacySelectorSnapshot
+
+private class GkdLegacySelectorSnapshotImpl(root: AccessibilityNodeInfo) : GkdLegacySelectorSnapshot {
+    val nodeIndex: GkdNodeIndex by lazy { GkdNodeIndex(root) }
+}
+
+private fun GkdLegacySelectorSnapshot.nodeIndexOrNull(): GkdNodeIndex? {
+    return (this as? GkdLegacySelectorSnapshotImpl)?.nodeIndex
+}
 
 private class GkdNodeIndex(root: AccessibilityNodeInfo) {
     val nodes = ArrayList<GkdNodeRef>()

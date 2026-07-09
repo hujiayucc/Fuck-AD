@@ -19,31 +19,46 @@ internal class GkdOfficialSelectorMatcher(
     private val selectorCache = HashMap<String, Selector?>()
     private val option = MatchOption.default
 
+    fun snapshot(root: AccessibilityNodeInfo): GkdSelectorSnapshot {
+        return GkdSelectorSnapshotImpl(root, fallback.snapshot(root))
+    }
+
     fun findFirst(
         root: AccessibilityNodeInfo,
         selectors: List<String>,
         visible: Boolean,
         region: AutoSkipRegion?
     ): GkdSelectorMatch {
+        return findFirst(snapshot(root), selectors, visible, region)
+    }
+
+    fun findFirst(
+        snapshot: GkdSelectorSnapshot,
+        selectors: List<String>,
+        visible: Boolean,
+        region: AutoSkipRegion?
+    ): GkdSelectorMatch {
         if (selectors.isEmpty()) return GkdSelectorMatch(null, attempted = false)
-        val nodeTree = GkdAccessibilityNodeTree(root)
         var attempted = false
         selectors.forEach { rawSelector ->
             val selectorText = rawSelector.trim()
             if (selectorText.isBlank()) return@forEach
             val selector = selector(selectorText)
             if (selector == null) {
-                val fallbackMatch = fallback.findFirst(root, listOf(selectorText), visible, region)
+                val fallbackSnapshot = snapshot.legacySnapshotOrNull() ?: return@forEach
+                val fallbackMatch = fallback.findFirst(fallbackSnapshot, listOf(selectorText), visible, region)
                 attempted = attempted || fallbackMatch.attempted
                 if (fallbackMatch.node != null) return fallbackMatch
                 return@forEach
             }
             attempted = true
+            val officialRoot = snapshot.officialRootOrNull() ?: return@forEach
             val officialMatch = runCatching {
-                querySelfOrSelectorAll(nodeTree.root, selector)
+                querySelfOrSelectorAll(officialRoot, selector)
                     .firstOrNull { ref -> isUsable(ref.node, visible, region) }
             }.getOrElse {
-                val fallbackMatch = fallback.findFirst(root, listOf(selectorText), visible, region)
+                val fallbackSnapshot = snapshot.legacySnapshotOrNull() ?: return@getOrElse null
+                val fallbackMatch = fallback.findFirst(fallbackSnapshot, listOf(selectorText), visible, region)
                 attempted = attempted || fallbackMatch.attempted
                 if (fallbackMatch.node != null) return fallbackMatch
                 null
@@ -54,15 +69,25 @@ internal class GkdOfficialSelectorMatcher(
     }
 
     fun hasAny(root: AccessibilityNodeInfo, selectors: List<String>): Boolean {
+        return hasAny(snapshot(root), selectors)
+    }
+
+    fun hasAny(snapshot: GkdSelectorSnapshot, selectors: List<String>): Boolean {
         if (selectors.isEmpty()) return false
-        val nodeTree = GkdAccessibilityNodeTree(root)
         return selectors.any { rawSelector ->
             val selectorText = rawSelector.trim()
             if (selectorText.isBlank()) return@any false
             val selector = selector(selectorText)
-            if (selector == null) return@any fallback.hasAny(root, listOf(selectorText))
-            runCatching { querySelfOrSelectorAll(nodeTree.root, selector).firstOrNull() != null }
-                .getOrElse { fallback.hasAny(root, listOf(selectorText)) }
+            if (selector == null) {
+                val fallbackSnapshot = snapshot.legacySnapshotOrNull() ?: return@any false
+                return@any fallback.hasAny(fallbackSnapshot, listOf(selectorText))
+            }
+            val officialRoot = snapshot.officialRootOrNull() ?: return@any false
+            runCatching { querySelfOrSelectorAll(officialRoot, selector).firstOrNull() != null }
+                .getOrElse {
+                    val fallbackSnapshot = snapshot.legacySnapshotOrNull() ?: return@getOrElse false
+                    fallback.hasAny(fallbackSnapshot, listOf(selectorText))
+                }
         }
     }
 
@@ -186,6 +211,23 @@ internal class GkdOfficialSelectorMatcher(
             return id.subSequence(appId.length + prefix.length, id.length)
         }
     }
+}
+
+internal interface GkdSelectorSnapshot
+
+private class GkdSelectorSnapshotImpl(
+    root: AccessibilityNodeInfo,
+    val legacySnapshot: GkdLegacySelectorSnapshot
+) : GkdSelectorSnapshot {
+    val officialRoot: GkdAccessibilityNodeRef by lazy { GkdAccessibilityNodeTree(root).root }
+}
+
+private fun GkdSelectorSnapshot.officialRootOrNull(): GkdAccessibilityNodeRef? {
+    return (this as? GkdSelectorSnapshotImpl)?.officialRoot
+}
+
+private fun GkdSelectorSnapshot.legacySnapshotOrNull(): GkdLegacySelectorSnapshot? {
+    return (this as? GkdSelectorSnapshotImpl)?.legacySnapshot
 }
 
 private class GkdAccessibilityNodeTree(root: AccessibilityNodeInfo) {
