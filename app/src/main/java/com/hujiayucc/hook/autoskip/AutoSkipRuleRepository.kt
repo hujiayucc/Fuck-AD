@@ -7,31 +7,20 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 class AutoSkipRuleRepository(private val context: Context) {
     private val appContext = context.applicationContext
 
     fun rules(): List<AutoSkipRule> {
-        val disabled = AutoSkipSettings.disabledRuleIds(appContext)
-        val sources = AutoSkipSettings.sources(appContext)
-        val enabledSourceIds = sources.filter { it.enabled }.map { it.id }.toSet()
-        val merged = LinkedHashMap<String, AutoSkipRule>()
-        builtinRules().forEach { merged[it.id] = it }
-        AutoSkipSettings.subscriptionRules(appContext, sources)
-            .filterKeys { sourceId -> enabledSourceIds.contains(sourceId) }
-            .values
-            .flatten()
-            .forEach { merged[it.id] = it }
-        AutoSkipSettings.localRules(appContext).forEach { merged[it.id] = it }
-        return merged.values
-            .map { rule -> if (disabled.contains(rule.id)) rule.copy(enabled = false) else rule }
-            .sortedWith(compareByDescending<AutoSkipRule> { it.priority }.thenBy { it.name })
+        return snapshot().rules
     }
 
     fun executableRules(packageName: String, activity: String?): List<AutoSkipRule> {
-        return rules().filter { rule ->
-            rule.appliesTo(packageName, activity) && !isSensitivePackage(packageName) && !isSensitiveActivity(activity)
-        }
+        if (isSensitivePackage(packageName) || isSensitiveActivity(activity)) return emptyList()
+        val snapshot = snapshot()
+        return snapshot.rulesForPackage(packageName)
+            .filter { rule -> rule.appliesTo(packageName, activity) }
     }
 
     fun stats(): AutoSkipRuleStats {
@@ -275,6 +264,54 @@ class AutoSkipRuleRepository(private val context: Context) {
     fun clearSubscriptionCache() {
         AutoSkipSettings.clearSubscriptionRulesCache(appContext, AutoSkipSettings.sources(appContext))
         AutoSkipSettings.setLastUpdateTime(appContext, System.currentTimeMillis())
+    }
+
+    private fun snapshot(): RuleSnapshot {
+        val version = AutoSkipSettings.ruleDataVersion(appContext)
+        snapshotCache[version]?.let { return it }
+        val built = buildSnapshot(version)
+        snapshotCache.clear()
+        snapshotCache[version] = built
+        return built
+    }
+
+    private fun buildSnapshot(version: Int): RuleSnapshot {
+        val disabled = AutoSkipSettings.disabledRuleIds(appContext)
+        val sources = AutoSkipSettings.sources(appContext)
+        val enabledSourceIds = sources.filter { it.enabled }.map { it.id }.toSet()
+        val merged = LinkedHashMap<String, AutoSkipRule>()
+        builtinRules().forEach { merged[it.id] = it }
+        AutoSkipSettings.subscriptionRules(appContext, sources)
+            .filterKeys { sourceId -> enabledSourceIds.contains(sourceId) }
+            .values
+            .flatten()
+            .forEach { merged[it.id] = it }
+        AutoSkipSettings.localRules(appContext).forEach { merged[it.id] = it }
+        val orderedRules = merged.values
+            .map { rule -> if (disabled.contains(rule.id)) rule.copy(enabled = false) else rule }
+            .sortedWith(compareByDescending<AutoSkipRule> { it.priority }.thenBy { it.name })
+        return RuleSnapshot(version, orderedRules)
+    }
+
+    private class RuleSnapshot(
+        val version: Int,
+        val rules: List<AutoSkipRule>
+    ) {
+        private val globalRules = rules.filter { it.packageName == "*" }
+        private val byPackage = rules
+            .filter { it.packageName != "*" }
+            .groupBy { it.packageName }
+
+        fun rulesForPackage(packageName: String): List<AutoSkipRule> {
+            val packageRules = byPackage[packageName].orEmpty()
+            if (globalRules.isEmpty()) return packageRules
+            if (packageRules.isEmpty()) return globalRules
+            return packageRules + globalRules
+        }
+    }
+
+    private companion object {
+        private val snapshotCache = ConcurrentHashMap<Int, RuleSnapshot>()
     }
 
     private fun downloadRules(source: AutoSkipRuleSourceConfig): List<AutoSkipRule> {

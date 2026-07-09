@@ -82,6 +82,17 @@ object AutoSkipSettings {
         context.prefsBridge.edit().putString(KEY_DISABLED_RULE_IDS, JSONArray(disabled.sorted()).toString()).apply()
     }
 
+    fun ruleDataVersion(context: Context): Int {
+        val prefs = context.prefsBridge
+        return listOf(
+            prefs.getString(KEY_DISABLED_RULE_IDS, "").orEmpty(),
+            prefs.getString(KEY_SOURCES, "").orEmpty(),
+            prefs.getString(KEY_SUBSCRIPTION_RULES, "").orEmpty(),
+            prefs.getString(KEY_LOCAL_RULES, "").orEmpty(),
+            prefs.getLong(KEY_LAST_UPDATE_TIME, 0L).toString()
+        ).hashCode()
+    }
+
     fun sources(context: Context): List<AutoSkipRuleSourceConfig> {
         val json = context.prefsBridge.getString(KEY_SOURCES, "").orEmpty()
         if (json.isBlank()) return emptyList()
