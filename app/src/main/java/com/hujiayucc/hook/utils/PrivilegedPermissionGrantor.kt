@@ -36,6 +36,12 @@ object PrivilegedPermissionGrantor {
     private const val COMMAND_TIMEOUT_SECONDS = 5L
     @Volatile
     private var miuiInstalledAppsGrantedByShell = false
+    @Volatile
+    private var cachedUnsafeCheckOpNoThrowMethod: Method? = null
+    @Volatile
+    private var cachedCheckOpNoThrowMethod: Method? = null
+    @Volatile
+    private var cachedShizukuNewProcessMethod: Method? = null
 
     enum class GrantResult {
         GRANTED,
@@ -147,12 +153,7 @@ object PrivilegedPermissionGrantor {
     private fun queryIntAppOpModeByUnsafeCheck(context: Context, operation: Int): Int? {
         return runCatching {
             val appOps = context.getSystemService(AppOpsManager::class.java)
-            AppOpsManager::class.java.getDeclaredMethod(
-                "unsafeCheckOpNoThrow",
-                Integer.TYPE,
-                Integer.TYPE,
-                String::class.java
-            ).apply { isAccessible = true }
+            unsafeCheckOpNoThrowMethod()
                 .invoke(appOps, operation, AndroidProcess.myUid(), context.packageName) as Int
         }.getOrNull()
     }
@@ -160,14 +161,35 @@ object PrivilegedPermissionGrantor {
     private fun queryIntAppOpModeByCheck(context: Context, operation: Int): Int? {
         return runCatching {
             val appOps = context.getSystemService(AppOpsManager::class.java)
-            AppOpsManager::class.java.getDeclaredMethod(
+            checkOpNoThrowMethod()
+                .invoke(appOps, operation, AndroidProcess.myUid(), context.packageName) as Int
+        }.getOrNull()
+    }
+
+    private fun unsafeCheckOpNoThrowMethod(): Method {
+        cachedUnsafeCheckOpNoThrowMethod?.let { return it }
+        return synchronized(PrivilegedPermissionGrantor::class.java) {
+            cachedUnsafeCheckOpNoThrowMethod ?: AppOpsManager::class.java.getDeclaredMethod(
+                "unsafeCheckOpNoThrow",
+                Integer.TYPE,
+                Integer.TYPE,
+                String::class.java
+            ).apply { isAccessible = true }
+                .also { cachedUnsafeCheckOpNoThrowMethod = it }
+        }
+    }
+
+    private fun checkOpNoThrowMethod(): Method {
+        cachedCheckOpNoThrowMethod?.let { return it }
+        return synchronized(PrivilegedPermissionGrantor::class.java) {
+            cachedCheckOpNoThrowMethod ?: AppOpsManager::class.java.getDeclaredMethod(
                 "checkOpNoThrow",
                 Integer.TYPE,
                 Integer.TYPE,
                 String::class.java
             ).apply { isAccessible = true }
-                .invoke(appOps, operation, AndroidProcess.myUid(), context.packageName) as Int
-        }.getOrNull()
+                .also { cachedCheckOpNoThrowMethod = it }
+        }
     }
 
     private fun isMiuiInstalledAppsAppOpRequired(): Boolean {
@@ -298,12 +320,16 @@ object PrivilegedPermissionGrantor {
     }
 
     private fun shizukuNewProcessMethod(): Method {
-        return Shizuku::class.java.getDeclaredMethod(
-            "newProcess",
-            Array<String>::class.java,
-            Array<String>::class.java,
-            String::class.java
-        ).apply { isAccessible = true }
+        cachedShizukuNewProcessMethod?.let { return it }
+        return synchronized(PrivilegedPermissionGrantor::class.java) {
+            cachedShizukuNewProcessMethod ?: Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+                .also { cachedShizukuNewProcessMethod = it }
+        }
     }
 
     private fun Process.waitForSuccess(): Boolean {
