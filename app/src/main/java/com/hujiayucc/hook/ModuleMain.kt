@@ -18,7 +18,7 @@ class ModuleMain : XposedModule() {
         private const val TAG = "ModuleMain"
         private const val PREFS_NAME = "config"
 
-        val BUILTIN_HOOKERS = listOf(Loader, ClickInfo)
+        val BUILTIN_HOOKERS = listOf(Loader)
         val SDK_HOOKERS: List<Hooker> = SdkHookerRegistry.hookers
 
         @Volatile
@@ -66,7 +66,12 @@ class ModuleMain : XposedModule() {
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
         try {
             val appHookers = HookerRegistry.create(param.packageName)
-            (BUILTIN_HOOKERS + appHookers).forEach { it.call(param) }
+            val hookers = if (ClickInfo.isEnabled()) {
+                BUILTIN_HOOKERS + ClickInfo + appHookers
+            } else {
+                BUILTIN_HOOKERS + appHookers
+            }
+            hookers.forEach { it.call(param) }
             if (appHookers.isEmpty()) {
                 resolveSdkHookerTargets(param.packageName, param.classLoader).forEach { target ->
                     if (SdkHookerConfig.isEnabled(prefs, param.packageName, target.id)) {

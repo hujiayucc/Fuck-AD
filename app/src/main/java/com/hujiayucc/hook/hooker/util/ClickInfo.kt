@@ -15,6 +15,7 @@ object ClickInfo : Hooker() {
     private var lastClickUptime = 0L
 
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
+        if (!isEnabled()) return
         View::class.java.method("performClick")
             .hook {
                 before { handleClick(instance as View) }
@@ -34,6 +35,8 @@ object ClickInfo : Hooker() {
 
     val click: Boolean get() = ModuleMain.prefs.getBoolean("clickInfo", false)
     val stackTrack: Boolean get() = ModuleMain.prefs.getBoolean("stackTrack", false)
+
+    fun isEnabled(): Boolean = click || stackTrack
 
     private fun handleClick(view: View) {
         val shouldPrintInfo = click
