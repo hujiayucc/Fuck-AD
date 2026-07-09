@@ -310,10 +310,6 @@ class AutoSkipRuleRepository(private val context: Context) {
         }
     }
 
-    private companion object {
-        private val snapshotCache = ConcurrentHashMap<Int, RuleSnapshot>()
-    }
-
     private fun downloadRules(source: AutoSkipRuleSourceConfig): List<AutoSkipRule> {
         val connection = (URL(source.url).openConnection() as HttpURLConnection).apply {
             connectTimeout = NETWORK_TIMEOUT_MS
@@ -1130,6 +1126,7 @@ class AutoSkipRuleRepository(private val context: Context) {
         private const val MAX_PATTERN_LENGTH = 64
         private const val DEFAULT_EXTERNAL_COOLDOWN_MS = 3000L
         private const val MAX_SELECTOR_LENGTH = 512
+        private val snapshotCache = ConcurrentHashMap<Int, RuleSnapshot>()
         private val JSON5_KEY_PATTERN_REGEX = Regex("""(?m)^\s*[_A-Za-z$][_A-Za-z0-9$]*\s*:""")
         private val SANITIZE_RULE_ID_INVALID_REGEX = Regex("[^A-Za-z0-9_.-]")
         private val SANITIZE_RULE_ID_DOTS_REGEX = Regex("\\.+")

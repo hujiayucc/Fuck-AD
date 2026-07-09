@@ -17,9 +17,11 @@ import org.luckypray.dexkit.query.enums.StringMatchType
 object XiaoBaiRecord : Hooker() {
     private const val QUERY_FORCE_VIP = "force_vip"
     private const val QUERY_IS_LOGIN = "is_login"
+    private const val TARGET_PACKAGE = "com.xiaobai.screen.record"
 
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         val apkPath = applicationInfo.sourceDir
+        val targetClassLoader = classLoader ?: return
         val cachedMethods = listOf(
             cachedMethod(apkPath, QUERY_FORCE_VIP),
             cachedMethod(apkPath, QUERY_IS_LOGIN)
@@ -35,11 +37,11 @@ object XiaoBaiRecord : Hooker() {
         }
 
         DexKitBridge.create(apkPath).use { bridge ->
-            bridge.findForceVipMethod()?.also { method ->
+            bridge.findForceVipMethod(targetClassLoader)?.also { method ->
                 cacheMethod(apkPath, QUERY_FORCE_VIP, method)
                 method.hook { replaceTo(true) }
             }
-            bridge.findLoginMethod()?.also { method ->
+            bridge.findLoginMethod(targetClassLoader)?.also { method ->
                 cacheMethod(apkPath, QUERY_IS_LOGIN, method)
                 method.hook { replaceTo(true) }
             }
@@ -47,30 +49,30 @@ object XiaoBaiRecord : Hooker() {
     }
 
     private fun cachedMethod(apkPath: String, queryId: String): Method? {
-        return DexKitMethodCache.get(ModuleMain.prefs, packageName, apkPath, queryId, classLoader)
+        return DexKitMethodCache.get(ModuleMain.prefs, TARGET_PACKAGE, apkPath, queryId, classLoader ?: return null)
     }
 
     private fun cacheMethod(apkPath: String, queryId: String, method: Method) {
-        DexKitMethodCache.put(ModuleMain.prefs, packageName, apkPath, queryId, method)
+        DexKitMethodCache.put(ModuleMain.prefs, TARGET_PACKAGE, apkPath, queryId, method)
     }
 
-    private fun DexKitBridge.findForceVipMethod(): Method? {
+    private fun DexKitBridge.findForceVipMethod(targetClassLoader: ClassLoader): Method? {
         return findMethod {
             searchPackages("com.dream.era.global.cn.network")
             matcher {
                 returnType = "boolean"
                 addUsingString("key_debug_force_vip", StringMatchType.Equals)
             }
-        }.firstOrNull()?.getMethodInstance(classLoader)
+        }.firstOrNull()?.getMethodInstance(targetClassLoader)
     }
 
-    private fun DexKitBridge.findLoginMethod(): Method? {
+    private fun DexKitBridge.findLoginMethod(targetClassLoader: ClassLoader): Method? {
         return findMethod {
             searchPackages("com.dream.era.global.cn.keep")
             matcher {
                 name = "isLogin"
                 returnType = "boolean"
             }
-        }.firstOrNull()?.getMethodInstance(classLoader)
+        }.firstOrNull()?.getMethodInstance(targetClassLoader)
     }
 }
