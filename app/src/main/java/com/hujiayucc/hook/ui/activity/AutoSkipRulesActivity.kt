@@ -58,6 +58,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     private var filter = RuleFilter.ALL
     private var searchQuery = ""
     private var autoEnableAccessibilityInProgress = false
+    private var notificationPermissionRequestInProgress = false
     private var autoLoadSubscriptionsStarted = false
     private var refreshRulesRequestId = 0
     private var filterRulesRequestId = 0
@@ -196,14 +197,15 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         super.onResume()
         val autoSkipEnabled = AutoSkipSettings.isEnabled(this)
         val accessibilityEnabled = isAccessibilityServiceEnabled()
-        if (autoSkipEnabled) {
-            if (accessibilityEnabled) {
-                requestNotificationPermissionIfNeeded()
-            } else {
-                autoEnableAccessibilityServiceIfNeeded()
-            }
+        val canShowNotification = if (autoSkipEnabled || accessibilityEnabled) {
+            requestNotificationPermissionIfNeeded()
+        } else {
+            false
         }
-        if (accessibilityEnabled) {
+        if (autoSkipEnabled && !accessibilityEnabled) {
+            autoEnableAccessibilityServiceIfNeeded()
+        }
+        if (accessibilityEnabled && canShowNotification) {
             AutoSkipAccessibilityService.refreshRunningNotification(this)
         }
         ruleStats?.let { stats -> updateAccessibilityStatusAndStats(stats) } ?: refreshRules()
@@ -211,8 +213,11 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_POST_NOTIFICATIONS && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-            AutoSkipAccessibilityService.refreshRunningNotification(this)
+        if (requestCode == REQUEST_POST_NOTIFICATIONS) {
+            notificationPermissionRequestInProgress = false
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED && isAccessibilityServiceEnabled()) {
+                AutoSkipAccessibilityService.refreshRunningNotification(this)
+            }
         }
     }
 
@@ -407,10 +412,18 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         binding.accessibilityStatusChip.setChipIconResource(if (enabled) R.drawable.ic_success else R.drawable.ic_warn)
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
-        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_POST_NOTIFICATIONS)
+    private fun requestNotificationPermissionIfNeeded(): Boolean {
+        if (canPostNotifications()) return true
+        if (!notificationPermissionRequestInProgress) {
+            notificationPermissionRequestInProgress = true
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_POST_NOTIFICATIONS)
+        }
+        return false
+    }
+
+    private fun canPostNotifications(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun autoEnableAccessibilityServiceIfNeeded() {
@@ -457,7 +470,12 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         disposables.add(
             Observable.timer(800L, TimeUnit.MILLISECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe { refreshRules() }
+                .subscribe {
+                    if (isAccessibilityServiceEnabled() && canPostNotifications()) {
+                        AutoSkipAccessibilityService.refreshRunningNotification(this)
+                    }
+                    refreshRules()
+                }
         )
     }
 

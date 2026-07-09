@@ -1,11 +1,14 @@
 package com.hujiayucc.hook.ui.activity
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,12 +21,15 @@ import android.view.View
 import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Author
+import com.hujiayucc.hook.autoskip.AutoSkipAccessibilityService
+import com.hujiayucc.hook.autoskip.AutoSkipSettings
 import com.hujiayucc.hook.data.AppList
 import com.hujiayucc.hook.data.Data.prefsBridge
 import com.hujiayucc.hook.databinding.ActivityMainBinding
@@ -51,6 +57,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private var initialized = false
     private var appListLoading = false
     private var autoGrantInProgress = false
+    private var notificationPermissionRequestInProgress = false
     private var shizukuListenersRegistered = false
     private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
         if (requestCode == PrivilegedPermissionGrantor.SHIZUKU_PERMISSION_REQUEST_CODE) {
@@ -207,11 +214,21 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != REQUEST_QUERY_ALL_PACKAGES) return
-        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED || hasQueryAllPackagesPermission()) {
-            loadAppList()
-        } else {
-            showEssentialPermissionSettingsGuide()
+        when (requestCode) {
+            REQUEST_QUERY_ALL_PACKAGES -> {
+                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED || hasQueryAllPackagesPermission()) {
+                    loadAppList()
+                } else {
+                    showEssentialPermissionSettingsGuide()
+                }
+            }
+            REQUEST_AUTO_SKIP_POST_NOTIFICATIONS -> {
+                notificationPermissionRequestInProgress = false
+                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED && isAutoSkipAccessibilityServiceEnabled()) {
+                    AutoSkipAccessibilityService.refreshRunningNotification(this)
+                    scheduleAutoSkipNotificationRefresh()
+                }
+            }
         }
     }
 
@@ -275,6 +292,44 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     override fun onResume() {
         super.onResume()
         excludeFromRecent(false)
+        refreshAutoSkipNotificationIfNeeded()
+    }
+
+    private fun refreshAutoSkipNotificationIfNeeded() {
+        val accessibilityEnabled = isAutoSkipAccessibilityServiceEnabled()
+        if (!AutoSkipSettings.isEnabled(this) && !accessibilityEnabled) return
+        if (!requestAutoSkipNotificationPermissionIfNeeded()) return
+        if (accessibilityEnabled) {
+            AutoSkipAccessibilityService.refreshRunningNotification(this)
+            scheduleAutoSkipNotificationRefresh()
+        }
+    }
+
+    private fun requestAutoSkipNotificationPermissionIfNeeded(): Boolean {
+        if (canPostAutoSkipNotification()) return true
+        if (!notificationPermissionRequestInProgress) {
+            notificationPermissionRequestInProgress = true
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_AUTO_SKIP_POST_NOTIFICATIONS)
+        }
+        return false
+    }
+
+    private fun canPostAutoSkipNotification(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun scheduleAutoSkipNotificationRefresh() {
+        mainHandler.postDelayed({
+            if (isAutoSkipAccessibilityServiceEnabled() && canPostAutoSkipNotification()) {
+                AutoSkipAccessibilityService.refreshRunningNotification(this)
+            }
+        }, AUTO_SKIP_NOTIFICATION_REFRESH_DELAY_MS)
+    }
+
+    private fun isAutoSkipAccessibilityServiceEnabled(): Boolean {
+        val serviceName = ComponentName(this, AutoSkipAccessibilityService::class.java).flattenToString()
+        return PrivilegedPermissionGrantor.isAccessibilityServiceEnabled(this, serviceName)
     }
 
     private fun updateLanguageSelection(menu: Menu, languageTag: String) {
@@ -421,5 +476,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         const val TAG = "MainActivity"
         private const val LANGUAGE_PREF_KEY = "language"
         private const val REQUEST_QUERY_ALL_PACKAGES = 2601
+        private const val REQUEST_AUTO_SKIP_POST_NOTIFICATIONS = 2603
+        private const val AUTO_SKIP_NOTIFICATION_REFRESH_DELAY_MS = 800L
     }
 }
