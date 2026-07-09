@@ -19,6 +19,12 @@ object SdkHookerConfig {
     const val VUNGLE = "vungle"
     const val LEVELPLAY = "levelplay"
 
+    @Volatile
+    private var rawConfigCache: String? = null
+
+    @Volatile
+    private var rootConfigCache: JSONObject = JSONObject()
+
     val sdkNames = linkedMapOf(
         PANGLE to "穿山甲",
         GDT to "腾讯广告",
@@ -56,11 +62,15 @@ object SdkHookerConfig {
     }
 
     fun setEnabled(prefs: SharedPreferences, packageName: String, sdkId: String, enabled: Boolean) {
-        val root = rootConfig(prefs)
+        val root = JSONObject(rootConfig(prefs).toString())
         val packageConfig = root.optJSONObject(packageName) ?: JSONObject()
         packageConfig.put(sdkId, enabled)
         root.put(packageName, packageConfig)
         prefs.edit().putString(PREF_KEY, root.toString()).apply()
+        synchronized(this) {
+            rawConfigCache = null
+            rootConfigCache = JSONObject()
+        }
     }
 
     fun actionText(sdkIds: List<String>): String {
@@ -77,8 +87,24 @@ object SdkHookerConfig {
     }
 
     private fun rootConfig(prefs: SharedPreferences): JSONObject {
-        val config = prefs.getString(PREF_KEY, "")
-        if (config.isNullOrEmpty()) return JSONObject()
+        val config = prefs.getString(PREF_KEY, "").orEmpty()
+        rawConfigCache?.let { cachedRaw ->
+            if (cachedRaw == config) return rootConfigCache
+        }
+        return synchronized(this) {
+            if (rawConfigCache == config) {
+                rootConfigCache
+            } else {
+                parseRootConfig(config).also { parsed ->
+                    rawConfigCache = config
+                    rootConfigCache = parsed
+                }
+            }
+        }
+    }
+
+    private fun parseRootConfig(config: String): JSONObject {
+        if (config.isEmpty()) return JSONObject()
         return runCatching { JSONObject(config) }.getOrDefault(JSONObject())
     }
 }
