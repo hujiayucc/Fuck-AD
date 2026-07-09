@@ -135,12 +135,16 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
     }
 
     private fun shizukuNewProcessMethod(): Method {
-        return Shizuku::class.java.getDeclaredMethod(
-            "newProcess",
-            Array<String>::class.java,
-            Array<String>::class.java,
-            String::class.java
-        ).apply { isAccessible = true }
+        cachedShizukuNewProcessMethod?.let { return it }
+        return synchronized(AutoSkipClickExecutor::class.java) {
+            cachedShizukuNewProcessMethod ?: Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+                .also { cachedShizukuNewProcessMethod = it }
+        }
     }
 
     private fun Process.waitForSuccess(): Boolean {
@@ -153,6 +157,9 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
     }
 
     companion object {
+        @Volatile
+        private var cachedShizukuNewProcessMethod: Method? = null
+
         private const val TAP_DURATION_MS = 80L
         private const val GESTURE_TIMEOUT_MS = 600L
         private const val COMMAND_TIMEOUT_SECONDS = 2L
