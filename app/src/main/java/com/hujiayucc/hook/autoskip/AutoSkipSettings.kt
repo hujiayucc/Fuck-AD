@@ -18,6 +18,12 @@ object AutoSkipSettings {
     private const val KEY_HIT_LOGS = "autoSkipHitLogs"
     private const val KEY_LAST_UPDATE_TIME = "autoSkipLastUpdateTime"
 
+    @Volatile
+    private var enabledPackagesRawCache: String? = null
+
+    @Volatile
+    private var enabledPackagesCache: Set<String> = emptySet()
+
     fun isEnabled(context: Context): Boolean {
         return context.prefsBridge.getBoolean(KEY_ENABLED, false)
     }
@@ -43,7 +49,20 @@ object AutoSkipSettings {
     }
 
     fun enabledPackages(context: Context): Set<String> {
-        return readStringSet(context.prefsBridge.getString(KEY_ENABLED_PACKAGES, ""))
+        val raw = context.prefsBridge.getString(KEY_ENABLED_PACKAGES, "").orEmpty()
+        enabledPackagesRawCache?.let { cachedRaw ->
+            if (cachedRaw == raw) return enabledPackagesCache
+        }
+        return synchronized(this) {
+            if (enabledPackagesRawCache == raw) {
+                enabledPackagesCache
+            } else {
+                readStringSet(raw).also { packages ->
+                    enabledPackagesRawCache = raw
+                    enabledPackagesCache = packages
+                }
+            }
+        }
     }
 
     fun isAppEnabled(context: Context, packageName: String): Boolean {
