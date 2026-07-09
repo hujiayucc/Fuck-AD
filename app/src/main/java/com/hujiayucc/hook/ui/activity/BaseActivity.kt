@@ -5,7 +5,6 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Outline
-import android.graphics.Path
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -27,21 +26,13 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
     private var previousPagePreview: ImageView? = null
     private var backTargetOriginalClipToOutline: Boolean? = null
     private var backTargetOriginalOutlineProvider: ViewOutlineProvider? = null
-    private val topRoundedCornerProvider by lazy {
+    private var backTargetOriginalElevation: Float? = null
+    private var backTargetOriginalTranslationZ: Float? = null
+    private val backRoundedCornerProvider by lazy {
         object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
-                val radius = TOP_CORNER_RADIUS_DP * resources.displayMetrics.density
-                val path = Path().apply {
-                    addRoundRect(
-                        0f,
-                        0f,
-                        view.width.toFloat(),
-                        view.height.toFloat() + radius,
-                        floatArrayOf(radius, radius, radius, radius, 0f, 0f, 0f, 0f),
-                        Path.Direction.CW
-                    )
-                }
-                outline.setPath(path)
+                val radius = BACK_CORNER_RADIUS_DP * resources.displayMetrics.density
+                outline.setRoundRect(0, 0, view.width, view.height, radius)
             }
         }
     }
@@ -221,7 +212,7 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
 
     private fun applyBackAnimation(progress: Float) {
         val target = backAnimationTarget() ?: return
-        if (this is MainActivity) applyTopRoundedCorners(target)
+        applyBackRoundedCorners(target)
         val easedProgress = easeBackProgress(progress.coerceIn(0f, 1f))
         target.animate().cancel()
         applyBackAnimationValues(target, backAnimationValues(target, easedProgress))
@@ -280,7 +271,7 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
     }
 
     private fun animateBackAnimation(target: View, progress: Float, duration: Long, onEnd: () -> Unit) {
-        if (this is MainActivity) applyTopRoundedCorners(target)
+        applyBackRoundedCorners(target)
         val easedProgress = easeBackProgress(progress.coerceIn(0f, 1f))
         val values = backAnimationValues(target, easedProgress)
         target.animate().cancel()
@@ -308,23 +299,31 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
         target.alpha = values.alpha
     }
 
-    private fun applyTopRoundedCorners(target: View) {
+    private fun applyBackRoundedCorners(target: View) {
         if (backTargetOriginalClipToOutline == null) {
             backTargetOriginalClipToOutline = target.clipToOutline
             backTargetOriginalOutlineProvider = target.outlineProvider
+            backTargetOriginalElevation = target.elevation
+            backTargetOriginalTranslationZ = target.translationZ
         }
-        target.outlineProvider = topRoundedCornerProvider
+        target.outlineProvider = backRoundedCornerProvider
         target.clipToOutline = true
+        target.elevation = BACK_CARD_ELEVATION_DP * resources.displayMetrics.density
+        target.translationZ = BACK_CARD_TRANSLATION_Z_DP * resources.displayMetrics.density
         target.invalidateOutline()
     }
 
-    private fun restoreTopRoundedCorners(target: View) {
+    private fun restoreBackRoundedCorners(target: View) {
         val clipToOutline = backTargetOriginalClipToOutline ?: return
         target.clipToOutline = clipToOutline
         target.outlineProvider = backTargetOriginalOutlineProvider
+        target.elevation = backTargetOriginalElevation ?: target.elevation
+        target.translationZ = backTargetOriginalTranslationZ ?: target.translationZ
         target.invalidateOutline()
         backTargetOriginalClipToOutline = null
         backTargetOriginalOutlineProvider = null
+        backTargetOriginalElevation = null
+        backTargetOriginalTranslationZ = null
     }
 
     private fun backAnimationValues(target: View, progress: Float): BackAnimationValues {
@@ -378,7 +377,7 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
                 .setDuration(BACK_CANCEL_ANIMATION_DURATION_MS)
                 .setInterpolator(backAnimationInterpolator)
                 .withEndAction {
-                    restoreTopRoundedCorners(target)
+                    restoreBackRoundedCorners(target)
                     onEnd?.invoke()
                 }
                 .start()
@@ -388,7 +387,7 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
             target.scaleX = 1f
             target.scaleY = 1f
             target.alpha = 1f
-            restoreTopRoundedCorners(target)
+            restoreBackRoundedCorners(target)
             onEnd?.invoke()
         }
     }
@@ -520,7 +519,9 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
         private const val CARD_HORIZONTAL_SCALE_MULTIPLIER = 2.85f
         private const val CARD_SCALE_DELTA = 0.32f
         private const val CARD_ALPHA_DELTA = 0.18f
-        private const val TOP_CORNER_RADIUS_DP = 24f
+        private const val BACK_CORNER_RADIUS_DP = 50f
+        private const val BACK_CARD_ELEVATION_DP = 18f
+        private const val BACK_CARD_TRANSLATION_Z_DP = 18f
         private const val PAGE_TRANSLATION_RATIO = 1.0f
         private const val PAGE_ALPHA_DELTA = 0f
         private const val PREVIOUS_PAGE_OFFSET_RATIO = 0.36f
