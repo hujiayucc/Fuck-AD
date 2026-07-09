@@ -19,16 +19,19 @@ class AutoSkipEngine(private val service: AccessibilityService) {
     private val evaluating = AtomicBoolean(false)
     private val lastRuleClickAt = HashMap<String, Long>()
     private val lastAppClickAt = HashMap<String, Long>()
+    private var lastEventKey = ""
     private var lastEventAt = 0L
 
     fun onAccessibilityEvent(event: AccessibilityEvent) {
         val packageName = event.packageName?.toString().orEmpty()
         if (!shouldProcessPackage(packageName)) return
         if (!isSupportedEvent(event.eventType)) return
-        val now = SystemClock.uptimeMillis()
-        if (now - lastEventAt < MIN_EVENT_INTERVAL_MS) return
-        lastEventAt = now
         val activity = event.className?.toString().orEmpty()
+        val now = SystemClock.uptimeMillis()
+        val eventKey = "$packageName|$activity|${event.eventType}"
+        if (eventKey == lastEventKey && now - lastEventAt < MIN_EVENT_INTERVAL_MS) return
+        lastEventKey = eventKey
+        lastEventAt = now
         if (!evaluating.compareAndSet(false, true)) return
         executor.execute {
             evaluate(packageName, activity)
