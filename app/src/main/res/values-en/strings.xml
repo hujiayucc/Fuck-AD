@@ -16,7 +16,7 @@
 
     <!-- Permission refusal tip -->
     <string name="permission_denied_forever_title">Permission permanently denied</string>
-    <string name="permission_denied_forever_message">Please manually enable permissions in the settings: \n Settings → Application → This Application → Special Permissions</string>
+    <string name="permission_denied_forever_message">All automatic authorization methods failed. You can grant Shizuku or root access and try again, or manually enable the permission in system settings: \n Settings -> Apps -> This app -> Special permissions</string>
 
     <!-- Function restriction tip -->
     <string name="function_limited_title">Limited functionality</string>

@@ -16,7 +16,7 @@
 
     <!-- 權限拒絕提示 -->
     <string name="permission_denied_forever_title">權限被永久拒絕</string>
-    <string name="permission_denied_forever_message">請到設定中手動開啟權限：\n設定 → 應用 → 本應用 → 特殊權限</string>
+    <string name="permission_denied_forever_message">Shizuku、root、系統權限申請都未能完成授權。你可以先授權 Shizuku 或 root 後重試，也可以到系統設定中手動開啟權限：\n設定 -> 應用 -> 本應用 -> 特殊權限</string>
 
     <!-- 功能受限提示 -->
     <string name="function_limited_title">功能受限</string>

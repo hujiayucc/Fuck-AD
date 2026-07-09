@@ -167,8 +167,22 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
 
             else -> {
                 autoGrantInProgress = false
-                showMessage(getString(R.string.permission_denied_forever_message))
+                if (!PrivilegedPermissionGrantor.requestQueryAllPackagesBySystemApi(this, REQUEST_QUERY_ALL_PACKAGES)) {
+                    showMessage(getString(R.string.permission_denied_forever_message))
+                }
             }
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_QUERY_ALL_PACKAGES) return
+        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED ||
+            PrivilegedPermissionGrantor.hasQueryAllPackages(this)
+        ) {
+            loadSdkItems()
+        } else {
+            showMessage(getString(R.string.permission_denied_forever_message))
         }
     }
 
@@ -650,5 +664,6 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
         private const val PREF_SDK_SCAN_SIGNATURE = "sdkScanSignature"
         private const val PREF_SDK_LABEL_LANGUAGE = "sdkLabelLanguage"
         private const val PREF_SDK_CACHE_UPDATED_AT = "sdkCacheUpdatedAt"
+        private const val REQUEST_QUERY_ALL_PACKAGES = 2603
     }
 }

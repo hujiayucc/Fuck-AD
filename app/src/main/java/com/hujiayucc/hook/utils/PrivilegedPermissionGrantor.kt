@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.utils
 
 import android.Manifest
+import android.app.Activity
 import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Context
@@ -111,6 +112,14 @@ object PrivilegedPermissionGrantor {
 
     fun canQueryAllPackages(context: Context): Boolean {
         return hasQueryAllPackages(context)
+    }
+
+    fun requestQueryAllPackagesBySystemApi(activity: Activity, requestCode: Int): Boolean {
+        if (hasQueryAllPackages(activity)) return false
+        return runCatching {
+            activity.requestPermissions(arrayOf(Manifest.permission.QUERY_ALL_PACKAGES), requestCode)
+            true
+        }.getOrDefault(false)
     }
 
     private fun hasQueryAllPackagesPermission(context: Context): Boolean {

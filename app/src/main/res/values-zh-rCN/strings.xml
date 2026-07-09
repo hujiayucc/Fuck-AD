@@ -16,7 +16,7 @@
 
     <!-- 权限拒绝提示 -->
     <string name="permission_denied_forever_title">权限被永久拒绝</string>
-    <string name="permission_denied_forever_message">请到设置中手动开启权限：\n设置 → 应用 → 本应用 → 特殊权限</string>
+    <string name="permission_denied_forever_message">Shizuku、root、系统权限申请都未能完成授权。你可以先授权 Shizuku 或 root 后重试，也可以到系统设置中手动开启权限：\n设置 -> 应用 -> 本应用 -> 特殊权限</string>
 
     <!-- 功能受限提示 -->
     <string name="function_limited_title">功能受限</string>

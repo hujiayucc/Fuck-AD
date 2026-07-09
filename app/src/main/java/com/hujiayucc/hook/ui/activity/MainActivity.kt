@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -197,8 +198,20 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
             else -> {
                 autoGrantInProgress = false
-                showEssentialPermissionSettingsGuide()
+                if (!PrivilegedPermissionGrantor.requestQueryAllPackagesBySystemApi(this, REQUEST_QUERY_ALL_PACKAGES)) {
+                    showEssentialPermissionSettingsGuide()
+                }
             }
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_QUERY_ALL_PACKAGES) return
+        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED || hasQueryAllPackagesPermission()) {
+            loadAppList()
+        } else {
+            showEssentialPermissionSettingsGuide()
         }
     }
 
@@ -407,5 +420,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     companion object {
         const val TAG = "MainActivity"
         private const val LANGUAGE_PREF_KEY = "language"
+        private const val REQUEST_QUERY_ALL_PACKAGES = 2601
     }
 }
