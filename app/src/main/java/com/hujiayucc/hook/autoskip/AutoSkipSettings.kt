@@ -3,6 +3,9 @@ package com.hujiayucc.hook.autoskip
 import android.content.Context
 import com.hujiayucc.hook.data.Data.prefsBridge
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -23,6 +26,15 @@ object AutoSkipSettings {
 
     @Volatile
     private var enabledPackagesCache: Set<String> = emptySet()
+
+    private val hitLogLock = Any()
+    private val hitLogExecutor = Executors.newSingleThreadScheduledExecutor { task ->
+        Thread(task, "AutoSkipHitLogWriter").apply { isDaemon = true }
+    }
+    private val pendingHitLogs = ArrayList<AutoSkipHitLog>()
+    private var pendingHitLogContext: Context? = null
+    private var scheduledHitLogFlush: ScheduledFuture<*>? = null
+    private var hitLogGeneration = 0L
 
     fun isEnabled(context: Context): Boolean {
         return context.prefsBridge.getBoolean(KEY_ENABLED, false)
@@ -212,6 +224,60 @@ object AutoSkipSettings {
     }
 
     fun hitLogs(context: Context): List<AutoSkipHitLog> {
+        val stored = readHitLogs(context)
+        val pending = synchronized(hitLogLock) { pendingHitLogs.toList() }
+        if (pending.isEmpty()) return stored
+        return (pending.asReversed() + stored).take(MAX_LOG_COUNT)
+    }
+
+    fun recordHit(context: Context, log: AutoSkipHitLog) {
+        synchronized(hitLogLock) {
+            pendingHitLogs.add(log)
+            if (pendingHitLogs.size > MAX_PENDING_LOG_COUNT) {
+                pendingHitLogs.removeAt(0)
+            }
+            pendingHitLogContext = context.applicationContext
+            if (scheduledHitLogFlush?.isDone != false) {
+                val generation = hitLogGeneration
+                scheduledHitLogFlush = hitLogExecutor.schedule(
+                    { flushPendingHitLogs(generation) },
+                    HIT_LOG_FLUSH_DELAY_MS,
+                    TimeUnit.MILLISECONDS
+                )
+            }
+        }
+    }
+
+    fun clearHitLogs(context: Context) {
+        synchronized(hitLogLock) {
+            pendingHitLogs.clear()
+            hitLogGeneration += 1
+            scheduledHitLogFlush?.cancel(false)
+            scheduledHitLogFlush = null
+            pendingHitLogContext = null
+        }
+        context.prefsBridge.edit().remove(KEY_HIT_LOGS).apply()
+    }
+
+    private fun flushPendingHitLogs(expectedGeneration: Long) {
+        val context: Context
+        val pending: List<AutoSkipHitLog>
+        synchronized(hitLogLock) {
+            if (expectedGeneration != hitLogGeneration) return
+            context = pendingHitLogContext ?: return
+            if (pendingHitLogs.isEmpty()) return
+            pending = pendingHitLogs.toList()
+            pendingHitLogs.clear()
+            scheduledHitLogFlush = null
+        }
+        val logs = (pending.asReversed() + readHitLogs(context)).take(MAX_LOG_COUNT)
+        synchronized(hitLogLock) {
+            if (expectedGeneration != hitLogGeneration) return
+            writeHitLogs(context, logs)
+        }
+    }
+
+    private fun readHitLogs(context: Context): List<AutoSkipHitLog> {
         val json = context.prefsBridge.getString(KEY_HIT_LOGS, "").orEmpty()
         if (json.isBlank()) return emptyList()
         return runCatching {
@@ -224,17 +290,10 @@ object AutoSkipSettings {
         }.getOrDefault(emptyList())
     }
 
-    fun recordHit(context: Context, log: AutoSkipHitLog) {
-        val logs = ArrayList<AutoSkipHitLog>()
-        logs.add(log)
-        logs.addAll(hitLogs(context).take(MAX_LOG_COUNT - 1))
+    private fun writeHitLogs(context: Context, logs: List<AutoSkipHitLog>) {
         val arr = JSONArray()
-        logs.forEach { arr.put(it.toJson()) }
+        logs.take(MAX_LOG_COUNT).forEach { arr.put(it.toJson()) }
         context.prefsBridge.edit().putString(KEY_HIT_LOGS, arr.toString()).apply()
-    }
-
-    fun clearHitLogs(context: Context) {
-        context.prefsBridge.edit().remove(KEY_HIT_LOGS).apply()
     }
 
     private fun legacySubscriptionRules(context: Context): Map<String, List<AutoSkipRule>> {
@@ -389,6 +448,8 @@ object AutoSkipSettings {
     }
 
     private const val MAX_LOG_COUNT = 80
+    private const val MAX_PENDING_LOG_COUNT = 80
+    private const val HIT_LOG_FLUSH_DELAY_MS = 750L
     private const val CACHE_DIR = "auto_skip"
     private const val SUBSCRIPTION_RULES_FILE = "subscription_rules.json"
 }
