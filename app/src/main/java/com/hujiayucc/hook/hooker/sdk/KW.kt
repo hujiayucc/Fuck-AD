@@ -151,7 +151,7 @@ object KW : Hooker() {
             }
 
         "com.kwad.components.ad.splashscreen.widget.CircleSkipView".toClassOrNull()
-            ?.declaredMethods?.hook {
+            ?.cachedDeclaredMethods()?.hook {
                 after {
                     val view = instance<View>()
                     runMain { view.performClick() }

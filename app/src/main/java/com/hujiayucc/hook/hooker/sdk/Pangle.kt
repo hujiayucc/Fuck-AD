@@ -68,7 +68,7 @@ object Pangle : Hooker() {
             ?.hookMethods("init", "start", "isInitSuccess", "isSdkReady")
 
         "com.bytedance.sdk.openadsdk.core.component.splash.countdown.TTCountdownViewForCircle".toClassOrNull()
-            ?.declaredMethods?.hook {
+            ?.cachedDeclaredMethods()?.hook {
                 after {
                     (chain.thisObject as? View)?.performClick()
                 }

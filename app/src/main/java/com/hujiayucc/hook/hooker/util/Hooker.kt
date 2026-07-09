@@ -160,7 +160,7 @@ abstract class Hooker {
         private fun installLoadedApkHook() {
             runCatching {
                 val loadedApkClass = Class.forName("android.app.LoadedApk")
-                loadedApkClass.declaredMethods
+                loadedApkClass.cachedDeclaredMethods()
                     .filter { method ->
                         method.name == "makeApplication" &&
                             Application::class.java.isAssignableFrom(method.returnType)
