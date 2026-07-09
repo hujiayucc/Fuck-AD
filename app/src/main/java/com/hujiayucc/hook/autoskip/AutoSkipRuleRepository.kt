@@ -683,7 +683,7 @@ class AutoSkipRuleRepository(private val context: Context) {
     private fun looksLikeJson5(value: String): Boolean {
         val trimmed = value.trimStart()
         if (trimmed.startsWith("{") || trimmed.startsWith("[")) return true
-        return Regex("""(?m)^\s*[_A-Za-z$][_A-Za-z0-9$]*\s*:""").containsMatchIn(value)
+        return JSON5_KEY_PATTERN_REGEX.containsMatchIn(value)
     }
 
     private fun stripJson5Comments(value: String): String {
@@ -1009,8 +1009,8 @@ class AutoSkipRuleRepository(private val context: Context) {
     }
 
     private fun sanitizeRuleId(value: String): String {
-        return value.replace(Regex("[^A-Za-z0-9_.-]"), ".")
-            .replace(Regex("\\.+"), ".")
+        return value.replace(SANITIZE_RULE_ID_INVALID_REGEX, ".")
+            .replace(SANITIZE_RULE_ID_DOTS_REGEX, ".")
             .trim('.')
             .take(160)
             .ifBlank { "rule.${System.currentTimeMillis()}" }
@@ -1130,6 +1130,9 @@ class AutoSkipRuleRepository(private val context: Context) {
         private const val MAX_PATTERN_LENGTH = 64
         private const val DEFAULT_EXTERNAL_COOLDOWN_MS = 3000L
         private const val MAX_SELECTOR_LENGTH = 512
+        private val JSON5_KEY_PATTERN_REGEX = Regex("""(?m)^\s*[_A-Za-z$][_A-Za-z0-9$]*\s*:""")
+        private val SANITIZE_RULE_ID_INVALID_REGEX = Regex("[^A-Za-z0-9_.-]")
+        private val SANITIZE_RULE_ID_DOTS_REGEX = Regex("\\.+")
         private val GKD_CLASS_SELECTOR_REGEX = Regex("""@?\*|@?[A-Za-z_][A-Za-z0-9_$.]*""")
         private val TEXT_SELECTOR_REGEX = Regex("""(?:text|textMatches|textStartsWith|textEndsWith)\s*(?:==|=|\*=|\^=|~=)?\s*[\"']([^\"']{1,64})[\"']""", RegexOption.IGNORE_CASE)
         private val DESC_SELECTOR_REGEX = Regex("""(?:desc|description|contentDescription)\s*(?:==|=|\*=|\^=|~=)?\s*[\"']([^\"']{1,64})[\"']""", RegexOption.IGNORE_CASE)

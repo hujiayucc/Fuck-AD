@@ -12,6 +12,8 @@ import io.github.libxposed.api.XposedModuleInterface
     action = "开屏广告, 信息流广告"
 )
 object TieBa : Hooker() {
+    private val skipCountdownRegex = Regex("^跳过(.*)\\d$")
+
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         "com.baidu.sdk.container.widget.RectangleCountDownView".toClassOrNull()
             ?.methodOrNull("onDraw")
@@ -19,8 +21,7 @@ object TieBa : Hooker() {
                 after {
                     val textView = instance as? TextView ?: return@after
                     val text = textView.text.toString()
-                    val regex = Regex("^跳过(.*)\\d$")
-                    if (regex.matches(text)) {
+                    if (skipCountdownRegex.matches(text)) {
                         textView.performClick()
                     }
                 }
