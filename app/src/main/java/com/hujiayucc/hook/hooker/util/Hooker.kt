@@ -28,6 +28,7 @@ import dalvik.system.BaseDexClassLoader
 abstract class Hooker {
     companion object {
         private val installedHookKeys = ConcurrentHashMap.newKeySet<String>()
+        private val completedHookerKeys = ConcurrentHashMap.newKeySet<String>()
     }
 
     private object UnsetResult
@@ -51,7 +52,7 @@ abstract class Hooker {
             return
         }
 
-        param.runHook()
+        param.runHookOnce()
     }
 
     internal fun callWithClassLoader(
@@ -60,7 +61,7 @@ abstract class Hooker {
     ) {
         classLoader = loader ?: param.classLoader
         readHookMetadata()
-        param.runHook()
+        param.runHookOnce()
     }
 
     private fun readHookMetadata(): Boolean {
@@ -285,6 +286,15 @@ abstract class Hooker {
         }
     }
 
+    fun XposedModuleInterface.PackageReadyParam.runHookOnce() {
+        val installKey = hookerInstallKey()
+        if (!completedHookerKeys.add(installKey)) {
+            logHookDebug("Skip completed hooker: $appName")
+            return
+        }
+        runHook()
+    }
+
     fun XposedModuleInterface.PackageReadyParam.runHook() {
         runCatching {
             onPackageReady()
@@ -292,8 +302,15 @@ abstract class Hooker {
             runCatching { module.log(Log.INFO, "Fuck AD", "$appName => $action") }
             logHookHandleSummary()
         }.onFailure { error ->
+            completedHookerKeys.remove(hookerInstallKey())
             logHookError("Failed to run ${this@Hooker.javaClass.name} for $appName => $action", error)
         }
+    }
+
+    private fun hookerInstallKey(): String {
+        val loader = classLoader
+        val loaderId = loader?.let { System.identityHashCode(it).toString() } ?: "boot"
+        return "${this@Hooker.javaClass.name}|$loaderId"
     }
 
     @Throws(ClassNotFoundException::class)
