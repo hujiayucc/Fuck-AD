@@ -61,7 +61,7 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         if (match.rule.delayMs > 0L) {
             return scheduleDelayedClick(activePackageName, activity, matcher, match.rule, match.rule.delayMs)
         }
-        clickIfStillMatched(activePackageName, activity, matcher, match.rule)
+        clickMatched(activePackageName, activity, matcher, match)
         return true
     }
 
@@ -98,17 +98,26 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         val refreshedPackageName = activePackageName(refreshedRoot, activePackageName)
         if (refreshedPackageName != activePackageName || !shouldProcessPackage(refreshedPackageName)) return
         val refreshedMatch = matcher.findMatch(refreshedRoot, listOf(rule)) ?: return
+        clickMatched(activePackageName, activity, matcher, refreshedMatch)
+    }
+
+    private fun clickMatched(
+        activePackageName: String,
+        activity: String,
+        matcher: AutoSkipRuleMatcher,
+        match: AutoSkipMatchResult
+    ) {
         val result = clickExecutor.execute(
-            refreshedMatch.rule,
-            refreshedMatch.node,
-            refreshedMatch.points
+            match.rule,
+            match.node,
+            match.points
         ) {
-            verifyClickResult(matcher, refreshedMatch.rule, refreshedPackageName)
+            verifyClickResult(matcher, match.rule, activePackageName)
         }
         val now = SystemClock.uptimeMillis()
         if (result.success) {
             lastAppClickAt[activePackageName] = now
-            lastRuleClickAt[refreshedMatch.rule.id] = now
+            lastRuleClickAt[match.rule.id] = now
         }
         AutoSkipSettings.recordHit(
             appContext,
@@ -116,8 +125,8 @@ class AutoSkipEngine(private val service: AccessibilityService) {
                 time = System.currentTimeMillis(),
                 packageName = activePackageName,
                 activity = activity,
-                ruleId = refreshedMatch.rule.id,
-                ruleName = refreshedMatch.rule.name,
+                ruleId = match.rule.id,
+                ruleName = match.rule.name,
                 executor = result.executor,
                 x = result.point?.x ?: 0,
                 y = result.point?.y ?: 0,
