@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.ui.activity
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
@@ -176,6 +177,19 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
+    }
+
+    override fun finish() {
+        if (isTaskRoot) excludeCurrentTaskFromRecents()
+        super.finish()
+    }
+
+    private fun excludeCurrentTaskFromRecents() {
+        runCatching {
+            val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            manager.appTasks.firstOrNull { task -> task.taskInfo?.taskId == taskId }
+                ?.setExcludeFromRecents(true)
+        }
     }
 
     override fun onResume() {
