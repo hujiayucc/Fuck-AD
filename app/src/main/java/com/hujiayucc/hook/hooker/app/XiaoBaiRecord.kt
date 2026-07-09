@@ -1,5 +1,6 @@
 package com.hujiayucc.hook.hooker.app
 
+import com.hujiayucc.hook.ModuleMain
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.hooker.util.Hooker
 import io.github.libxposed.api.XposedModuleInterface
@@ -13,6 +14,11 @@ import org.luckypray.dexkit.query.enums.StringMatchType
 )
 object XiaoBaiRecord : Hooker() {
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
+        if (!ModuleMain.ensureDexKitLoaded()) {
+            logHookDebug("Skip $appName because DexKit native library is unavailable")
+            return
+        }
+
         DexKitBridge.create(applicationInfo.sourceDir).use { bridge ->
             // 设置会员
             bridge.findMethod {

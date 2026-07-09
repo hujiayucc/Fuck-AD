@@ -21,10 +21,15 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.Executable
 import java.lang.reflect.Method
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import dalvik.system.BaseDexClassLoader
 
 @Suppress("UNCHECKED_CAST")
 abstract class Hooker {
+    companion object {
+        private val installedHookKeys = ConcurrentHashMap.newKeySet<String>()
+    }
+
     private object UnsetResult
 
     private val hookHandles = Collections.synchronizedList(mutableListOf<RegisteredHook>())
@@ -379,118 +384,135 @@ abstract class Hooker {
     }
 
     private fun Executable.hookInternal(dsl: HookDsl) {
-        val handle = module.hook(this).intercept { hookChain ->
-            var currentResult: Any? = UnsetResult
-            var originalExecuted = false
+        val installKey = hookInstallKey()
+        if (!installedHookKeys.add(installKey)) {
+            logHookDebug("Skip duplicate hook: ${toGenericString()}")
+            return
+        }
 
-            fun currentResultOrNull(): Any? {
-                return if (currentResult === UnsetResult) null else currentResult
-            }
+        try {
+            val handle = module.hook(this).intercept { hookChain ->
+                var currentResult: Any? = UnsetResult
+                var originalExecuted = false
 
-            fun proceedOriginalWithNonNull(thisObject: Any, args: Array<Any?>): Any? {
-                if (originalExecuted) {
-                    logHookError(
-                        "Original method already proceeded: ${toGenericString()}",
-                        IllegalStateException("Use HookCallback.result instead of proceeding twice.")
-                    )
-                    return currentResultOrNull()
+                fun currentResultOrNull(): Any? {
+                    return if (currentResult === UnsetResult) null else currentResult
                 }
-                originalExecuted = true
-                val proceededResult = hookChain.proceedWith(thisObject, args)
-                currentResult = proceededResult
-                return proceededResult
-            }
 
-            fun proceedOriginalWith(thisObject: Any?, args: Array<Any?>): Any? {
-                if (thisObject == null) {
-                    logHookError(
-                        "Cannot proceed with null thisObject: ${toGenericString()}",
-                        IllegalArgumentException("thisObject must be non-null for proceedWith.")
-                    )
-                    return currentResultOrNull()
+                fun proceedOriginalWithNonNull(thisObject: Any, args: Array<Any?>): Any? {
+                    if (originalExecuted) {
+                        logHookError(
+                            "Original method already proceeded: ${toGenericString()}",
+                            IllegalStateException("Use HookCallback.result instead of proceeding twice.")
+                        )
+                        return currentResultOrNull()
+                    }
+                    originalExecuted = true
+                    val proceededResult = hookChain.proceedWith(thisObject, args)
+                    currentResult = proceededResult
+                    return proceededResult
                 }
-                return proceedOriginalWithNonNull(thisObject, args)
-            }
 
-            fun proceedOriginal(args: Array<Any?>? = null): Any? {
-                if (originalExecuted) {
-                    logHookError(
-                        "Original method already proceeded: ${toGenericString()}",
-                        IllegalStateException("Use HookCallback.result instead of proceeding twice.")
-                    )
-                    return currentResultOrNull()
+                fun proceedOriginalWith(thisObject: Any?, args: Array<Any?>): Any? {
+                    if (thisObject == null) {
+                        logHookError(
+                            "Cannot proceed with null thisObject: ${toGenericString()}",
+                            IllegalArgumentException("thisObject must be non-null for proceedWith.")
+                        )
+                        return currentResultOrNull()
+                    }
+                    return proceedOriginalWithNonNull(thisObject, args)
                 }
-                if (args != null) return proceedOriginalWith(hookChain.thisObject, args)
 
-                originalExecuted = true
-                val proceededResult = hookChain.proceed()
-                currentResult = proceededResult
-                return proceededResult
-            }
+                fun proceedOriginal(args: Array<Any?>? = null): Any? {
+                    if (originalExecuted) {
+                        logHookError(
+                            "Original method already proceeded: ${toGenericString()}",
+                            IllegalStateException("Use HookCallback.result instead of proceeding twice.")
+                        )
+                        return currentResultOrNull()
+                    }
+                    if (args != null) return proceedOriginalWith(hookChain.thisObject, args)
 
-            val callback = object : HookCallback {
-                override val chain: XposedInterface.Chain
-                    get() = hookChain
-                override val thisObject: Any?
-                    get() = hookChain.thisObject
-                override val args: List<Any?>
-                    get() = hookChain.args
-                override val hasResult: Boolean
-                    get() = currentResult !== UnsetResult
-                override var result: Any?
-                    get() = currentResultOrNull()
-                    set(value) {
-                        currentResult = value
+                    originalExecuted = true
+                    val proceededResult = hookChain.proceed()
+                    currentResult = proceededResult
+                    return proceededResult
+                }
+
+                val callback = object : HookCallback {
+                    override val chain: XposedInterface.Chain
+                        get() = hookChain
+                    override val thisObject: Any?
+                        get() = hookChain.thisObject
+                    override val args: List<Any?>
+                        get() = hookChain.args
+                    override val hasResult: Boolean
+                        get() = currentResult !== UnsetResult
+                    override var result: Any?
+                        get() = currentResultOrNull()
+                        set(value) {
+                            currentResult = value
+                        }
+
+                    override fun proceed(): Any? {
+                        return proceedOriginal()
                     }
 
-                override fun proceed(): Any? {
-                    return proceedOriginal()
+                    override fun proceedWith(args: Array<Any?>): Any? {
+                        return proceedOriginal(args)
+                    }
+
+                    override fun proceedWith(thisObject: Any?, args: Array<Any?>): Any? {
+                        return proceedOriginalWith(thisObject, args)
+                    }
                 }
 
-                override fun proceedWith(args: Array<Any?>): Any? {
-                    return proceedOriginal(args)
+                dsl.replaceBlock?.let { replace ->
+                    return@intercept try {
+                        replace.invoke(callback).also { currentResult = it }
+                    } catch (error: Throwable) {
+                        logHookError("Hook replace failed: ${toGenericString()}", error)
+                        callback.proceed()
+                    }
+                }
+                dsl.replaceUnitBlock?.let { replaceUnit ->
+                    return@intercept try {
+                        replaceUnit.invoke(callback)
+                        null
+                    } catch (error: Throwable) {
+                        logHookError("Hook replaceUnit failed: ${toGenericString()}", error)
+                        callback.proceed()
+                    }
                 }
 
-                override fun proceedWith(thisObject: Any?, args: Array<Any?>): Any? {
-                    return proceedOriginalWith(thisObject, args)
+                dsl.beforeBlock?.let { before ->
+                    runCatching { before.invoke(callback) }.onFailure { error ->
+                        logHookError("Hook before failed: ${toGenericString()}", error)
+                    }
                 }
-            }
-
-            dsl.replaceBlock?.let { replace ->
-                return@intercept try {
-                    replace.invoke(callback).also { currentResult = it }
-                } catch (error: Throwable) {
-                    logHookError("Hook replace failed: ${toGenericString()}", error)
+                if (!callback.hasResult) {
                     callback.proceed()
                 }
-            }
-            dsl.replaceUnitBlock?.let { replaceUnit ->
-                return@intercept try {
-                    replaceUnit.invoke(callback)
-                    null
-                } catch (error: Throwable) {
-                    logHookError("Hook replaceUnit failed: ${toGenericString()}", error)
-                    callback.proceed()
-                }
-            }
 
-            dsl.beforeBlock?.let { before ->
-                runCatching { before.invoke(callback) }.onFailure { error ->
-                    logHookError("Hook before failed: ${toGenericString()}", error)
+                dsl.afterBlock?.let { after ->
+                    runCatching { after.invoke(callback) }.onFailure { error ->
+                        logHookError("Hook after failed: ${toGenericString()}", error)
+                    }
                 }
+                callback.result
             }
-            if (!callback.hasResult) {
-                callback.proceed()
-            }
-
-            dsl.afterBlock?.let { after ->
-                runCatching { after.invoke(callback) }.onFailure { error ->
-                    logHookError("Hook after failed: ${toGenericString()}", error)
-                }
-            }
-            callback.result
+            registerHookHandle(this, handle)
+        } catch (error: Throwable) {
+            installedHookKeys.remove(installKey)
+            throw error
         }
-        registerHookHandle(this, handle)
+    }
+
+    private fun Executable.hookInstallKey(): String {
+        val loader = declaringClass.classLoader ?: classLoader
+        val loaderId = loader?.let { System.identityHashCode(it).toString() } ?: "boot"
+        return "${this@Hooker.javaClass.name}|$loaderId|${toGenericString()}"
     }
 
     private fun registerHookHandle(executable: Executable, handle: Any) {
@@ -695,7 +717,7 @@ abstract class Hooker {
         module.log(Log.WARN, "Fuck AD", message, throwable)
     }
 
-    private fun logHookDebug(message: String) {
+    protected fun logHookDebug(message: String) {
         val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
         if (shouldLog) runCatching { logD(message) }
     }

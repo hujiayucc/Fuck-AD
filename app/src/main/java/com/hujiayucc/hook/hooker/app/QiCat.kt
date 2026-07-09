@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.hooker.app
 
 import android.view.View
+import com.hujiayucc.hook.ModuleMain
 import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.hooker.util.Hooker
 import io.github.libxposed.api.XposedModuleInterface
@@ -64,12 +65,16 @@ object QiCat : Hooker() {
 
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         val boolMap = emptyMap<String, String>().toMutableMap()
-        DexKitBridge.create(applicationInfo.sourceDir).use { bridge ->
-            bridge.add("org.geometerplus.android.fbreader", "isSpeechMode", "boolean", boolMap)
-            bridge.add("com.qimao.qmuser.model.entity.mine_v2", "isVipStateChange", "boolean", boolMap)
-            bridge.adds("", "isVipUser", "boolean", boolMap, "com.qimao.qmreader.bridge.app")
-            bridge.adds("", "isBookVip", "boolean", boolMap)
-            bridge.close()
+        if (ModuleMain.ensureDexKitLoaded()) {
+            DexKitBridge.create(applicationInfo.sourceDir).use { bridge ->
+                bridge.add("org.geometerplus.android.fbreader", "isSpeechMode", "boolean", boolMap)
+                bridge.add("com.qimao.qmuser.model.entity.mine_v2", "isVipStateChange", "boolean", boolMap)
+                bridge.adds("", "isVipUser", "boolean", boolMap, "com.qimao.qmreader.bridge.app")
+                bridge.adds("", "isBookVip", "boolean", boolMap)
+                bridge.close()
+            }
+        } else {
+            logHookDebug("Skip QiCat DexKit lookup because DexKit native library is unavailable")
         }
 
         val baseInfo = "com.qimao.qmuser.model.entity.mine_v2.BaseInfo".toClassOrNull()
