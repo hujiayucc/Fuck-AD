@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object SdkHookerResolver {
     private val targetCache = ConcurrentHashMap<String, List<SdkHookerTarget>>()
+    private val presentClassCache = ConcurrentHashMap.newKeySet<ClassLookupKey>()
 
     fun resolve(packageName: String, classLoader: ClassLoader): List<SdkHookerTarget> {
         targetCache[packageName]?.let { return it }
@@ -20,6 +21,17 @@ object SdkHookerResolver {
     }
 
     private fun ClassLoader.hasClass(className: String): Boolean {
-        return runCatching { loadClass(className) }.isSuccess
+        val key = ClassLookupKey(System.identityHashCode(this), className)
+        if (key in presentClassCache) return true
+        return runCatching { loadClass(className) }
+            .isSuccess
+            .also { exists ->
+                if (exists) presentClassCache += key
+            }
     }
+
+    private data class ClassLookupKey(
+        val classLoaderIdentity: Int,
+        val className: String
+    )
 }

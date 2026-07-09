@@ -10,6 +10,7 @@ import org.json.JSONObject
 object DexKitMethodCache {
     private const val PREF_KEY = "dexKitMethodCache"
     private const val MAX_METHOD_CACHE_SIZE = 64
+    private const val MAX_CLASS_METHOD_CACHE_SIZE = 32
 
     @Volatile
     private var rawCache: String? = null
@@ -18,6 +19,7 @@ object DexKitMethodCache {
     private var rootCache: JSONObject = JSONObject()
 
     private val methodCache = ConcurrentHashMap<String, Method>()
+    private val classMethodsCache = ConcurrentHashMap<Class<*>, Array<Method>>()
 
     fun get(
         prefs: SharedPreferences,
@@ -97,13 +99,22 @@ object DexKitMethodCache {
         methodCache[methodKey]?.let { return it }
         return runCatching {
             val clazz = loader.loadClass(entry.className)
-            clazz.declaredMethods.firstOrNull { method ->
+            cachedDeclaredMethods(clazz).firstOrNull { method ->
                 method.name == entry.methodName &&
                     method.returnType.name == entry.returnTypeName &&
                     method.parameterTypes.map { it.name } == entry.parameterTypeNames
             }?.apply { isAccessible = true }
                 ?.also { method -> cacheMethod(key, loader, entry, method) }
         }.getOrNull()
+    }
+
+    private fun cachedDeclaredMethods(clazz: Class<*>): Array<Method> {
+        return classMethodsCache[clazz] ?: synchronized(classMethodsCache) {
+            classMethodsCache[clazz] ?: clazz.declaredMethods.also { methods ->
+                if (classMethodsCache.size >= MAX_CLASS_METHOD_CACHE_SIZE) classMethodsCache.clear()
+                classMethodsCache[clazz] = methods
+            }
+        }
     }
 
     private data class MethodEntry(

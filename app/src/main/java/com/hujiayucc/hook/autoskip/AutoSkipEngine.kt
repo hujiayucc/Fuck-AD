@@ -113,23 +113,91 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         val result = clickExecutor.execute(
             match.rule,
             match.node,
-            match.points
-        ) {
-            verifyClickResult(matcher, match.rule, activePackageName)
-        }
-        val now = SystemClock.uptimeMillis()
+            match.points,
+            verifier = {
+                verifyClickResult(matcher, match.rule, activePackageName)
+            },
+            asynchronousVerifier = AutoSkipAsyncVerifier { clickResult, verifier, retry ->
+                scheduleVerifyResult(activePackageName, activity, match.rule, clickResult, verifier, retry)
+            }
+        )
         if (result.success) {
-            lastAppClickAt[activePackageName] = now
-            lastRuleClickAt[match.rule.id] = now
+            markClickCooldown(activePackageName, match.rule)
+            return
         }
+        recordClickResult(activePackageName, activity, match.rule, result)
+    }
+
+    private fun scheduleVerifyResult(
+        activePackageName: String,
+        activity: String,
+        rule: AutoSkipRule,
+        result: AutoSkipExecutionResult,
+        verifier: () -> AutoSkipClickVerification,
+        retry: (() -> AutoSkipExecutionResult?)?
+    ) {
+        runCatching {
+            executor.schedule(
+                {
+                    val verification = runCatching { verifier() }.getOrElse { error ->
+                        AutoSkipClickVerification(true, "ok; verification failed: ${error.javaClass.simpleName}")
+                    }
+                    if (verification.accepted) {
+                        recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
+                        return@schedule
+                    }
+
+                    val retryResult = retry?.invoke()
+                    when {
+                        retryResult == null -> {
+                            recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
+                        }
+
+                        retryResult.success -> {
+                            markClickCooldown(activePackageName, rule)
+                            if (retryResult.message != VERIFICATION_SCHEDULED_MESSAGE) {
+                                recordClickResult(activePackageName, activity, rule, retryResult)
+                            }
+                        }
+
+                        else -> {
+                            recordClickResult(activePackageName, activity, rule, retryResult)
+                        }
+                    }
+                },
+                VERIFY_DELAY_MS,
+                TimeUnit.MILLISECONDS
+            )
+        }.onFailure { error ->
+            recordClickResult(
+                activePackageName,
+                activity,
+                rule,
+                result.copy(message = "ok; verification schedule failed: ${error.javaClass.simpleName}")
+            )
+        }
+    }
+
+    private fun markClickCooldown(packageName: String, rule: AutoSkipRule) {
+        val now = SystemClock.uptimeMillis()
+        lastAppClickAt[packageName] = now
+        lastRuleClickAt[rule.id] = now
+    }
+
+    private fun recordClickResult(
+        activePackageName: String,
+        activity: String,
+        rule: AutoSkipRule,
+        result: AutoSkipExecutionResult
+    ) {
         AutoSkipSettings.recordHit(
             appContext,
             AutoSkipHitLog(
                 time = System.currentTimeMillis(),
                 packageName = activePackageName,
                 activity = activity,
-                ruleId = match.rule.id,
-                ruleName = match.rule.name,
+                ruleId = rule.id,
+                ruleName = rule.name,
                 executor = result.executor,
                 x = result.point?.x ?: 0,
                 y = result.point?.y ?: 0,
@@ -143,7 +211,6 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         rule: AutoSkipRule,
         expectedPackageName: String
     ): AutoSkipClickVerification {
-        Thread.sleep(VERIFY_DELAY_MS)
         val root = service.rootInActiveWindow ?: return AutoSkipClickVerification(true, "ok; verified: window changed")
         val currentPackageName = activePackageName(root, expectedPackageName)
         if (currentPackageName != expectedPackageName || !shouldProcessPackage(currentPackageName)) {

@@ -19,29 +19,85 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         rule: AutoSkipRule,
         node: AccessibilityNodeInfo,
         points: List<Point>,
-        verifier: (() -> AutoSkipClickVerification)? = null
+        verifier: (() -> AutoSkipClickVerification)? = null,
+        asynchronousVerifier: AutoSkipAsyncVerifier? = null
     ): AutoSkipExecutionResult {
         if (points.isEmpty()) return AutoSkipExecutionResult(false, "none", null, "No tap point")
-        var lastAcceptedResult: AutoSkipExecutionResult? = null
-        prioritizedExecutors(rule.action.fallbackExecutors).forEach { type ->
-            if (!isExecutorEnabled(type)) return@forEach
-            pointsForExecutor(type, points).forEach { point ->
-                val success = when (type) {
-                    AutoSkipClickExecutorType.ACCESSIBILITY_GESTURE -> dispatchGesture(point)
-                    AutoSkipClickExecutorType.SHIZUKU_INPUT -> runShizukuTap(point)
-                    AutoSkipClickExecutorType.ROOT_INPUT -> runRootTap(point)
-                    AutoSkipClickExecutorType.ACCESSIBILITY_ACTION -> runAccessibilityAction(node)
-                }
-                if (success) {
-                    val verification = verifier?.invoke()
-                    if (verification == null || verification.accepted) {
-                        return AutoSkipExecutionResult(true, type.name, point, verification?.message ?: "ok")
+        val attempts = clickAttempts(rule, points)
+        return executeAttempts(
+            node = node,
+            attempts = attempts,
+            startIndex = 0,
+            firstPoint = points.firstOrNull(),
+            verifier = verifier,
+            asynchronousVerifier = asynchronousVerifier
+        )
+    }
+
+    private fun executeAttempts(
+        node: AccessibilityNodeInfo,
+        attempts: List<ClickAttempt>,
+        startIndex: Int,
+        firstPoint: Point?,
+        verifier: (() -> AutoSkipClickVerification)?,
+        asynchronousVerifier: AutoSkipAsyncVerifier?
+    ): AutoSkipExecutionResult {
+        var lastRejectedResult: AutoSkipExecutionResult? = null
+        for (index in startIndex until attempts.size) {
+            val attempt = attempts[index]
+            if (!isExecutorEnabled(attempt.type)) continue
+            if (!runAttempt(attempt.type, node, attempt.point)) continue
+
+            val acceptedResult = AutoSkipExecutionResult(true, attempt.type.name, attempt.point, "ok")
+            if (asynchronousVerifier != null && verifier != null) {
+                val scheduledResult = acceptedResult.copy(message = "ok; verification scheduled")
+                asynchronousVerifier.verify(
+                    scheduledResult,
+                    verifier,
+                    retry = if (index + 1 < attempts.size) {
+                        {
+                            executeAttempts(
+                                node = node,
+                                attempts = attempts,
+                                startIndex = index + 1,
+                                firstPoint = firstPoint,
+                                verifier = verifier,
+                                asynchronousVerifier = asynchronousVerifier
+                            )
+                        }
+                    } else {
+                        null
                     }
-                    lastAcceptedResult = AutoSkipExecutionResult(true, type.name, point, verification.message)
-                }
+                )
+                return scheduledResult
             }
+
+            val verification = verifier?.invoke()
+            if (verification == null || verification.accepted) {
+                return acceptedResult.copy(message = verification?.message ?: "ok")
+            }
+            lastRejectedResult = acceptedResult.copy(message = verification.message)
         }
-        return lastAcceptedResult ?: AutoSkipExecutionResult(false, "none", points.firstOrNull(), "All executors failed")
+        return lastRejectedResult ?: AutoSkipExecutionResult(false, "none", firstPoint, "All executors failed")
+    }
+
+    private fun clickAttempts(rule: AutoSkipRule, points: List<Point>): List<ClickAttempt> {
+        return prioritizedExecutors(rule.action.fallbackExecutors).flatMap { type ->
+            pointsForExecutor(type, points).map { point -> ClickAttempt(type, point) }
+        }
+    }
+
+    private fun runAttempt(
+        type: AutoSkipClickExecutorType,
+        node: AccessibilityNodeInfo,
+        point: Point
+    ): Boolean {
+        return when (type) {
+            AutoSkipClickExecutorType.ACCESSIBILITY_GESTURE -> dispatchGesture(point)
+            AutoSkipClickExecutorType.SHIZUKU_INPUT -> runShizukuTap(point)
+            AutoSkipClickExecutorType.ROOT_INPUT -> runRootTap(point)
+            AutoSkipClickExecutorType.ACCESSIBILITY_ACTION -> runAccessibilityAction(node)
+        }
     }
 
     private fun pointsForExecutor(type: AutoSkipClickExecutorType, points: List<Point>): List<Point> {
@@ -167,9 +223,24 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
     }
 }
 
+internal const val VERIFICATION_SCHEDULED_MESSAGE = "ok; verification scheduled"
+
 data class AutoSkipClickVerification(
     val accepted: Boolean,
     val message: String
+)
+
+fun interface AutoSkipAsyncVerifier {
+    fun verify(
+        result: AutoSkipExecutionResult,
+        verifier: () -> AutoSkipClickVerification,
+        retry: (() -> AutoSkipExecutionResult?)?
+    )
+}
+
+private data class ClickAttempt(
+    val type: AutoSkipClickExecutorType,
+    val point: Point
 )
 
 data class AutoSkipExecutionResult(

@@ -27,6 +27,12 @@ object AutoSkipSettings {
     @Volatile
     private var enabledPackagesCache: Set<String> = emptySet()
 
+    @Volatile
+    private var disabledRuleIdsRawCache: String? = null
+
+    @Volatile
+    private var disabledRuleIdsCache: Set<String> = emptySet()
+
     private val hitLogLock = Any()
     private val hitLogExecutor = Executors.newSingleThreadScheduledExecutor { task ->
         Thread(task, "AutoSkipHitLogWriter").apply { isDaemon = true }
@@ -100,7 +106,20 @@ object AutoSkipSettings {
     }
 
     fun disabledRuleIds(context: Context): Set<String> {
-        return readStringSet(context.prefsBridge.getString(KEY_DISABLED_RULE_IDS, ""))
+        val raw = context.prefsBridge.getString(KEY_DISABLED_RULE_IDS, "").orEmpty()
+        disabledRuleIdsRawCache?.let { cachedRaw ->
+            if (cachedRaw == raw) return disabledRuleIdsCache
+        }
+        return synchronized(this) {
+            if (disabledRuleIdsRawCache == raw) {
+                disabledRuleIdsCache
+            } else {
+                readStringSet(raw).also { ruleIds ->
+                    disabledRuleIdsRawCache = raw
+                    disabledRuleIdsCache = ruleIds
+                }
+            }
+        }
     }
 
     fun isRuleEnabled(context: Context, ruleId: String): Boolean {
@@ -115,13 +134,13 @@ object AutoSkipSettings {
 
     fun ruleDataVersion(context: Context): Int {
         val prefs = context.prefsBridge
-        return listOf(
-            prefs.getString(KEY_DISABLED_RULE_IDS, "").orEmpty(),
-            prefs.getString(KEY_SOURCES, "").orEmpty(),
-            prefs.getString(KEY_SUBSCRIPTION_RULES, "").orEmpty(),
-            prefs.getString(KEY_LOCAL_RULES, "").orEmpty(),
-            prefs.getLong(KEY_LAST_UPDATE_TIME, 0L).toString()
-        ).hashCode()
+        var result = 1
+        result = 31 * result + prefs.getString(KEY_DISABLED_RULE_IDS, "").orEmpty().hashCode()
+        result = 31 * result + prefs.getString(KEY_SOURCES, "").orEmpty().hashCode()
+        result = 31 * result + prefs.getString(KEY_SUBSCRIPTION_RULES, "").orEmpty().hashCode()
+        result = 31 * result + prefs.getString(KEY_LOCAL_RULES, "").orEmpty().hashCode()
+        result = 31 * result + prefs.getLong(KEY_LAST_UPDATE_TIME, 0L).toString().hashCode()
+        return result
     }
 
     fun sources(context: Context): List<AutoSkipRuleSourceConfig> {

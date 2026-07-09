@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import dalvik.system.BaseDexClassLoader
 import dalvik.system.DexFile
+import java.lang.reflect.Field
 import java.util.concurrent.ConcurrentHashMap
 
 object AnnotationScanner {
@@ -13,7 +14,13 @@ object AnnotationScanner {
         val annotationNames: String
     )
 
+    private data class FieldKey(
+        val clazz: Class<*>,
+        val name: String
+    )
+
     private val classNameCache = ConcurrentHashMap<CacheKey, Set<String>>()
+    private val fieldCache = ConcurrentHashMap<FieldKey, Field>()
 
     /**
      * 扫描指定包名下包含特定注解的类
@@ -112,22 +119,21 @@ object AnnotationScanner {
         }
         return try {
             @SuppressLint("DiscouragedPrivateApi")
-            val pathListField = BaseDexClassLoader::class.java.getDeclaredField("pathList").apply {
-                isAccessible = true
-            }
-            val dexPathList = pathListField.get(classLoader)
-            val dexElementsField = dexPathList.javaClass.getDeclaredField("dexElements").apply {
-                isAccessible = true
-            }
-            val dexElements = dexElementsField.get(dexPathList) as Array<*>
+            val dexPathList = cachedDeclaredField(BaseDexClassLoader::class.java, "pathList").get(classLoader)
+            val dexElements = cachedDeclaredField(dexPathList.javaClass, "dexElements").get(dexPathList) as Array<*>
             dexElements.mapNotNull { element ->
-                val dexFileField = element?.javaClass?.getDeclaredField("dexFile")?.apply {
-                    isAccessible = true
-                } ?: return@mapNotNull null
-                dexFileField.get(element) as? DexFile
+                element ?: return@mapNotNull null
+                cachedDeclaredField(element.javaClass, "dexFile").get(element) as? DexFile
             }
         } catch (_: Throwable) {
             emptyList()
+        }
+    }
+
+    private fun cachedDeclaredField(clazz: Class<*>, name: String): Field {
+        val key = FieldKey(clazz, name)
+        return fieldCache.getOrPut(key) {
+            clazz.getDeclaredField(name).apply { isAccessible = true }
         }
     }
 }

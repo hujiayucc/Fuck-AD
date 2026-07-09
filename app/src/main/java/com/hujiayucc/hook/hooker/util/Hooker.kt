@@ -35,6 +35,21 @@ abstract class Hooker {
         private val exactMethodCache = ConcurrentHashMap<MethodLookupKey, Method>()
         private val declaredConstructorCache = ConcurrentHashMap<Class<*>, Array<out Constructor<*>>>()
         private val declaredFieldCache = ConcurrentHashMap<FieldLookupKey, Field>()
+
+        @Volatile
+        private var cachedActivityThreadClass: Class<*>? = null
+
+        @Volatile
+        private var cachedCurrentApplicationMethod: Method? = null
+
+        @Volatile
+        private var cachedCurrentProcessNameMethod: Method? = null
+
+        @Volatile
+        private var loadedApkClassCache: Class<*>? = null
+
+        @Volatile
+        private var contextImplClassCache: Class<*>? = null
     }
 
     private object UnsetResult
@@ -161,7 +176,7 @@ abstract class Hooker {
 
         private fun installLoadedApkHook() {
             runCatching {
-                val loadedApkClass = Class.forName("android.app.LoadedApk")
+                val loadedApkClass = cachedLoadedApkClass()
                 loadedApkClass.cachedDeclaredMethods()
                     .filter { method ->
                         method.name == "makeApplication" &&
@@ -234,8 +249,7 @@ abstract class Hooker {
             tryClassLoader(param.classLoader, "$source param")
             tryClassLoader(Thread.currentThread().contextClassLoader, "$source thread")
             runCatching {
-                val activityThread = Class.forName("android.app.ActivityThread")
-                val currentApp = activityThread.getDeclaredMethod("currentApplication").invoke(null) as? Application
+                val currentApp = cachedActivityThreadMethod("currentApplication").invoke(null) as? Application
                 currentApp?.let { collectFromApplication(it, "$source currentApplication") }
             }.onFailure { error ->
                 logHookError("Failed to query currentApplication for $appName", error)
@@ -254,11 +268,11 @@ abstract class Hooker {
         @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
         private fun collectFromLoadedApk(context: Context, source: String) {
             runCatching {
-                val contextImplClass = Class.forName("android.app.ContextImpl")
+                val contextImplClass = cachedContextImplClass()
                 if (!contextImplClass.isInstance(context)) return@runCatching
                 val packageInfo = cachedDeclaredField(contextImplClass, "mPackageInfo")
                     .get(context)
-                val loadedApkClass = Class.forName("android.app.LoadedApk")
+                val loadedApkClass = cachedLoadedApkClass()
                 val loadedApkClassLoader = cachedDeclaredField(loadedApkClass, "mClassLoader")
                     .get(packageInfo) as? ClassLoader
                 tryClassLoader(loadedApkClassLoader, source)
@@ -392,6 +406,55 @@ abstract class Hooker {
         return declaredFieldCache.getOrPut(key) {
             clazz.getDeclaredField(name).apply { isAccessible = true }
         }
+    }
+
+    private fun cachedActivityThreadClass(): Class<*> {
+        cachedActivityThreadClass?.let { return it }
+        return synchronized(Hooker::class.java) {
+            cachedActivityThreadClass ?: Class.forName("android.app.ActivityThread")
+                .also { cachedActivityThreadClass = it }
+        }
+    }
+
+    private fun cachedFrameworkClass(name: String, cached: Class<*>?, update: (Class<*>) -> Unit): Class<*> {
+        cached?.let { return it }
+        return synchronized(Hooker::class.java) {
+            cached ?: Class.forName(name).also(update)
+        }
+    }
+
+    private fun cachedLoadedApkClass(): Class<*> {
+        return cachedFrameworkClass("android.app.LoadedApk", loadedApkClassCache) { loadedApkClassCache = it }
+    }
+
+    private fun cachedContextImplClass(): Class<*> {
+        return cachedFrameworkClass("android.app.ContextImpl", contextImplClassCache) { contextImplClassCache = it }
+    }
+
+    private fun cachedActivityThreadMethod(name: String): Method {
+        if (name == "currentApplication") {
+            cachedCurrentApplicationMethod?.let { return it }
+            return synchronized(Hooker::class.java) {
+                cachedCurrentApplicationMethod ?: cachedActivityThreadClass()
+                    .getDeclaredMethod(name)
+                    .apply { isAccessible = true }
+                    .also { cachedCurrentApplicationMethod = it }
+            }
+        }
+        return cachedActivityThreadClass()
+            .getDeclaredMethod(name)
+            .apply { isAccessible = true }
+    }
+
+    private fun cachedActivityThreadProcessName(): String? {
+        cachedCurrentProcessNameMethod?.let { return it.invoke(null) as? String }
+        val method = synchronized(Hooker::class.java) {
+            cachedCurrentProcessNameMethod ?: cachedActivityThreadClass()
+                .getDeclaredMethod("currentProcessName")
+                .apply { isAccessible = true }
+                .also { cachedCurrentProcessNameMethod = it }
+        }
+        return method.invoke(null) as? String
     }
 
     class HookDsl internal constructor(
@@ -732,9 +795,7 @@ abstract class Hooker {
         return runCatching {
             Application.getProcessName()
         }.getOrNull() ?: runCatching {
-            Class.forName("android.app.ActivityThread")
-                .getDeclaredMethod("currentProcessName")
-                .invoke(null) as? String
+            cachedActivityThreadProcessName()
         }.getOrNull()
     }
 
