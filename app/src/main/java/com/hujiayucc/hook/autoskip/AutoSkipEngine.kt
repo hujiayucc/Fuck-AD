@@ -4,15 +4,18 @@ import android.accessibilityservice.AccessibilityService
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class AutoSkipEngine(private val service: AccessibilityService) {
     private val appContext = service.applicationContext
     private val repository = AutoSkipRuleRepository(appContext)
     private val clickExecutor = AutoSkipClickExecutor(service)
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { task ->
+        Thread(task, "AutoSkipEngine").apply { isDaemon = true }
+    }
     private val evaluating = AtomicBoolean(false)
     private val lastRuleClickAt = HashMap<String, Long>()
     private val lastAppClickAt = HashMap<String, Long>()
@@ -28,11 +31,7 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         val activity = event.className?.toString().orEmpty()
         if (!evaluating.compareAndSet(false, true)) return
         executor.execute {
-            try {
-                evaluate(packageName, activity)
-            } finally {
-                evaluating.set(false)
-            }
+            evaluate(packageName, activity)
         }
     }
 
@@ -41,20 +40,64 @@ class AutoSkipEngine(private val service: AccessibilityService) {
     }
 
     private fun evaluate(packageName: String, activity: String) {
-        val root = service.rootInActiveWindow ?: return
+        var releaseEvaluation = true
+        try {
+            releaseEvaluation = evaluateNow(packageName, activity)
+        } finally {
+            if (releaseEvaluation) evaluating.set(false)
+        }
+    }
+
+    private fun evaluateNow(packageName: String, activity: String): Boolean {
+        val root = service.rootInActiveWindow ?: return true
         val activePackageName = activePackageName(root, packageName)
-        if (!shouldProcessPackage(activePackageName)) return
+        if (!shouldProcessPackage(activePackageName)) return true
         val rules = repository.executableRules(activePackageName, activity)
-        if (rules.isEmpty()) return
+        if (rules.isEmpty()) return true
         val metrics = appContext.resources.displayMetrics
         val matcher = AutoSkipRuleMatcher(metrics.widthPixels, metrics.heightPixels)
-        val match = matcher.findMatch(root, rules) ?: return
-        if (!canClick(activePackageName, match.rule)) return
-        if (match.rule.delayMs > 0L) Thread.sleep(match.rule.delayMs)
+        val match = matcher.findMatch(root, rules) ?: return true
+        if (!canClick(activePackageName, match.rule)) return true
+        if (match.rule.delayMs > 0L) {
+            return scheduleDelayedClick(activePackageName, activity, matcher, match.rule, match.rule.delayMs)
+        }
+        clickIfStillMatched(activePackageName, activity, matcher, match.rule)
+        return true
+    }
+
+    private fun scheduleDelayedClick(
+        activePackageName: String,
+        activity: String,
+        matcher: AutoSkipRuleMatcher,
+        rule: AutoSkipRule,
+        delayMs: Long
+    ): Boolean {
+        return runCatching {
+            executor.schedule(
+                {
+                    try {
+                        clickIfStillMatched(activePackageName, activity, matcher, rule)
+                    } finally {
+                        evaluating.set(false)
+                    }
+                },
+                delayMs,
+                TimeUnit.MILLISECONDS
+            )
+            false
+        }.getOrDefault(true)
+    }
+
+    private fun clickIfStillMatched(
+        activePackageName: String,
+        activity: String,
+        matcher: AutoSkipRuleMatcher,
+        rule: AutoSkipRule
+    ) {
         val refreshedRoot = service.rootInActiveWindow ?: return
         val refreshedPackageName = activePackageName(refreshedRoot, activePackageName)
         if (refreshedPackageName != activePackageName || !shouldProcessPackage(refreshedPackageName)) return
-        val refreshedMatch = matcher.findMatch(refreshedRoot, listOf(match.rule)) ?: return
+        val refreshedMatch = matcher.findMatch(refreshedRoot, listOf(rule)) ?: return
         val result = clickExecutor.execute(
             refreshedMatch.rule,
             refreshedMatch.node,
