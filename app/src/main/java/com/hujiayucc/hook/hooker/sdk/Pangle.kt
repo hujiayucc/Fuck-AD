@@ -23,7 +23,7 @@ object Pangle : Hooker() {
     }
 
     private fun Class<*>.methodOrNull(name: String, descriptor: String): Method? {
-        return declaredMethods.firstOrNull { method ->
+        return cachedDeclaredMethods().firstOrNull { method ->
             method.name == name && method.toDescriptor() == descriptor
         }
     }
@@ -55,7 +55,7 @@ object Pangle : Hooker() {
     }
 
     private fun Class<*>.hookMethods(vararg names: String) {
-        declaredMethods
+        cachedDeclaredMethods()
             .filter { method -> method.name in names }
             .forEach { method -> method.replaceWithDefault() }
     }

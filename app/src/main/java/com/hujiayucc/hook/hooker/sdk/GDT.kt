@@ -31,7 +31,7 @@ object GDT : Hooker() {
     }
 
     private fun Class<*>.hookMethods(vararg names: String) {
-        declaredMethods
+        cachedDeclaredMethods()
             .filter { method ->
                 method.name in names &&
                     !Modifier.isAbstract(method.modifiers) &&

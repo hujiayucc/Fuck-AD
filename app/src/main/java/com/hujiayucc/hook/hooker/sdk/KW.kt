@@ -35,7 +35,7 @@ object KW : Hooker() {
     }
 
     private fun Class<*>.hookMethods(vararg names: String) {
-        (declaredMethods.asSequence() + methods.asSequence())
+        (cachedDeclaredMethods().asSequence() + cachedMethods().asSequence())
             .filter { method ->
                 method.name in names &&
                     !Modifier.isAbstract(method.modifiers) &&

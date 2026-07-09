@@ -29,6 +29,10 @@ abstract class Hooker {
     companion object {
         private val installedHookKeys = ConcurrentHashMap.newKeySet<String>()
         private val completedHookerKeys = ConcurrentHashMap.newKeySet<String>()
+        private val declaredMethodCache = ConcurrentHashMap<Class<*>, Array<Method>>()
+        private val publicMethodCache = ConcurrentHashMap<Class<*>, Array<Method>>()
+        private val exactMethodCache = ConcurrentHashMap<MethodLookupKey, Method>()
+        private val declaredConstructorCache = ConcurrentHashMap<Class<*>, Array<out Constructor<*>>>()
     }
 
     private object UnsetResult
@@ -328,9 +332,9 @@ abstract class Hooker {
 
     fun Class<*>.method(name: String, vararg parameterTypes: Class<*>): Method {
         if (parameterTypes.isEmpty()) {
-            return declaredMethods.first { it.name == name }
+            return cachedDeclaredMethods().first { it.name == name }
         }
-        return getDeclaredMethod(name, *parameterTypes)
+        return cachedExactMethod(name, parameterTypes.toList())
     }
 
     fun Class<*>.methodOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
@@ -338,7 +342,7 @@ abstract class Hooker {
     }
 
     fun Class<*>.methodExact(name: String, vararg parameterTypes: Class<*>): Method {
-        return getDeclaredMethod(name, *parameterTypes)
+        return cachedExactMethod(name, parameterTypes.toList())
     }
 
     fun Class<*>.methodExactOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
@@ -346,24 +350,41 @@ abstract class Hooker {
     }
 
     fun Class<*>.constructor(): Array<out Constructor<*>>? {
-        return runCatching { declaredConstructors }.getOrElse { error ->
+        return runCatching { cachedDeclaredConstructors() }.getOrElse { error ->
             logHookError("Failed to get constructors: ${name}", error)
             null
         }
     }
 
     fun Class<*>.methods(name: String): List<Method> {
-        return runCatching { declaredMethods.filter { it.name == name } }.getOrElse { error ->
+        return runCatching { cachedDeclaredMethods().filter { it.name == name } }.getOrElse { error ->
             logHookError("Failed to get methods $name: ${this.name}", error)
             emptyList()
         }
     }
 
     fun Class<*>.methodContains(name: String): List<Method> {
-        return runCatching { declaredMethods.filter { it.name.contains(name) } }.getOrElse { error ->
+        return runCatching { cachedDeclaredMethods().filter { it.name.contains(name) } }.getOrElse { error ->
             logHookError("Failed to get methods contains $name: ${this.name}", error)
             emptyList()
         }
+    }
+
+    protected fun Class<*>.cachedDeclaredMethods(): Array<Method> {
+        return declaredMethodCache.getOrPut(this) { declaredMethods }
+    }
+
+    protected fun Class<*>.cachedMethods(): Array<Method> {
+        return publicMethodCache.getOrPut(this) { methods }
+    }
+
+    private fun Class<*>.cachedExactMethod(name: String, parameterTypes: List<Class<*>>): Method {
+        val key = MethodLookupKey(this, name, parameterTypes)
+        return exactMethodCache.getOrPut(key) { getDeclaredMethod(name, *parameterTypes.toTypedArray()) }
+    }
+
+    private fun Class<*>.cachedDeclaredConstructors(): Array<out Constructor<*>> {
+        return declaredConstructorCache.getOrPut(this) { declaredConstructors }
     }
 
     class HookDsl internal constructor(
@@ -588,6 +609,12 @@ abstract class Hooker {
         val owner: String,
         val executable: String,
         val handle: Any
+    )
+
+    private data class MethodLookupKey(
+        val clazz: Class<*>,
+        val name: String,
+        val parameterTypes: List<Class<*>>
     )
 
     private fun HookDsl.isValid(): Boolean {
