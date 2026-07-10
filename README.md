@@ -40,6 +40,10 @@ As the name implies, this is an ad-blocking Xposed module
 
 Click [here](app/src/main/resources/META-INF/xposed/scope.list) to view scope
 
+### Contributor Guide
+
+- [Hooker Development Guide](HOOKER_GUIDE.md)
+
 ### Donation Support
 
 ---

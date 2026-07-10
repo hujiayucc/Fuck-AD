@@ -41,6 +41,10 @@
 
 点击 [这里](app/src/main/resources/META-INF/xposed/scope.list) 查看作用域
 
+### 贡献者文档
+
+- [Hooker 编写指南](HOOKER_GUIDE-zh_CN.md)
+
 ### 捐赠支持
 
 ---
