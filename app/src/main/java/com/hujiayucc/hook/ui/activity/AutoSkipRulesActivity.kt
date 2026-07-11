@@ -23,6 +23,8 @@ import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.autoskip.AutoSkipAccessibilityService
+import com.hujiayucc.hook.autoskip.AutoSkipDaemonManager
+import com.hujiayucc.hook.autoskip.AutoSkipHealth
 import com.hujiayucc.hook.autoskip.AutoSkipHitLog
 import com.hujiayucc.hook.autoskip.AutoSkipRule
 import com.hujiayucc.hook.autoskip.AutoSkipRuleRepository
@@ -59,6 +61,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     private var searchQuery = ""
     private var autoEnableAccessibilityInProgress = false
     private var notificationPermissionRequestInProgress = false
+    private var keepAliveSwitchUpdateInProgress = false
     private var autoLoadSubscriptionsStarted = false
     private var refreshRulesRequestId = 0
     private var filterRulesRequestId = 0
@@ -208,6 +211,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         if (accessibilityEnabled && canShowNotification) {
             AutoSkipAccessibilityService.refreshRunningNotification(this)
         }
+        refreshKeepAliveStatus()
         ruleStats?.let { stats -> updateAccessibilityStatusAndStats(stats) } ?: refreshRules()
     }
 
@@ -234,6 +238,8 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         binding.autoSkipSwitch.isChecked = AutoSkipSettings.isEnabled(this)
         binding.shizukuSwitch.isChecked = AutoSkipSettings.useShizukuInput(this)
         binding.rootSwitch.isChecked = AutoSkipSettings.useRootInput(this)
+        binding.serviceKeepAliveSwitch.isChecked = AutoSkipSettings.serviceKeepAliveEnabled(this)
+        binding.daemonKeepAliveSwitch.isChecked = AutoSkipSettings.daemonKeepAliveEnabled(this)
         binding.accessibilityStatusChip.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
@@ -252,6 +258,76 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         binding.rootSwitch.setOnCheckedChangeListener { _, isChecked ->
             AutoSkipSettings.setUseRootInput(this, isChecked)
         }
+        binding.serviceKeepAliveSwitch.setOnCheckedChangeListener { _, isChecked ->
+            AutoSkipSettings.setServiceKeepAliveEnabled(this, isChecked)
+            AutoSkipDaemonManager.writeConfig(this)
+            AutoSkipAccessibilityService.refreshRunningNotification(this)
+            refreshKeepAliveStatus()
+        }
+        binding.daemonKeepAliveSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (!keepAliveSwitchUpdateInProgress) setDaemonKeepAliveEnabled(isChecked)
+        }
+        refreshKeepAliveStatus()
+    }
+
+    private fun setDaemonKeepAliveEnabled(enabled: Boolean) {
+        binding.daemonKeepAliveSwitch.isEnabled = false
+        disposables.add(
+            Observable.fromCallable {
+                AutoSkipSettings.setDaemonKeepAliveEnabled(this, enabled)
+                val result = if (enabled) {
+                    AutoSkipDaemonManager.installOrUpdate(this)
+                } else {
+                    AutoSkipDaemonManager.stopAndUninstall(this)
+                }
+                if (enabled && !result.success) {
+                    AutoSkipSettings.setDaemonKeepAliveEnabled(this, false)
+                    AutoSkipDaemonManager.writeConfig(this)
+                }
+                result
+            }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ result ->
+                    binding.daemonKeepAliveSwitch.isEnabled = true
+                    keepAliveSwitchUpdateInProgress = true
+                    binding.daemonKeepAliveSwitch.isChecked = AutoSkipSettings.daemonKeepAliveEnabled(this)
+                    keepAliveSwitchUpdateInProgress = false
+                    Toast.makeText(
+                        this,
+                        getString(
+                            if (result.success) R.string.auto_skip_daemon_operation_success else R.string.auto_skip_daemon_operation_failed,
+                            result.message
+                        ),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    refreshKeepAliveStatus()
+                }, { error ->
+                    AutoSkipSettings.setDaemonKeepAliveEnabled(this, false)
+                    AutoSkipDaemonManager.writeConfig(this)
+                    binding.daemonKeepAliveSwitch.isEnabled = true
+                    keepAliveSwitchUpdateInProgress = true
+                    binding.daemonKeepAliveSwitch.isChecked = false
+                    keepAliveSwitchUpdateInProgress = false
+                    Toast.makeText(this, error.message ?: getString(R.string.auto_skip_daemon_operation_failed, "unknown"), Toast.LENGTH_LONG).show()
+                    refreshKeepAliveStatus()
+                })
+        )
+    }
+
+    private fun refreshKeepAliveStatus() {
+        val health = AutoSkipHealth.read(this)
+        val heartbeat = health?.lastHeartbeatAt?.takeIf { it > 0L }?.let { time ->
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(time))
+        } ?: getString(R.string.auto_skip_never_updated)
+        val lastError = health?.lastError?.takeIf { it.isNotBlank() } ?: "-"
+        binding.keepAliveStatusText.text = getString(
+            R.string.auto_skip_keep_alive_status,
+            if (AutoSkipSettings.serviceKeepAliveEnabled(this)) getString(R.string.auto_skip_source_state_on) else getString(R.string.auto_skip_source_state_off),
+            if (AutoSkipSettings.daemonKeepAliveEnabled(this)) getString(R.string.auto_skip_source_state_on) else getString(R.string.auto_skip_source_state_off),
+            heartbeat,
+            lastError
+        )
     }
 
     private fun setupFilters() {

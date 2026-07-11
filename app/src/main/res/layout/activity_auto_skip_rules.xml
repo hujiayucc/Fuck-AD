@@ -50,6 +50,27 @@
                 android:layout_height="wrap_content"
                 android:text="@string/auto_skip_root_input" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/service_keep_alive_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/auto_skip_service_keep_alive" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/daemon_keep_alive_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/auto_skip_daemon_keep_alive" />
+
+        <TextView
+                android:id="@+id/keep_alive_status_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="13sp"
+                android:textColor="?android:attr/textColorSecondary"
+                tools:text="Service keep-alive: on / Daemon: off" />
+
         <com.google.android.material.chip.Chip
                 android:id="@+id/accessibility_status_chip"
                 style="@style/Widget.Material3.Chip.Assist"

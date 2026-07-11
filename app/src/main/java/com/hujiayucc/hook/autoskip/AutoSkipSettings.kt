@@ -20,6 +20,8 @@ object AutoSkipSettings {
     private const val KEY_LOCAL_RULES = "autoSkipLocalRules"
     private const val KEY_HIT_LOGS = "autoSkipHitLogs"
     private const val KEY_LAST_UPDATE_TIME = "autoSkipLastUpdateTime"
+    private const val KEY_SERVICE_KEEP_ALIVE = "autoSkipServiceKeepAlive"
+    private const val KEY_DAEMON_KEEP_ALIVE = "autoSkipDaemonKeepAlive"
 
     @Volatile
     private var enabledPackagesRawCache: String? = null
@@ -64,6 +66,22 @@ object AutoSkipSettings {
 
     fun setUseRootInput(context: Context, enabled: Boolean) {
         context.prefsBridge.edit().putBoolean(KEY_USE_ROOT_INPUT, enabled).apply()
+    }
+
+    fun serviceKeepAliveEnabled(context: Context): Boolean {
+        return context.prefsBridge.getBoolean(KEY_SERVICE_KEEP_ALIVE, true)
+    }
+
+    fun setServiceKeepAliveEnabled(context: Context, enabled: Boolean) {
+        context.prefsBridge.edit().putBoolean(KEY_SERVICE_KEEP_ALIVE, enabled).apply()
+    }
+
+    fun daemonKeepAliveEnabled(context: Context): Boolean {
+        return context.prefsBridge.getBoolean(KEY_DAEMON_KEEP_ALIVE, false)
+    }
+
+    fun setDaemonKeepAliveEnabled(context: Context, enabled: Boolean) {
+        context.prefsBridge.edit().putBoolean(KEY_DAEMON_KEEP_ALIVE, enabled).apply()
     }
 
     fun enabledPackages(context: Context): Set<String> {

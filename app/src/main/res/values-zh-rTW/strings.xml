@@ -118,6 +118,11 @@
     <string name="auto_skip_auto_enable_accessibility_success">無障礙服務已啟用</string>
     <string name="auto_skip_auto_enable_accessibility_waiting">正在等待 Shizuku 授權</string>
     <string name="auto_skip_auto_enable_accessibility_failed">無法自動啟用無障礙，請開啟無障礙設定手動啟用。</string>
+    <string name="auto_skip_service_keep_alive">無障礙服務自身保活</string>
+    <string name="auto_skip_daemon_keep_alive">Root Daemon 保活</string>
+    <string name="auto_skip_keep_alive_status">服務保活：%1$s / Daemon：%2$s / 心跳：%3$s / 最近錯誤：%4$s</string>
+    <string name="auto_skip_daemon_operation_success">Daemon 操作完成：%1$s</string>
+    <string name="auto_skip_daemon_operation_failed">Daemon 操作失敗：%1$s</string>
     <string name="auto_skip_summary_text">文字</string>
     <string name="auto_skip_summary_desc">描述</string>
     <string name="auto_skip_summary_id">ID</string>

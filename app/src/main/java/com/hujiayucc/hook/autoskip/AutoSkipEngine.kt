@@ -9,7 +9,10 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-class AutoSkipEngine(private val service: AccessibilityService) {
+class AutoSkipEngine(
+    private val service: AccessibilityService,
+    private val errorReporter: (String, Throwable) -> Unit = { _, _ -> }
+) {
     private val appContext = service.applicationContext
     private val repository = AutoSkipRuleRepository(appContext)
     private val clickExecutor = AutoSkipClickExecutor(service)
@@ -46,6 +49,8 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         var releaseEvaluation = true
         try {
             releaseEvaluation = evaluateNow(packageName, activity)
+        } catch (error: Throwable) {
+            errorReporter("evaluate", error)
         } finally {
             if (releaseEvaluation) evaluating.set(false)
         }
@@ -80,6 +85,8 @@ class AutoSkipEngine(private val service: AccessibilityService) {
                 {
                     try {
                         clickIfStillMatched(activePackageName, activity, matcher, rule)
+                    } catch (error: Throwable) {
+                        errorReporter("delayed_click", error)
                     } finally {
                         evaluating.set(false)
                     }
@@ -139,30 +146,34 @@ class AutoSkipEngine(private val service: AccessibilityService) {
         runCatching {
             executor.schedule(
                 {
-                    val verification = runCatching { verifier() }.getOrElse { error ->
-                        AutoSkipClickVerification(true, "ok; verification failed: ${error.javaClass.simpleName}")
-                    }
-                    if (verification.accepted) {
-                        recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
-                        return@schedule
-                    }
-
-                    val retryResult = retry?.invoke()
-                    when {
-                        retryResult == null -> {
+                    runCatching {
+                        val verification = runCatching { verifier() }.getOrElse { error ->
+                            AutoSkipClickVerification(true, "ok; verification failed: ${error.javaClass.simpleName}")
+                        }
+                        if (verification.accepted) {
                             recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
+                            return@runCatching
                         }
 
-                        retryResult.success -> {
-                            markClickCooldown(activePackageName, rule)
-                            if (retryResult.message != VERIFICATION_SCHEDULED_MESSAGE) {
+                        val retryResult = retry?.invoke()
+                        when {
+                            retryResult == null -> {
+                                recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
+                            }
+
+                            retryResult.success -> {
+                                markClickCooldown(activePackageName, rule)
+                                if (retryResult.message != VERIFICATION_SCHEDULED_MESSAGE) {
+                                    recordClickResult(activePackageName, activity, rule, retryResult)
+                                }
+                            }
+
+                            else -> {
                                 recordClickResult(activePackageName, activity, rule, retryResult)
                             }
                         }
-
-                        else -> {
-                            recordClickResult(activePackageName, activity, rule, retryResult)
-                        }
+                    }.onFailure { error ->
+                        errorReporter("verify", error)
                     }
                 },
                 VERIFY_DELAY_MS,

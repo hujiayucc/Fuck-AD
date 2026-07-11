@@ -16,32 +16,115 @@ import androidx.core.content.ContextCompat
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.ui.activity.AutoSkipRulesActivity
 import com.hujiayucc.hook.utils.LanguageUtils
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 class AutoSkipAccessibilityService : AccessibilityService() {
     private lateinit var engine: AutoSkipEngine
+    private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { task ->
+        Thread(task, "AutoSkipKeepAlive").apply { isDaemon = true }
+    }
     private var notificationPackageName: String? = null
+    private var heartbeatStarted = false
+    private var engineGeneration = 0
+    private var consecutiveEventFailures = 0
+    private var lastEventHealthWriteAt = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         current = this
-        engine = AutoSkipEngine(this)
+        recreateEngine("connected")
+        AutoSkipHealth.markConnected(this, engineGeneration)
+        AutoSkipDaemonManager.writeConfig(this)
         showRunningNotification()
+        startHeartbeat()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (!::engine.isInitialized || event == null) return
-        updateNotificationForPackage(event.packageName?.toString().orEmpty())
-        engine.onAccessibilityEvent(event)
+        if (event == null) return
+        if (!::engine.isInitialized) recreateEngine("event")
+        runCatching {
+            markEventHealthIfNeeded()
+            updateNotificationForPackage(event.packageName?.toString().orEmpty())
+            engine.onAccessibilityEvent(event)
+        }.onSuccess {
+            consecutiveEventFailures = 0
+        }.onFailure { error ->
+            handleServiceError("event", error)
+        }
     }
 
     override fun onInterrupt() {
+        AutoSkipHealth.markHeartbeat(this, engineGeneration)
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        AutoSkipHealth.markDisconnected(this, "unbind")
+        return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
+        AutoSkipHealth.markDisconnected(this, "destroy")
         if (current === this) current = null
-        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
-        if (::engine.isInitialized) engine.shutdown()
+        runCatching { NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID) }
+        runCatching { if (::engine.isInitialized) engine.shutdown() }
+        heartbeatExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    private fun startHeartbeat() {
+        if (heartbeatStarted) return
+        heartbeatStarted = true
+        heartbeatExecutor.scheduleWithFixedDelay(
+            {
+                runCatching { keepAliveTick() }
+                    .onFailure { error -> AutoSkipHealth.recordError(this, "heartbeat", error, engineGeneration) }
+            },
+            0L,
+            HEARTBEAT_INTERVAL_MS,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    private fun keepAliveTick() {
+        AutoSkipHealth.markHeartbeat(this, engineGeneration)
+        AutoSkipDaemonManager.writeConfig(this)
+        if (!AutoSkipSettings.serviceKeepAliveEnabled(this)) return
+        if (!::engine.isInitialized) recreateEngine("heartbeat")
+        showRunningNotification()
+    }
+
+    @Synchronized
+    private fun recreateEngine(reason: String) {
+        runCatching { if (::engine.isInitialized) engine.shutdown() }
+        engineGeneration += 1
+        consecutiveEventFailures = 0
+        engine = AutoSkipEngine(this) { stage, error ->
+            handleEngineError(stage, error)
+        }
+        if (reason != "connected") {
+            AutoSkipHealth.recordError(this, "engine_recreate", IllegalStateException(reason), engineGeneration)
+        }
+    }
+
+    private fun handleServiceError(stage: String, error: Throwable) {
+        consecutiveEventFailures += 1
+        AutoSkipHealth.recordError(this, stage, error, engineGeneration)
+        if (consecutiveEventFailures >= MAX_CONSECUTIVE_FAILURES) {
+            recreateEngine(stage)
+        }
+    }
+
+    private fun handleEngineError(stage: String, error: Throwable) {
+        handleServiceError("engine_$stage", error)
+    }
+
+    private fun markEventHealthIfNeeded() {
+        val now = System.currentTimeMillis()
+        if (now - lastEventHealthWriteAt < EVENT_HEALTH_WRITE_INTERVAL_MS) return
+        lastEventHealthWriteAt = now
+        AutoSkipHealth.markEvent(this, engineGeneration)
     }
 
     private fun showRunningNotification(packageName: String? = notificationPackageName) {
@@ -73,7 +156,11 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+        runCatching {
+            NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+        }.onFailure { error ->
+            AutoSkipHealth.recordError(this, "notification", error, engineGeneration)
+        }
     }
 
     private fun updateNotificationForPackage(packageName: String) {
@@ -106,11 +193,21 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "auto_skip_service"
         private const val NOTIFICATION_ID = 2601
+        private const val HEARTBEAT_INTERVAL_MS = 10_000L
+        private const val EVENT_HEALTH_WRITE_INTERVAL_MS = 1_000L
+        private const val MAX_CONSECUTIVE_FAILURES = 3
         @Volatile
         private var current: AutoSkipAccessibilityService? = null
 
         fun refreshRunningNotification(context: Context) {
-            current?.showRunningNotification() ?: NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+            val service = current
+            if (service != null) {
+                service.startHeartbeat()
+                service.showRunningNotification()
+                AutoSkipDaemonManager.writeConfig(service)
+            } else {
+                NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+            }
         }
     }
 }

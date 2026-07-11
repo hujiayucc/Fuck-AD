@@ -118,6 +118,11 @@
     <string name="auto_skip_auto_enable_accessibility_success">Accessibility service activated</string>
     <string name="auto_skip_auto_enable_accessibility_waiting">Waiting for Shizuku authorization</string>
     <string name="auto_skip_auto_enable_accessibility_failed">Could not activate accessibility automatically. Open accessibility settings to enable it manually.</string>
+    <string name="auto_skip_service_keep_alive">Service self keep-alive</string>
+    <string name="auto_skip_daemon_keep_alive">Root daemon keep-alive</string>
+    <string name="auto_skip_keep_alive_status">Service keep-alive: %1$s / Daemon: %2$s / Heartbeat: %3$s / Last error: %4$s</string>
+    <string name="auto_skip_daemon_operation_success">Daemon operation completed: %1$s</string>
+    <string name="auto_skip_daemon_operation_failed">Daemon operation failed: %1$s</string>
     <string name="auto_skip_summary_text">text</string>
     <string name="auto_skip_summary_desc">desc</string>
     <string name="auto_skip_summary_id">id</string>
