@@ -63,6 +63,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     private var autoEnableAccessibilityInProgress = false
     private var notificationPermissionRequestInProgress = false
     private var keepAliveSwitchUpdateInProgress = false
+    private var daemonRepairInProgress = false
     private var autoLoadSubscriptionsStarted = false
     private var refreshRulesRequestId = 0
     private var filterRulesRequestId = 0
@@ -214,6 +215,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         if (accessibilityEnabled && canShowNotification) {
             AutoSkipAccessibilityService.refreshRunningNotification(this)
         }
+        repairDaemonIfStatusMissing()
         refreshKeepAliveStatus()
         ruleStats?.let { stats -> updateAccessibilityStatusAndStats(stats) } ?: refreshRules()
     }
@@ -305,6 +307,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
                         Toast.LENGTH_LONG
                     ).show()
                     refreshKeepAliveStatus()
+                    binding.keepAliveStatusText.postDelayed({ refreshKeepAliveStatus() }, 1_500L)
                 }, { error ->
                     AutoSkipSettings.setDaemonKeepAliveEnabled(this, false)
                     AutoSkipDaemonManager.writeConfig(this)
@@ -318,19 +321,87 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         )
     }
 
+    private fun repairDaemonIfStatusMissing() {
+        if (!AutoSkipSettings.daemonKeepAliveEnabled(this) || daemonRepairInProgress) return
+        val status = AutoSkipDaemonManager.readStatus(this)
+        val now = System.currentTimeMillis()
+        val statusFresh = status != null && now - status.lastCheckAt <= 90_000L
+        if (statusFresh) return
+        daemonRepairInProgress = true
+        disposables.add(
+            Observable.fromCallable { AutoSkipDaemonManager.installOrUpdate(this) }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ result ->
+                    daemonRepairInProgress = false
+                    if (!result.success) {
+                        Toast.makeText(
+                            this,
+                            getString(R.string.auto_skip_daemon_operation_failed, result.message),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    refreshKeepAliveStatus()
+                    binding.keepAliveStatusText.postDelayed({ refreshKeepAliveStatus() }, 1_500L)
+                }, { error ->
+                    daemonRepairInProgress = false
+                    Toast.makeText(this, error.message ?: getString(R.string.auto_skip_daemon_operation_failed, "unknown"), Toast.LENGTH_LONG).show()
+                    refreshKeepAliveStatus()
+                })
+        )
+    }
+
     private fun refreshKeepAliveStatus() {
         val health = AutoSkipHealth.read(this)
         val heartbeat = health?.lastHeartbeatAt?.takeIf { it > 0L }?.let { time ->
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(time))
         } ?: getString(R.string.auto_skip_never_updated)
         val lastError = health?.lastError?.takeIf { it.isNotBlank() } ?: "-"
-        binding.keepAliveStatusText.text = getString(
-            R.string.auto_skip_keep_alive_status,
-            if (AutoSkipSettings.serviceKeepAliveEnabled(this)) getString(R.string.auto_skip_source_state_on) else getString(R.string.auto_skip_source_state_off),
-            if (AutoSkipSettings.daemonKeepAliveEnabled(this)) getString(R.string.auto_skip_source_state_on) else getString(R.string.auto_skip_source_state_off),
-            heartbeat,
-            lastError
-        )
+        val serviceState = if (AutoSkipSettings.serviceKeepAliveEnabled(this)) {
+            getString(R.string.auto_skip_source_state_on)
+        } else {
+            getString(R.string.auto_skip_source_state_off)
+        }
+        val daemonEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this)
+        val daemonState = if (daemonEnabled) {
+            getString(R.string.auto_skip_source_state_on)
+        } else {
+            getString(R.string.auto_skip_source_state_off)
+        }
+        val keepAliveStatus = if (daemonEnabled) {
+            val daemonStatus = AutoSkipDaemonManager.readStatus(this)?.let { status ->
+                val lastCheck = status.lastCheckAt.takeIf { it > 0L }?.let { time ->
+                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(time))
+                } ?: getString(R.string.auto_skip_never_updated)
+                getString(
+                    R.string.auto_skip_daemon_runtime_status,
+                    status.processName.ifBlank { "fkad-daemon" },
+                    status.pid,
+                    if (status.connected) getString(R.string.auto_skip_source_state_on) else getString(R.string.auto_skip_source_state_off),
+                    if (status.heartbeatAgeSeconds >= 0L) "${status.heartbeatAgeSeconds}s" else "-",
+                    status.recoverCount,
+                    lastCheck,
+                    status.lastAction.ifBlank { "-" }
+                )
+            } ?: getString(R.string.auto_skip_never_updated)
+            getString(
+                R.string.auto_skip_keep_alive_status,
+                serviceState,
+                daemonState,
+                heartbeat,
+                lastError,
+                daemonStatus
+            )
+        } else {
+            getString(
+                R.string.auto_skip_keep_alive_status_no_daemon_status,
+                serviceState,
+                daemonState,
+                heartbeat,
+                lastError
+            )
+        }
+        binding.keepAliveStatusText.text = keepAliveStatus
     }
 
     private fun setupFilters() {

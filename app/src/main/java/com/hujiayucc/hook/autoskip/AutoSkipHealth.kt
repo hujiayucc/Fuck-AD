@@ -40,13 +40,50 @@ object AutoSkipHealth {
         }
     }
 
-    fun markEvent(context: Context, engineGeneration: Int) {
+    fun markEvent(context: Context, engineGeneration: Int, packageName: String = "") {
         val now = System.currentTimeMillis()
         update(context) { state ->
             state.copy(
                 serviceConnected = true,
                 lastHeartbeatAt = now,
                 lastEventAt = now,
+                lastEventPackageName = packageName.ifBlank { state.lastEventPackageName },
+                engineGeneration = engineGeneration
+            )
+        }
+    }
+
+    fun markNotificationEvent(
+        context: Context,
+        engineGeneration: Int,
+        eventType: Int,
+        eventPackageName: String,
+        titlePackageName: String
+    ) {
+        val now = System.currentTimeMillis()
+        update(context) { state ->
+            state.copy(
+                serviceConnected = true,
+                lastHeartbeatAt = now,
+                lastEventAt = now,
+                lastRawEventType = eventType,
+                lastRawEventPackageName = eventPackageName,
+                lastTitlePackageName = titlePackageName.ifBlank { state.lastTitlePackageName },
+                lastEventPackageName = titlePackageName.ifBlank { state.lastEventPackageName },
+                engineGeneration = engineGeneration
+            )
+        }
+    }
+
+    fun markCurrentPackage(context: Context, engineGeneration: Int, packageName: String) {
+        if (packageName.isBlank() || packageName == cachedState.lastEventPackageName) return
+        val now = System.currentTimeMillis()
+        update(context) { state ->
+            state.copy(
+                serviceConnected = true,
+                lastHeartbeatAt = now,
+                lastEventPackageName = packageName,
+                lastTitlePackageName = packageName,
                 engineGeneration = engineGeneration
             )
         }
@@ -116,6 +153,10 @@ data class AutoSkipHealthState(
     val lastConnectedAt: Long = 0L,
     val lastHeartbeatAt: Long = 0L,
     val lastEventAt: Long = 0L,
+    val lastEventPackageName: String = "",
+    val lastRawEventType: Int = 0,
+    val lastRawEventPackageName: String = "",
+    val lastTitlePackageName: String = "",
     val engineGeneration: Int = 0,
     val lastError: String = "",
     val lastDisconnectReason: String = ""
@@ -126,6 +167,10 @@ data class AutoSkipHealthState(
             put("lastConnectedAt", lastConnectedAt)
             put("lastHeartbeatAt", lastHeartbeatAt)
             put("lastEventAt", lastEventAt)
+            put("lastEventPackageName", lastEventPackageName)
+            put("lastRawEventType", lastRawEventType)
+            put("lastRawEventPackageName", lastRawEventPackageName)
+            put("lastTitlePackageName", lastTitlePackageName)
             put("engineGeneration", engineGeneration)
             put("lastError", lastError)
             put("lastDisconnectReason", lastDisconnectReason)
@@ -139,6 +184,10 @@ data class AutoSkipHealthState(
                 lastConnectedAt = obj.optLong("lastConnectedAt", 0L),
                 lastHeartbeatAt = obj.optLong("lastHeartbeatAt", 0L),
                 lastEventAt = obj.optLong("lastEventAt", 0L),
+                lastEventPackageName = obj.optString("lastEventPackageName"),
+                lastRawEventType = obj.optInt("lastRawEventType", 0),
+                lastRawEventPackageName = obj.optString("lastRawEventPackageName"),
+                lastTitlePackageName = obj.optString("lastTitlePackageName"),
                 engineGeneration = obj.optInt("engineGeneration", 0),
                 lastError = obj.optString("lastError"),
                 lastDisconnectReason = obj.optString("lastDisconnectReason")

@@ -120,7 +120,9 @@
     <string name="auto_skip_auto_enable_accessibility_failed">无法自动激活无障碍，请打开无障碍设置手动启用。</string>
     <string name="auto_skip_service_keep_alive">无障碍服务自身保活</string>
     <string name="auto_skip_daemon_keep_alive">Root Daemon 保活</string>
-    <string name="auto_skip_keep_alive_status">服务保活：%1$s / Daemon：%2$s / 心跳：%3$s / 最近错误：%4$s</string>
+    <string name="auto_skip_keep_alive_status">服务保活：%1$s / Daemon：%2$s / 心跳：%3$s / 最近错误：%4$s / Daemon 状态：%5$s</string>
+    <string name="auto_skip_keep_alive_status_no_daemon_status">服务保活：%1$s / Daemon：%2$s / 心跳：%3$s / 最近错误：%4$s</string>
+    <string name="auto_skip_daemon_runtime_status">%1$s pid=%2$d 连接=%3$s 心跳延迟=%4$s 恢复次数=%5$d 最近检查=%6$s 动作=%7$s</string>
     <string name="auto_skip_daemon_operation_success">Daemon 操作完成：%1$s</string>
     <string name="auto_skip_daemon_operation_failed">Daemon 操作失败：%1$s</string>
     <string name="auto_skip_summary_text">文本</string>

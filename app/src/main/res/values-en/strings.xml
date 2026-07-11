@@ -120,7 +120,9 @@
     <string name="auto_skip_auto_enable_accessibility_failed">Could not activate accessibility automatically. Open accessibility settings to enable it manually.</string>
     <string name="auto_skip_service_keep_alive">Service self keep-alive</string>
     <string name="auto_skip_daemon_keep_alive">Root daemon keep-alive</string>
-    <string name="auto_skip_keep_alive_status">Service keep-alive: %1$s / Daemon: %2$s / Heartbeat: %3$s / Last error: %4$s</string>
+    <string name="auto_skip_keep_alive_status">Service keep-alive: %1$s / Daemon: %2$s / Heartbeat: %3$s / Last error: %4$s / Daemon status: %5$s</string>
+    <string name="auto_skip_keep_alive_status_no_daemon_status">Service keep-alive: %1$s / Daemon: %2$s / Heartbeat: %3$s / Last error: %4$s</string>
+    <string name="auto_skip_daemon_runtime_status">%1$s pid=%2$d connected=%3$s heartbeat_age=%4$s recoveries=%5$d last_check=%6$s action=%7$s</string>
     <string name="auto_skip_daemon_operation_success">Daemon operation completed: %1$s</string>
     <string name="auto_skip_daemon_operation_failed">Daemon operation failed: %1$s</string>
     <string name="auto_skip_summary_text">text</string>

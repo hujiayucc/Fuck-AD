@@ -88,6 +88,7 @@
         <service
                 android:name=".autoskip.AutoSkipAccessibilityService"
                 android:exported="true"
+                android:process=":autoskip"
                 android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>

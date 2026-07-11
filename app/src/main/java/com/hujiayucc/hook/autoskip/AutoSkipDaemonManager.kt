@@ -13,6 +13,7 @@ object AutoSkipDaemonManager {
     private const val LOCAL_SCRIPT_FILE = "fkad-daemon"
     private const val CONFIG_FILE = "autoskip_daemon_config.json"
     private const val LOG_FILE = "autoskip_watchdog.log"
+    private const val STATUS_FILE = "autoskip_watchdog_status.json"
     private const val DEFAULT_INTERVAL_SECONDS = 20
     private const val DEFAULT_STALE_SECONDS = 45
     private const val DEFAULT_MAX_RECOVER_PER_HOUR = 3
@@ -26,39 +27,72 @@ object AutoSkipDaemonManager {
         return File(context.applicationContext.noBackupFilesDir, LOG_FILE)
     }
 
-    fun writeConfig(context: Context) {
+    fun statusFile(context: Context): File {
+        return File(context.applicationContext.noBackupFilesDir, STATUS_FILE)
+    }
+
+    fun writeConfig(context: Context, preserveExistingEnabled: Boolean = false, enabledOverride: Boolean? = null) {
         runCatching {
             val appContext = context.applicationContext
             val file = configFile(appContext)
             file.parentFile?.mkdirs()
-            val tempFile = File(file.parentFile, file.name + ".tmp")
-            val json = JSONObject().apply {
-                put("enabled", AutoSkipSettings.daemonKeepAliveEnabled(appContext))
+            val existing = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
+            val existingJson = existing?.let { text -> runCatching { JSONObject(text) }.getOrNull() }
+            val daemonEnabled = enabledOverride ?: if (preserveExistingEnabled) {
+                existingJson?.optBoolean("enabled") ?: AutoSkipSettings.daemonKeepAliveEnabled(appContext)
+            } else {
+                AutoSkipSettings.daemonKeepAliveEnabled(appContext)
+            }
+            val jsonText = JSONObject().apply {
+                put("enabled", daemonEnabled)
                 put("packageName", appContext.packageName)
                 put("serviceComponent", accessibilityServiceComponent(appContext))
                 put("healthFile", AutoSkipHealth.stateFile(appContext).absolutePath)
                 put("logFile", logFile(appContext).absolutePath)
+                put("statusFile", statusFile(appContext).absolutePath)
                 put("intervalSeconds", DEFAULT_INTERVAL_SECONDS)
                 put("staleSeconds", DEFAULT_STALE_SECONDS)
                 put("maxRecoverPerHour", DEFAULT_MAX_RECOVER_PER_HOUR)
                 put("reenableWhenUserDisabled", false)
-            }
-            tempFile.writeText(json.toString())
+            }.toString().replace("\\/", "/")
+            if (existing == jsonText) return@runCatching
+            val tempFile = File(file.parentFile, file.name + ".tmp")
+            tempFile.writeText(jsonText)
             if (!tempFile.renameTo(file)) {
-                file.writeText(json.toString())
+                file.writeText(jsonText)
                 tempFile.delete()
             }
         }
     }
 
+    fun readStatus(context: Context): DaemonStatus? {
+        return runCatching {
+            val file = statusFile(context.applicationContext)
+            if (!file.exists()) return null
+            val json = JSONObject(file.readText())
+            DaemonStatus(
+                processName = json.optString("processName"),
+                pid = json.optInt("pid"),
+                lastCheckAt = json.optLong("lastCheckAt"),
+                lastAction = json.optString("lastAction"),
+                serviceEnabled = json.optBoolean("serviceEnabled"),
+                connected = json.optBoolean("connected"),
+                heartbeatAgeSeconds = json.optLong("heartbeatAgeSeconds", -1L),
+                recoverCount = json.optInt("recoverCount"),
+                lastRecoverAt = json.optLong("lastRecoverAt")
+            )
+        }.getOrNull()
+    }
+
     fun installOrUpdate(context: Context): DaemonOperationResult {
-        writeConfig(context)
+        writeConfig(context, enabledOverride = true)
         val appContext = context.applicationContext
         val localScript = writeLocalScript(appContext)
             ?: return DaemonOperationResult(false, "script write failed")
         val command = listOf(
             "mkdir -p /data/adb/service.d",
             "if [ -f ${shellQuote(LEGACY_DAEMON_SCRIPT_PATH)} ]; then sh ${shellQuote(LEGACY_DAEMON_SCRIPT_PATH)} stop; rm -f ${shellQuote(LEGACY_DAEMON_SCRIPT_PATH)}; fi",
+            "if [ -f ${shellQuote(DAEMON_SCRIPT_PATH)} ]; then sh ${shellQuote(DAEMON_SCRIPT_PATH)} stop; fi",
             "cp ${shellQuote(localScript.absolutePath)} ${shellQuote(DAEMON_SCRIPT_PATH)}",
             "chmod 755 ${shellQuote(DAEMON_SCRIPT_PATH)}",
             "sh ${shellQuote(DAEMON_SCRIPT_PATH)} start"
@@ -71,7 +105,7 @@ object AutoSkipDaemonManager {
     }
 
     fun stopAndUninstall(context: Context): DaemonOperationResult {
-        writeConfig(context)
+        writeConfig(context, enabledOverride = false)
         val command = listOf(
             "if [ -f ${shellQuote(DAEMON_SCRIPT_PATH)} ]; then sh ${shellQuote(DAEMON_SCRIPT_PATH)} stop; fi",
             "if [ -f ${shellQuote(LEGACY_DAEMON_SCRIPT_PATH)} ]; then sh ${shellQuote(LEGACY_DAEMON_SCRIPT_PATH)} stop; fi",
@@ -118,6 +152,18 @@ object AutoSkipDaemonManager {
         return "'" + value.replace("'", "'\"'\"'") + "'"
     }
 }
+
+data class DaemonStatus(
+    val processName: String,
+    val pid: Int,
+    val lastCheckAt: Long,
+    val lastAction: String,
+    val serviceEnabled: Boolean,
+    val connected: Boolean,
+    val heartbeatAgeSeconds: Long,
+    val recoverCount: Int,
+    val lastRecoverAt: Long
+)
 
 data class DaemonOperationResult(
     val success: Boolean,

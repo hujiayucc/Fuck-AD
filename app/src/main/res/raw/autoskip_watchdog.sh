@@ -4,17 +4,18 @@ CONFIG_FILE="/data/user/0/com.hujiayucc.hook/no_backup/autoskip_daemon_config.js
 PROCESS_NAME="fkad-daemon"
 PID_FILE="/data/local/tmp/fkad-daemon.pid"
 DEFAULT_LOG_FILE="/data/user/0/com.hujiayucc.hook/no_backup/autoskip_watchdog.log"
+DEFAULT_STATUS_FILE="/data/user/0/com.hujiayucc.hook/no_backup/autoskip_watchdog_status.json"
 
 json_value() {
     key="$1"
     file="$2"
-    sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$file" | head -n 1
+    sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$file" | head -n 1 | sed 's#\\/#/#g'
 }
 
 json_bool() {
     key="$1"
     file="$2"
-    value=$(sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p" "$file" | head -n 1)
+    value=$(sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p" "$file" | head -n 1 | tr -d '[:space:]')
     [ "$value" = "true" ]
 }
 
@@ -40,6 +41,28 @@ log_msg() {
     mkdir -p "$(dirname "$log_file")"
     echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$log_file"
     tail -n 80 "$log_file" > "$log_file.tmp" 2>/dev/null && mv "$log_file.tmp" "$log_file"
+}
+
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+write_status() {
+    status_file="$1"
+    action="$2"
+    service_enabled_value="$3"
+    connected_value="$4"
+    heartbeat_age="$5"
+    recover_count_value="$6"
+    last_recover_at="$7"
+    mkdir -p "$(dirname "$status_file")"
+    action_escaped=$(json_escape "$action")
+    tmp_file="$status_file.tmp"
+    cat > "$tmp_file" <<EOF
+{"processName":"$PROCESS_NAME","pid":$$,"lastCheckAt":$(now_ms),"lastAction":"$action_escaped","serviceEnabled":$service_enabled_value,"connected":$connected_value,"heartbeatAgeSeconds":$heartbeat_age,"recoverCount":$recover_count_value,"lastRecoverAt":$last_recover_at}
+EOF
+    mv "$tmp_file" "$status_file"
+    chmod 644 "$status_file" 2>/dev/null
 }
 
 service_enabled() {
@@ -113,6 +136,7 @@ rebind_service() {
 
 loop_watchdog() {
     recover_count=0
+    last_recover_at=0
     window_start=$(date +%s)
     while true; do
         if [ ! -f "$CONFIG_FILE" ]; then
@@ -122,7 +146,13 @@ loop_watchdog() {
 
         log_file=$(json_value "logFile" "$CONFIG_FILE")
         [ -n "$log_file" ] || log_file="$DEFAULT_LOG_FILE"
+        status_file=$(json_value "statusFile" "$CONFIG_FILE")
+        [ -n "$status_file" ] || status_file="$DEFAULT_STATUS_FILE"
+        if [ ! -f "$PID_FILE" ]; then
+            echo $$ > "$PID_FILE"
+        fi
         if ! json_bool "enabled" "$CONFIG_FILE"; then
+            write_status "$status_file" "disabled" false false -1 "$recover_count" "$last_recover_at"
             log_msg "$log_file" "disabled"
             sleep 60
             continue
@@ -150,8 +180,11 @@ loop_watchdog() {
                 settings put secure accessibility_enabled 1
                 settings put secure enabled_accessibility_services "$(merge_service "$component")"
                 recover_count=$((recover_count + 1))
+                last_recover_at=$(now_ms)
+                write_status "$status_file" "reenabled" true false -1 "$recover_count" "$last_recover_at"
                 log_msg "$log_file" "reenabled accessibility service"
             else
+                write_status "$status_file" "disabled_by_user_or_limited" false false -1 "$recover_count" "$last_recover_at"
                 log_msg "$log_file" "accessibility disabled by user or recovery limited"
             fi
             sleep "$interval"
@@ -159,18 +192,24 @@ loop_watchdog() {
         fi
 
         heartbeat=$(last_heartbeat "$health_file")
-        age=$((($(now_ms) - heartbeat) / 1000))
+        if [ "$heartbeat" -gt 0 ]; then
+            age=$((($(now_ms) - heartbeat) / 1000))
+        else
+            age=-1
+        fi
         connected=false
         if service_connected "$component"; then
             connected=true
         fi
 
         if [ "$connected" = "true" ] && [ "$heartbeat" -gt 0 ] && [ "$age" -le "$stale" ]; then
+            write_status "$status_file" "healthy" true true "$age" "$recover_count" "$last_recover_at"
             sleep "$interval"
             continue
         fi
 
         if [ "$recover_count" -ge "$max_recover" ]; then
+            write_status "$status_file" "recovery_limited" true "$connected" "$age" "$recover_count" "$last_recover_at"
             log_msg "$log_file" "recovery limited connected=$connected heartbeat_age=${age}s"
             sleep "$interval"
             continue
@@ -178,6 +217,8 @@ loop_watchdog() {
 
         rebind_service "$component"
         recover_count=$((recover_count + 1))
+        last_recover_at=$(now_ms)
+        write_status "$status_file" "rebind_requested" true "$connected" "$age" "$recover_count" "$last_recover_at"
         log_msg "$log_file" "rebind requested connected=$connected heartbeat_age=${age}s"
         sleep "$interval"
     done
@@ -189,8 +230,9 @@ start_watchdog() {
         if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
             exit 0
         fi
+        rm -f "$PID_FILE"
     fi
-    sh -c 'exec -a "$1" /system/bin/sh "$2" __daemon_child 2>/dev/null; exec /system/bin/sh "$2" __daemon_child' sh "$PROCESS_NAME" "$0" &
+    nohup /system/bin/sh "$0" __daemon_child >/dev/null 2>&1 &
     echo $! > "$PID_FILE"
 }
 

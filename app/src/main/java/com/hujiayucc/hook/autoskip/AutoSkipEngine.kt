@@ -257,7 +257,8 @@ class AutoSkipEngine(
     private fun isSupportedEvent(eventType: Int): Boolean {
         return eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
-            eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+            eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+            eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED
     }
 
     companion object {
