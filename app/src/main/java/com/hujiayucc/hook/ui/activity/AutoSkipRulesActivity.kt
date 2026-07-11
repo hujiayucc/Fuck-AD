@@ -20,6 +20,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.autoskip.AutoSkipAccessibilityService
@@ -97,6 +98,8 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             },
             onRuleClicked = { rule -> showRuleDetail(rule) }
         )
+        binding.ruleList.layoutManager = LinearLayoutManager(this)
+        binding.ruleList.itemAnimator = null
         binding.ruleList.adapter = adapter
         runCatching { Shizuku.addRequestPermissionResultListener(shizukuPermissionListener) }
         setupSwitches()

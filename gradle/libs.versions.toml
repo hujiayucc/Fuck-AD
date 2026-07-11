@@ -22,6 +22,7 @@ shizuku = "13.1.5"
 unityAds = "4.19.0"
 vungleAds = "7.7.4"
 libxposed = "102.0.0"
+recyclerView = "1.4.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -54,4 +55,5 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerView" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }

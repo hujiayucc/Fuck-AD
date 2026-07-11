@@ -1,9 +1,10 @@
 package com.hujiayucc.hook.ui.adapter
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.BaseAdapter
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.autoskip.AutoSkipRule
 import com.hujiayucc.hook.autoskip.AutoSkipRuleSource
@@ -11,44 +12,44 @@ import com.hujiayucc.hook.autoskip.AutoSkipTapStrategy
 import com.hujiayucc.hook.databinding.ItemAutoSkipRuleBinding
 
 class AutoSkipRuleAdapter(
-    private var rules: List<AutoSkipRule>,
+    rules: List<AutoSkipRule>,
     private val onRuleEnabledChanged: (AutoSkipRule, Boolean) -> Unit,
     private val onRuleClicked: (AutoSkipRule) -> Unit
-) : BaseAdapter() {
-    private class ViewHolder(val binding: ItemAutoSkipRuleBinding)
-
-    fun updateData(newRules: List<AutoSkipRule>) {
-        rules = newRules
-        notifyDataSetChanged()
+) : ListAdapter<AutoSkipRule, AutoSkipRuleAdapter.RuleViewHolder>(DiffCallback) {
+    init {
+        submitList(rules)
     }
 
-    override fun getCount(): Int = rules.size
+    fun updateData(newRules: List<AutoSkipRule>) {
+        submitList(newRules)
+    }
 
-    override fun getItem(position: Int): AutoSkipRule = rules[position]
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RuleViewHolder {
+        val binding = ItemAutoSkipRuleBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return RuleViewHolder(binding)
+    }
 
-    override fun getItemId(position: Int): Long = position.toLong()
+    override fun onBindViewHolder(holder: RuleViewHolder, position: Int) {
+        holder.bind(getItem(position))
+    }
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-        val holder = if (convertView != null) {
-            convertView.tag as ViewHolder
-        } else {
-            val view = LayoutInflater.from(parent?.context).inflate(R.layout.item_auto_skip_rule, parent, false)
-            val binding = ItemAutoSkipRuleBinding.bind(view)
-            ViewHolder(binding).also { binding.root.tag = it }
+    inner class RuleViewHolder(private val binding: ItemAutoSkipRuleBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(rule: AutoSkipRule) {
+            val context = binding.root.context
+            binding.ruleName.text = rule.name
+            binding.ruleSummary.text = buildSummary(rule, context)
+            binding.ruleSource.text = buildSource(rule, context)
+            binding.ruleSwitch.setOnCheckedChangeListener(null)
+            binding.ruleSwitch.isChecked = rule.enabled
+            binding.ruleSwitch.setOnCheckedChangeListener { _, isChecked ->
+                val currentRule = bindingAdapterPosition.takeIf { it != RecyclerView.NO_POSITION }?.let { getItem(it) } ?: rule
+                onRuleEnabledChanged(currentRule, isChecked)
+            }
+            binding.root.setOnClickListener {
+                val currentRule = bindingAdapterPosition.takeIf { it != RecyclerView.NO_POSITION }?.let { getItem(it) } ?: rule
+                onRuleClicked(currentRule)
+            }
         }
-        val rule = getItem(position)
-        val binding = holder.binding
-        val context = binding.root.context
-        binding.ruleName.text = rule.name
-        binding.ruleSummary.text = buildSummary(rule, context)
-        binding.ruleSource.text = buildSource(rule, context)
-        binding.ruleSwitch.setOnCheckedChangeListener(null)
-        binding.ruleSwitch.isChecked = rule.enabled
-        binding.ruleSwitch.setOnCheckedChangeListener { _, isChecked ->
-            onRuleEnabledChanged(rule, isChecked)
-        }
-        binding.root.setOnClickListener { onRuleClicked(rule) }
-        return binding.root
     }
 
     private fun buildSummary(rule: AutoSkipRule, context: android.content.Context): String {
@@ -83,6 +84,16 @@ class AutoSkipRuleAdapter(
             AutoSkipTapStrategy.BOTTOM_RIGHT -> context.getString(R.string.auto_skip_tap_strategy_bottom_right)
             AutoSkipTapStrategy.CUSTOM_RATIO -> context.getString(R.string.auto_skip_tap_strategy_custom_ratio)
             AutoSkipTapStrategy.PROBE -> context.getString(R.string.auto_skip_tap_strategy_probe)
+        }
+    }
+
+    private object DiffCallback : DiffUtil.ItemCallback<AutoSkipRule>() {
+        override fun areItemsTheSame(oldItem: AutoSkipRule, newItem: AutoSkipRule): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: AutoSkipRule, newItem: AutoSkipRule): Boolean {
+            return oldItem == newItem
         }
     }
 }
