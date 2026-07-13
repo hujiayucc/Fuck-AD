@@ -54,18 +54,30 @@ class ModuleMain : XposedModule() {
 
     override fun onModuleLoaded(param: XposedModuleInterface.ModuleLoadedParam) {
         module = this
-        prefs = runCatching {
+        val remotePreferences = runCatching {
             getRemotePreferences(PREFS_NAME)
         }.onFailure { error ->
             runCatching {
                 log(Log.WARN, TAG, "Remote preferences unavailable; using fallback preferences", error)
             }
-        }.getOrDefault(FallbackSharedPreferences)
+        }
+        prefs = remotePreferences.getOrDefault(FallbackSharedPreferences)
+        log(
+            Log.INFO,
+            TAG,
+            "Module loaded: process=${param.processName}, framework=$frameworkName, " +
+                "api=$apiVersion, remotePreferences=${remotePreferences.isSuccess}",
+            null
+        )
     }
 
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
         try {
             val appHookers = HookerRegistry.create(param.packageName)
+            logIfDebug(
+                "Package ready: package=${param.packageName}, appHookers=" +
+                    appHookers.joinToString { it.javaClass.simpleName }.ifEmpty { "none" }
+            )
             val hookers = if (ClickInfo.isEnabled()) {
                 BUILTIN_HOOKERS + ClickInfo + appHookers
             } else {
@@ -73,7 +85,8 @@ class ModuleMain : XposedModule() {
             }
             hookers.forEach { it.call(param) }
             if (appHookers.isEmpty()) {
-                resolveSdkHookerTargets(param.packageName, param.classLoader).forEach { target ->
+                resolveSdkHookerTargets(param.packageName, param.classLoader).forEach { match ->
+                    val target = match.target
                     if (SdkHookerConfig.isEnabled(prefs, param.packageName, target.id)) {
                         target.hooker.call(param)
                     } else {
@@ -81,8 +94,10 @@ class ModuleMain : XposedModule() {
                     }
                 }
             }
-        } catch (e: Exception) {
-            logIfDebug("onPackageReady", e)
+        } catch (error: LinkageError) {
+            log(Log.ERROR, TAG, "onPackageReady linkage error: ${param.packageName}", error)
+        } catch (error: Exception) {
+            logIfDebug("onPackageReady", error)
         }
     }
 

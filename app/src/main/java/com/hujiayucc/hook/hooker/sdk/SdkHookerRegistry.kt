@@ -7,8 +7,26 @@ data class SdkHookerTarget(
     val id: String,
     val name: String,
     val hooker: Hooker,
-    val markerClasses: List<String>
+    val coreMarkerClasses: List<String>,
+    val strongMarkerClasses: List<String> = emptyList(),
+    val compatibilityMarkerClasses: List<String> = emptyList()
 )
+
+private fun tieredTarget(
+    id: String,
+    name: String,
+    hooker: Hooker,
+    orderedMarkers: List<String>
+): SdkHookerTarget {
+    return SdkHookerTarget(
+        id = id,
+        name = name,
+        hooker = hooker,
+        coreMarkerClasses = orderedMarkers.take(1),
+        strongMarkerClasses = orderedMarkers.drop(1).take(2),
+        compatibilityMarkerClasses = orderedMarkers.drop(3)
+    )
+}
 
 object SdkHookerRegistry {
     val hookers = listOf(
@@ -28,11 +46,11 @@ object SdkHookerRegistry {
     )
 
     val targets = listOf(
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.GDT,
             name = "GDT",
             hooker = GDT,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.qq.e.comm.managers.plugin.PM\$a",
                 "com.qq.e.comm.managers.GDTAdSdk",
                 "com.qq.e.comm.managers.status.SDKStatus",
@@ -53,11 +71,11 @@ object SdkHookerRegistry {
                 "com.qq.e.comm.plugin.nativeadunified.ANNativeUnifiedAdAdapter"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.KW,
             name = "KW",
             hooker = KW,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.kwad.sdk.api.KsAdSDK",
                 "com.kwad.sdk.api.KsLoadManager",
                 "com.kwad.sdk.api.KsSplashScreenAd",
@@ -71,11 +89,11 @@ object SdkHookerRegistry {
                 "com.kwad.components.ad.splashscreen.widget.CircleSkipView"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.PANGLE,
             name = "Pangle",
             hooker = Pangle,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.bytedance.sdk.openadsdk.TTAdSdk",
                 "com.bytedance.sdk.openadsdk.TTInitializer",
                 "com.bytedance.sdk.openadsdk.TTAdNative",
@@ -98,11 +116,11 @@ object SdkHookerRegistry {
                 "com.bytedance.sdk.openadsdk.core.component.splash.e.r\$1"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.BAIDU,
             name = "Baidu",
             hooker = BaiQingTeng,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.baidu.mobads.sdk.api.BDAdConfig",
                 "com.baidu.mobads.sdk.api.MobadsPermissionSettings",
                 "com.baidu.mobads.sdk.api.SplashAd",
@@ -121,11 +139,11 @@ object SdkHookerRegistry {
                 "com.baidu.mobads.sdk.api.MobadsVideoActivity"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.SIGMOB,
             name = "Sigmob",
             hooker = Sigmob,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.sigmob.windad.WindAds",
                 "com.sigmob.windad.Splash.WindSplashAD",
                 "com.sigmob.windad.rewardVideo.WindRewardVideoAd",
@@ -140,11 +158,11 @@ object SdkHookerRegistry {
                 "com.sigmob.sdk.base.common.PortraitAdActivity"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.MINTEGRAL,
             name = "Mintegral",
             hooker = Mintegral,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.mbridge.msdk.MBridgeSDK",
                 "com.mbridge.msdk.system.MBridgeSDKImpl",
                 "com.mbridge.msdk.out.MBridgeSDKFactory",
@@ -157,11 +175,11 @@ object SdkHookerRegistry {
                 "com.mbridge.msdk.out.MBSplashHandler"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.TOPON,
             name = "TopOn",
             hooker = TopOn,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.anythink.core.api.ATSDK",
                 "com.anythink.core.common.base.AnyThinkBaseAdapter",
                 "com.anythink.splashad.api.ATSplashAd",
@@ -181,11 +199,11 @@ object SdkHookerRegistry {
                 "com.anythink.myoffer.ui.MyOfferAdActivity"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.TRADPLUS,
             name = "TradPlus",
             hooker = TradPlus,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.tradplus.ads.base.TradPlus",
                 "com.tradplus.ads.base.OpenLoadManager",
                 "com.tradplus.ads.base.adapter.TPBaseAdapter",
@@ -202,11 +220,11 @@ object SdkHookerRegistry {
                 "com.tradplus.ads.open.nativead.TPNative"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.GOOGLE,
             name = "Google Ads",
             hooker = GoogleAds,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.google.android.gms.ads.MobileAds",
                 "com.google.android.gms.ads.MobileAdsInitProvider",
                 "com.google.android.gms.ads.AdView",
@@ -224,11 +242,11 @@ object SdkHookerRegistry {
                 "com.google.android.gms.ads.internal.overlay.AdOverlayInfoParcel"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.APPLOVIN,
             name = "AppLovin MAX",
             hooker = AppLovin,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.applovin.sdk.AppLovinSdk",
                 "com.applovin.mediation.ads.MaxAdView",
                 "com.applovin.mediation.ads.MaxInterstitialAd",
@@ -238,11 +256,11 @@ object SdkHookerRegistry {
                 "com.applovin.mediation.nativeAds.MaxNativeAdView"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.UNITY,
             name = "Unity Ads",
             hooker = UnityAds,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.unity3d.ads.UnityAds",
                 "com.unity3d.services.banners.BannerView",
                 "com.unity3d.services.ads.adunit.AdUnitActivity",
@@ -251,11 +269,11 @@ object SdkHookerRegistry {
                 "com.unity3d.services.ads.adunit.AdUnitSoftwareActivity"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.VUNGLE,
             name = "Vungle/Liftoff",
             hooker = Vungle,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.vungle.ads.VungleAds",
                 "com.vungle.ads.BaseAd",
                 "com.vungle.ads.BaseFullscreenAd",
@@ -267,11 +285,11 @@ object SdkHookerRegistry {
                 "com.vungle.ads.internal.ui.FullscreenAdActivity"
             )
         ),
-        SdkHookerTarget(
+        tieredTarget(
             id = SdkHookerConfig.LEVELPLAY,
             name = "ironSource/LevelPlay",
             hooker = LevelPlay,
-            markerClasses = listOf(
+            orderedMarkers = listOf(
                 "com.ironsource.mediationsdk.IronSource",
                 "com.ironsource.mediationsdk.demandOnly.ISDemandOnlyBannerLayout",
                 "com.ironsource.sdk.controller.ControllerActivity",
