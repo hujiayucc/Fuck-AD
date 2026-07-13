@@ -1,60 +1,32 @@
 package com.hujiayucc.hook.hooker.util
 
-import android.annotation.SuppressLint
 import android.app.Application
-import android.app.Instrumentation
-import android.content.Context
-import android.content.ContextWrapper
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.hujiayucc.hook.ModuleMain.Companion.module
-import com.hujiayucc.hook.ModuleMain.Companion.prefs
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.annotation.RunJiaGu
 import com.hujiayucc.hook.hooker.sdk.GDT
 import com.hujiayucc.hook.hooker.sdk.KW
 import com.hujiayucc.hook.hooker.sdk.Pangle
-import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface
 import java.lang.reflect.Constructor
 import java.lang.reflect.Executable
-import java.lang.reflect.Field
 import java.lang.reflect.Method
-import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
-import dalvik.system.BaseDexClassLoader
 
 @Suppress("UNCHECKED_CAST")
 abstract class Hooker {
     companion object {
-        private val installedHookKeys = ConcurrentHashMap.newKeySet<String>()
         private val completedHookerKeys = ConcurrentHashMap.newKeySet<String>()
-        private val declaredMethodCache = ConcurrentHashMap<Class<*>, Array<Method>>()
-        private val publicMethodCache = ConcurrentHashMap<Class<*>, Array<Method>>()
-        private val exactMethodCache = ConcurrentHashMap<MethodLookupKey, Method>()
-        private val declaredConstructorCache = ConcurrentHashMap<Class<*>, Array<out Constructor<*>>>()
-        private val declaredFieldCache = ConcurrentHashMap<FieldLookupKey, Field>()
-
-        @Volatile
-        private var cachedActivityThreadClass: Class<*>? = null
-
-        @Volatile
-        private var cachedCurrentApplicationMethod: Method? = null
-
-        @Volatile
-        private var cachedCurrentProcessNameMethod: Method? = null
-
-        @Volatile
-        private var loadedApkClassCache: Class<*>? = null
-
-        @Volatile
-        private var contextImplClassCache: Class<*>? = null
     }
 
-    private object UnsetResult
-
-    private val hookHandles = Collections.synchronizedList(mutableListOf<RegisteredHook>())
+    private val hookHandles = HookHandleRegistry()
+    private val hookInstaller = HookInstaller(
+        ownerClassName = { this@Hooker.javaClass.name },
+        ownerName = { appName },
+        fallbackClassLoader = { classLoader },
+        handles = hookHandles
+    )
 
     protected var appName: String = javaClass.simpleName
     protected var action: String = "Hook"
@@ -105,203 +77,19 @@ abstract class Hooker {
     }
 
     private fun XposedModuleInterface.PackageReadyParam.runJiaGuHook() {
-        if (jiaGuMarkerClasses.isEmpty()) {
-            logHookError(
-                "Skip $appName JiaGu hook because marker classes are empty",
-                IllegalStateException("@RunJiaGu requires marker classes for real ClassLoader verification.")
-            )
-            return
-        }
-
-        val state = JiaGuHookState(this)
-        if (state.tryClassLoader(paramClassLoader = classLoader, source = "PackageReadyParam")) return
-        state.installLifecycleHooks()
-        state.installDexClassLoaderHooks()
-        state.scheduleRetries()
-        if (jiaGuEnableLoadClassProbe) state.installLoadClassProbe()
+        JiaGuHookCoordinator(
+            owner = this@Hooker,
+            appName = { appName },
+            currentClassLoader = { this@Hooker.classLoader },
+            updateClassLoader = { this@Hooker.classLoader = it },
+            markerClasses = { jiaGuMarkerClasses },
+            retryDelays = { jiaGuRetryDelays },
+            enableLoadClassProbe = { jiaGuEnableLoadClassProbe }
+        ).run(this)
     }
 
-    private inner class JiaGuHookState(
-        private val param: XposedModuleInterface.PackageReadyParam
-    ) {
-        @Volatile
-        private var executed = false
-        @Volatile
-        private var verifyingMarker = false
-
-        fun installLifecycleHooks() {
-            runCatching {
-                ContextWrapper::class.java.method("attachBaseContext", Context::class.java).hook {
-                    after {
-                        (instance as? Application)?.let { application ->
-                            collectFromApplication(application, "Application.attachBaseContext")
-                        }
-                        (args.firstOrNull() as? Context)?.let { context ->
-                            tryClassLoader(context.classLoader, "Application.attachBaseContext context")
-                            collectFromLoadedApk(context, "Application.attachBaseContext loadedApk")
-                        }
-                    }
-                }
-            }.onFailure { error ->
-                logHookError("Failed to install attachBaseContext probe for $appName", error)
-            }
-
-            runCatching {
-                Application::class.java.method("onCreate").hook {
-                    after {
-                        collectFromApplication(instance<Application>(), "Application.onCreate")
-                    }
-                }
-            }.onFailure { error ->
-                logHookError("Failed to install Application.onCreate probe for $appName", error)
-            }
-
-            runCatching {
-                Instrumentation::class.java.method(
-                    "callApplicationOnCreate",
-                    Application::class.java
-                ).hook {
-                    after {
-                        (args.firstOrNull() as? Application)?.let { application ->
-                            collectFromApplication(application, "Instrumentation.callApplicationOnCreate")
-                        }
-                    }
-                }
-            }.onFailure { error ->
-                logHookError("Failed to install Instrumentation.callApplicationOnCreate probe for $appName", error)
-            }
-
-            installLoadedApkHook()
-        }
-
-        private fun installLoadedApkHook() {
-            runCatching {
-                val loadedApkClass = cachedLoadedApkClass()
-                loadedApkClass.cachedDeclaredMethods()
-                    .filter { method ->
-                        method.name == "makeApplication" &&
-                            Application::class.java.isAssignableFrom(method.returnType)
-                    }
-                    .forEach { method ->
-                        method.hook {
-                            after {
-                                (result as? Application)?.let { application ->
-                                    collectFromApplication(application, "LoadedApk.makeApplication")
-                                }
-                                tryClassLoader(
-                                    getField(instance, "mClassLoader") as? ClassLoader,
-                                    "LoadedApk.makeApplication mClassLoader"
-                                )
-                            }
-                        }
-                    }
-            }.onFailure { error ->
-                logHookError("Failed to install LoadedApk.makeApplication probe for $appName", error)
-            }
-        }
-
-        fun scheduleRetries() {
-            jiaGuRetryDelays.forEach { delay ->
-                runMainDelayed(delay) {
-                    if (!executed) collectCurrentLoaders("retry ${delay}ms")
-                }
-            }
-        }
-
-        fun installDexClassLoaderHooks() {
-            runCatching {
-                BaseDexClassLoader::class.java.constructor()?.forEach { constructor ->
-                    constructor.hook {
-                        after {
-                            tryClassLoader(instance<ClassLoader>(), "BaseDexClassLoader.constructor")
-                        }
-                    }
-                }
-            }.onFailure { error ->
-                logHookError("Failed to install BaseDexClassLoader constructor probe for $appName", error)
-            }
-        }
-
-        fun installLoadClassProbe() {
-            runCatching {
-                ClassLoader::class.java.method("loadClass", String::class.java).hook {
-                    after {
-                        if (executed || verifyingMarker) return@after
-                        val className = args.firstOrNull() as? String ?: return@after
-                        if (className !in jiaGuMarkerClasses) return@after
-                        tryClassLoader(instance<ClassLoader>(), "ClassLoader.loadClass($className)")
-                    }
-                }
-            }.onFailure { error ->
-                logHookError("Failed to install ClassLoader.loadClass probe for $appName", error)
-            }
-        }
-
-        fun tryClassLoader(paramClassLoader: ClassLoader?, source: String): Boolean {
-            if (executed) return true
-            val loader = paramClassLoader ?: return false
-            val marker = firstLoadableMarker(loader) ?: return false
-            return runWithClassLoader(loader, source, marker)
-        }
-
-        private fun collectCurrentLoaders(source: String) {
-            tryClassLoader(classLoader, "$source current")
-            tryClassLoader(param.classLoader, "$source param")
-            tryClassLoader(Thread.currentThread().contextClassLoader, "$source thread")
-            runCatching {
-                val currentApp = cachedActivityThreadMethod("currentApplication").invoke(null) as? Application
-                currentApp?.let { collectFromApplication(it, "$source currentApplication") }
-            }.onFailure { error ->
-                logHookError("Failed to query currentApplication for $appName", error)
-            }
-        }
-
-        private fun collectFromApplication(application: Application, source: String) {
-            tryClassLoader(application.classLoader, "$source application")
-            application.baseContext?.let { baseContext ->
-                tryClassLoader(baseContext.classLoader, "$source baseContext")
-                collectFromLoadedApk(baseContext, "$source baseContext loadedApk")
-            }
-            collectFromLoadedApk(application, "$source loadedApk")
-        }
-
-        @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
-        private fun collectFromLoadedApk(context: Context, source: String) {
-            runCatching {
-                val contextImplClass = cachedContextImplClass()
-                if (!contextImplClass.isInstance(context)) return@runCatching
-                val packageInfo = cachedDeclaredField(contextImplClass, "mPackageInfo")
-                    .get(context)
-                val loadedApkClass = cachedLoadedApkClass()
-                val loadedApkClassLoader = cachedDeclaredField(loadedApkClass, "mClassLoader")
-                    .get(packageInfo) as? ClassLoader
-                tryClassLoader(loadedApkClassLoader, source)
-            }.onFailure { error ->
-                logHookError("Failed to collect LoadedApk ClassLoader for $appName from $source", error)
-            }
-        }
-
-        private fun firstLoadableMarker(loader: ClassLoader): String? {
-            return jiaGuMarkerClasses.firstOrNull { marker ->
-                runCatching {
-                    verifyingMarker = true
-                    Class.forName(marker, false, loader)
-                    true
-                }.getOrDefault(false).also {
-                    verifyingMarker = false
-                }
-            }
-        }
-
-        @Synchronized
-        private fun runWithClassLoader(loader: ClassLoader, source: String, marker: String): Boolean {
-            if (executed) return true
-            executed = true
-            classLoader = loader
-            logHookDebug("JiaGu ClassLoader ready for $appName from $source by $marker: ${loader.javaClass.name}")
-            param.runHook()
-            return true
-        }
+    internal fun runHookFromCoordinator(param: XposedModuleInterface.PackageReadyParam) {
+        with(param) { runHook() }
     }
 
     fun XposedModuleInterface.PackageReadyParam.runHookOnce() {
@@ -346,9 +134,9 @@ abstract class Hooker {
 
     fun Class<*>.method(name: String, vararg parameterTypes: Class<*>): Method {
         if (parameterTypes.isEmpty()) {
-            return cachedDeclaredMethods().first { it.name == name }
+            return HookerReflectionCache.declaredMethods(this).first { it.name == name }
         }
-        return cachedExactMethod(name, parameterTypes.toList())
+        return HookerReflectionCache.exactMethod(this, name, parameterTypes.toList())
     }
 
     fun Class<*>.methodOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
@@ -356,7 +144,7 @@ abstract class Hooker {
     }
 
     fun Class<*>.methodExact(name: String, vararg parameterTypes: Class<*>): Method {
-        return cachedExactMethod(name, parameterTypes.toList())
+        return HookerReflectionCache.exactMethod(this, name, parameterTypes.toList())
     }
 
     fun Class<*>.methodExactOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
@@ -364,271 +152,43 @@ abstract class Hooker {
     }
 
     fun Class<*>.constructor(): Array<out Constructor<*>>? {
-        return runCatching { cachedDeclaredConstructors() }.getOrElse { error ->
+        return runCatching { HookerReflectionCache.declaredConstructors(this) }.getOrElse { error ->
             logHookError("Failed to get constructors: ${name}", error)
             null
         }
     }
 
     fun Class<*>.methods(name: String): List<Method> {
-        return runCatching { cachedDeclaredMethods().filter { it.name == name } }.getOrElse { error ->
+        return runCatching {
+            HookerReflectionCache.declaredMethods(this).filter { it.name == name }
+        }.getOrElse { error ->
             logHookError("Failed to get methods $name: ${this.name}", error)
             emptyList()
         }
     }
 
     fun Class<*>.methodContains(name: String): List<Method> {
-        return runCatching { cachedDeclaredMethods().filter { it.name.contains(name) } }.getOrElse { error ->
+        return runCatching {
+            HookerReflectionCache.declaredMethods(this).filter { it.name.contains(name) }
+        }.getOrElse { error ->
             logHookError("Failed to get methods contains $name: ${this.name}", error)
             emptyList()
         }
     }
 
     protected fun Class<*>.cachedDeclaredMethods(): Array<Method> {
-        return declaredMethodCache.getOrPut(this) { declaredMethods }
+        return HookerReflectionCache.declaredMethods(this)
     }
 
     protected fun Class<*>.cachedMethods(): Array<Method> {
-        return publicMethodCache.getOrPut(this) { methods }
+        return HookerReflectionCache.publicMethods(this)
     }
 
-    private fun Class<*>.cachedExactMethod(name: String, parameterTypes: List<Class<*>>): Method {
-        val key = MethodLookupKey(this, name, parameterTypes)
-        return exactMethodCache.getOrPut(key) { getDeclaredMethod(name, *parameterTypes.toTypedArray()) }
-    }
-
-    private fun Class<*>.cachedDeclaredConstructors(): Array<out Constructor<*>> {
-        return declaredConstructorCache.getOrPut(this) { declaredConstructors }
-    }
-
-    private fun cachedDeclaredField(clazz: Class<*>, name: String): Field {
-        val key = FieldLookupKey(clazz, name)
-        return declaredFieldCache.getOrPut(key) {
-            clazz.getDeclaredField(name).apply { isAccessible = true }
+    private fun Executable.hookExecutable(block: HookDsl.() -> Unit) {
+        val dsl = hookInstaller.buildDsl(this, block) ?: return
+        runCatching { hookInstaller.install(this, dsl) }.onFailure { error ->
+            logHookError("Failed to install hook: ${toGenericString()}", error)
         }
-    }
-
-    private fun cachedActivityThreadClass(): Class<*> {
-        cachedActivityThreadClass?.let { return it }
-        return synchronized(Hooker::class.java) {
-            cachedActivityThreadClass ?: Class.forName("android.app.ActivityThread")
-                .also { cachedActivityThreadClass = it }
-        }
-    }
-
-    private fun cachedFrameworkClass(name: String, cached: Class<*>?, update: (Class<*>) -> Unit): Class<*> {
-        cached?.let { return it }
-        return synchronized(Hooker::class.java) {
-            cached ?: Class.forName(name).also(update)
-        }
-    }
-
-    private fun cachedLoadedApkClass(): Class<*> {
-        return cachedFrameworkClass("android.app.LoadedApk", loadedApkClassCache) { loadedApkClassCache = it }
-    }
-
-    private fun cachedContextImplClass(): Class<*> {
-        return cachedFrameworkClass("android.app.ContextImpl", contextImplClassCache) { contextImplClassCache = it }
-    }
-
-    private fun cachedActivityThreadMethod(name: String): Method {
-        if (name == "currentApplication") {
-            cachedCurrentApplicationMethod?.let { return it }
-            return synchronized(Hooker::class.java) {
-                cachedCurrentApplicationMethod ?: cachedActivityThreadClass()
-                    .getDeclaredMethod(name)
-                    .apply { isAccessible = true }
-                    .also { cachedCurrentApplicationMethod = it }
-            }
-        }
-        return cachedActivityThreadClass()
-            .getDeclaredMethod(name)
-            .apply { isAccessible = true }
-    }
-
-    private fun cachedActivityThreadProcessName(): String? {
-        cachedCurrentProcessNameMethod?.let { return it.invoke(null) as? String }
-        val method = synchronized(Hooker::class.java) {
-            cachedCurrentProcessNameMethod ?: cachedActivityThreadClass()
-                .getDeclaredMethod("currentProcessName")
-                .apply { isAccessible = true }
-                .also { cachedCurrentProcessNameMethod = it }
-        }
-        return method.invoke(null) as? String
-    }
-
-    class HookDsl internal constructor(
-        private val onDuplicate: (String) -> Unit = {}
-    ) {
-        internal var replaceBlock: (HookCallback.() -> Any?)? = null
-        internal var replaceUnitBlock: (HookCallback.() -> Unit)? = null
-        internal var beforeBlock: (HookCallback.() -> Unit)? = null
-        internal var afterBlock: (HookCallback.() -> Unit)? = null
-
-        fun replace(block: HookCallback.() -> Any?) {
-            if (replaceBlock != null) onDuplicate("replace/replaceTo")
-            replaceBlock = block
-        }
-
-        fun replaceTo(value: Any?) {
-            if (replaceBlock != null) onDuplicate("replace/replaceTo")
-            replaceBlock = { value }
-        }
-
-        fun replaceUnit(block: HookCallback.() -> Unit = {}) {
-            if (replaceUnitBlock != null) onDuplicate("replaceUnit")
-            replaceUnitBlock = block
-        }
-
-        fun before(block: HookCallback.() -> Unit) {
-            if (beforeBlock != null) onDuplicate("before")
-            beforeBlock = block
-        }
-
-        fun after(block: HookCallback.() -> Unit) {
-            if (afterBlock != null) onDuplicate("after")
-            afterBlock = block
-        }
-    }
-
-    private fun Executable.hookInternal(dsl: HookDsl) {
-        val installKey = hookInstallKey()
-        if (!installedHookKeys.add(installKey)) {
-            logHookDebug("Skip duplicate hook: ${toGenericString()}")
-            return
-        }
-
-        try {
-            val handle = module.hook(this).intercept { hookChain ->
-                var currentResult: Any? = UnsetResult
-                var originalExecuted = false
-
-                fun currentResultOrNull(): Any? {
-                    return if (currentResult === UnsetResult) null else currentResult
-                }
-
-                fun proceedOriginalWithNonNull(thisObject: Any, args: Array<Any?>): Any? {
-                    if (originalExecuted) {
-                        logHookError(
-                            "Original method already proceeded: ${toGenericString()}",
-                            IllegalStateException("Use HookCallback.result instead of proceeding twice.")
-                        )
-                        return currentResultOrNull()
-                    }
-                    originalExecuted = true
-                    val proceededResult = hookChain.proceedWith(thisObject, args)
-                    currentResult = proceededResult
-                    return proceededResult
-                }
-
-                fun proceedOriginalWith(thisObject: Any?, args: Array<Any?>): Any? {
-                    if (thisObject == null) {
-                        logHookError(
-                            "Cannot proceed with null thisObject: ${toGenericString()}",
-                            IllegalArgumentException("thisObject must be non-null for proceedWith.")
-                        )
-                        return currentResultOrNull()
-                    }
-                    return proceedOriginalWithNonNull(thisObject, args)
-                }
-
-                fun proceedOriginal(args: Array<Any?>? = null): Any? {
-                    if (originalExecuted) {
-                        logHookError(
-                            "Original method already proceeded: ${toGenericString()}",
-                            IllegalStateException("Use HookCallback.result instead of proceeding twice.")
-                        )
-                        return currentResultOrNull()
-                    }
-                    if (args != null) return proceedOriginalWith(hookChain.thisObject, args)
-
-                    originalExecuted = true
-                    val proceededResult = hookChain.proceed()
-                    currentResult = proceededResult
-                    return proceededResult
-                }
-
-                val callback = object : HookCallback {
-                    override val chain: XposedInterface.Chain
-                        get() = hookChain
-                    override val thisObject: Any?
-                        get() = hookChain.thisObject
-                    override val args: List<Any?>
-                        get() = hookChain.args
-                    override val hasResult: Boolean
-                        get() = currentResult !== UnsetResult
-                    override var result: Any?
-                        get() = currentResultOrNull()
-                        set(value) {
-                            currentResult = value
-                        }
-
-                    override fun proceed(): Any? {
-                        return proceedOriginal()
-                    }
-
-                    override fun proceedWith(args: Array<Any?>): Any? {
-                        return proceedOriginal(args)
-                    }
-
-                    override fun proceedWith(thisObject: Any?, args: Array<Any?>): Any? {
-                        return proceedOriginalWith(thisObject, args)
-                    }
-                }
-
-                dsl.replaceBlock?.let { replace ->
-                    return@intercept try {
-                        replace.invoke(callback).also { currentResult = it }
-                    } catch (error: Throwable) {
-                        logHookError("Hook replace failed: ${toGenericString()}", error)
-                        callback.proceed()
-                    }
-                }
-                dsl.replaceUnitBlock?.let { replaceUnit ->
-                    return@intercept try {
-                        replaceUnit.invoke(callback)
-                        null
-                    } catch (error: Throwable) {
-                        logHookError("Hook replaceUnit failed: ${toGenericString()}", error)
-                        callback.proceed()
-                    }
-                }
-
-                dsl.beforeBlock?.let { before ->
-                    runCatching { before.invoke(callback) }.onFailure { error ->
-                        logHookError("Hook before failed: ${toGenericString()}", error)
-                    }
-                }
-                if (!callback.hasResult) {
-                    callback.proceed()
-                }
-
-                dsl.afterBlock?.let { after ->
-                    runCatching { after.invoke(callback) }.onFailure { error ->
-                        logHookError("Hook after failed: ${toGenericString()}", error)
-                    }
-                }
-                callback.result
-            }
-            registerHookHandle(this, handle)
-        } catch (error: Throwable) {
-            installedHookKeys.remove(installKey)
-            throw error
-        }
-    }
-
-    private fun Executable.hookInstallKey(): String {
-        val loader = declaringClass.classLoader ?: classLoader
-        val loaderId = loader?.let { System.identityHashCode(it).toString() } ?: "boot"
-        return "${this@Hooker.javaClass.name}|$loaderId|${toGenericString()}"
-    }
-
-    private fun registerHookHandle(executable: Executable, handle: Any) {
-        hookHandles += RegisteredHook(
-            owner = appName,
-            executable = executable.toGenericString(),
-            handle = handle
-        )
     }
 
     private fun logHookHandleSummary(owner: String = appName) {
@@ -639,17 +199,11 @@ abstract class Hooker {
     }
 
     protected fun hookHandleCount(owner: String = appName): Int {
-        return synchronized(hookHandles) {
-            hookHandles.count { registeredHook -> registeredHook.owner == owner }
-        }
+        return hookHandles.count(owner)
     }
 
     protected fun hookHandleExecutables(owner: String = appName): List<String> {
-        return synchronized(hookHandles) {
-            hookHandles
-                .filter { registeredHook -> registeredHook.owner == owner }
-                .map { registeredHook -> registeredHook.executable }
-        }
+        return hookHandles.executables(owner)
     }
 
     protected fun logHookHandles(owner: String = appName) {
@@ -661,89 +215,9 @@ abstract class Hooker {
     }
 
     protected fun clearHookHandleRecords(owner: String = appName): Int {
-        var removedCount = 0
-        synchronized(hookHandles) {
-            val iterator = hookHandles.iterator()
-            while (iterator.hasNext()) {
-                if (iterator.next().owner == owner) {
-                    iterator.remove()
-                    removedCount++
-                }
-            }
-        }
+        val removedCount = hookHandles.clear(owner)
         logHookDebug("Cleared $removedCount hook handle records for $owner")
         return removedCount
-    }
-
-    private data class RegisteredHook(
-        val owner: String,
-        val executable: String,
-        val handle: Any
-    )
-
-    private data class MethodLookupKey(
-        val clazz: Class<*>,
-        val name: String,
-        val parameterTypes: List<Class<*>>
-    )
-
-    private data class FieldLookupKey(
-        val clazz: Class<*>,
-        val name: String
-    )
-
-    private fun HookDsl.isValid(): Boolean {
-        val replaceCount = listOf(replaceBlock, replaceUnitBlock).count { it != null }
-        val callbackCount = listOf(beforeBlock, afterBlock).count { it != null }
-        return (replaceCount == 1 && callbackCount == 0) || (replaceCount == 0 && callbackCount > 0)
-    }
-
-    private fun HookDsl.describeCallbacks(): String {
-        val callbacks = mutableListOf<String>()
-        if (replaceBlock != null) callbacks += "replace"
-        if (replaceUnitBlock != null) callbacks += "replaceUnit"
-        if (beforeBlock != null) callbacks += "before"
-        if (afterBlock != null) callbacks += "after"
-        return if (callbacks.isEmpty()) "none" else callbacks.joinToString()
-    }
-
-    private fun Executable.canReplaceUnit(): Boolean {
-        return this is Method && (returnType == Void.TYPE || returnType == Void::class.java)
-    }
-
-    private fun Executable.validateDsl(dsl: HookDsl): Boolean {
-        if (!dsl.isValid()) {
-            logHookError(
-                "Invalid Hook DSL: ${toGenericString()} callbacks=${dsl.describeCallbacks()}",
-                IllegalArgumentException("Hook DSL requires replace/replaceTo/replaceUnit, or before/after.")
-            )
-            return false
-        }
-        if (dsl.replaceUnitBlock != null && !canReplaceUnit()) {
-            logHookError(
-                "Suspicious replaceUnit target: ${toGenericString()} callbacks=${dsl.describeCallbacks()}",
-                IllegalArgumentException("replaceUnit is safest with a void return type; use replace/replaceTo for explicit return values.")
-            )
-        }
-        return true
-    }
-
-    private fun Executable.hookExecutable(block: HookDsl.() -> Unit) {
-        val dsl = runCatching {
-            HookDsl { name ->
-                logHookError(
-                    "Duplicate Hook DSL callback $name: ${toGenericString()}",
-                    IllegalStateException("Only the last $name block is used.")
-                )
-            }.apply(block)
-        }.getOrElse { error ->
-            logHookError("Failed to build Hook DSL: ${toGenericString()}", error)
-            return
-        }
-        if (!validateDsl(dsl)) return
-        runCatching { hookInternal(dsl) }.onFailure { error ->
-            logHookError("Failed to install hook: ${toGenericString()}", error)
-        }
     }
 
     fun Method.hook(block: HookDsl.() -> Unit) {
@@ -770,7 +244,7 @@ abstract class Hooker {
 
     fun getField(obj: Any, fieldName: String): Any? {
         return runCatching {
-            cachedDeclaredField(obj.javaClass, fieldName).get(obj)
+            HookerReflectionCache.declaredField(obj.javaClass, fieldName).get(obj)
         }.getOrElse { error ->
             logHookError("Failed to get field $fieldName: ${obj.javaClass.name}", error)
             null
@@ -779,7 +253,7 @@ abstract class Hooker {
 
     fun setField(obj: Any, fieldName: String, value: Any?) {
         runCatching {
-            cachedDeclaredField(obj.javaClass, fieldName).set(obj, value)
+            HookerReflectionCache.declaredField(obj.javaClass, fieldName).set(obj, value)
         }.onFailure { error ->
             logHookError("Failed to set field $fieldName: ${obj.javaClass.name}", error)
         }
@@ -795,7 +269,7 @@ abstract class Hooker {
         return runCatching {
             Application.getProcessName()
         }.getOrNull() ?: runCatching {
-            cachedActivityThreadProcessName()
+            HookerReflectionCache.currentProcessName()
         }.getOrNull()
     }
 
@@ -819,37 +293,35 @@ abstract class Hooker {
     }
 
     protected fun logI(message: String, throwable: Throwable? = null) {
-        module.log(Log.INFO, "Fuck AD", message, throwable)
+        HookerLogger.info(message, throwable)
     }
 
     protected fun logD(message: String, throwable: Throwable? = null) {
-        module.log(Log.DEBUG, "Fuck AD", message, throwable)
+        HookerLogger.debug(message, throwable)
     }
 
     protected fun logE(message: String, throwable: Throwable? = null) {
-        module.log(Log.ERROR, "Fuck AD", message, throwable)
+        HookerLogger.error(message, throwable)
     }
 
     protected fun logW(message: String, throwable: Throwable? = null) {
-        module.log(Log.WARN, "Fuck AD", message, throwable)
+        HookerLogger.warn(message, throwable)
     }
 
     protected fun logHookDebug(message: String) {
-        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
-        if (shouldLog) runCatching { logD(message) }
+        HookerLogger.hookDebug(message)
     }
 
     private fun logHookError(message: String, throwable: Throwable? = null) {
-        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
-        if (shouldLog) runCatching { logE(message, throwable) }
+        HookerLogger.hookError(message, throwable)
     }
 
-    protected inline fun runMain(crossinline function: () -> Unit) {
-        Handler(Looper.getMainLooper()).post { function() }
+    protected fun runMain(function: () -> Unit) {
+        HookerRetryScheduler.post(function)
     }
 
-    protected inline fun runMainDelayed(delayMillis: Long, crossinline function: () -> Unit) {
-        Handler(Looper.getMainLooper()).postDelayed({ function() }, delayMillis)
+    protected fun runMainDelayed(delayMillis: Long, function: () -> Unit) {
+        HookerRetryScheduler.postDelayed(delayMillis, function)
     }
 
     val HookCallback.instance: Any get() = thisObject as Any
