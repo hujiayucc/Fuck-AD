@@ -4,6 +4,7 @@ com.baidu.netdisk
 com.baidu.tieba
 com.banshenghuo.mobile
 com.coolapk.market
+com.diershoubing.erbing
 com.douban.frodo
 com.dragon.read
 com.duowan.kiwi
