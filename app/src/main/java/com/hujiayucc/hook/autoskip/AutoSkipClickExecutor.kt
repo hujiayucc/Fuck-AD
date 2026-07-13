@@ -13,22 +13,23 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class AutoSkipClickExecutor(private val service: AccessibilityService) {
-    private val appContext = service.applicationContext
 
     fun execute(
         rule: AutoSkipRule,
         node: AccessibilityNodeInfo,
         points: List<Point>,
+        runtimeConfig: AutoSkipRuntimeConfig,
         verifier: (() -> AutoSkipClickVerification)? = null,
         asynchronousVerifier: AutoSkipAsyncVerifier? = null
     ): AutoSkipExecutionResult {
         if (points.isEmpty()) return AutoSkipExecutionResult(false, "none", null, "No tap point")
-        val attempts = clickAttempts(rule, points)
+        val attempts = clickAttempts(rule, points, runtimeConfig)
         return executeAttempts(
             node = node,
             attempts = attempts,
             startIndex = 0,
             firstPoint = points.firstOrNull(),
+            runtimeConfig = runtimeConfig,
             verifier = verifier,
             asynchronousVerifier = asynchronousVerifier
         )
@@ -39,13 +40,14 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         attempts: List<ClickAttempt>,
         startIndex: Int,
         firstPoint: Point?,
+        runtimeConfig: AutoSkipRuntimeConfig,
         verifier: (() -> AutoSkipClickVerification)?,
         asynchronousVerifier: AutoSkipAsyncVerifier?
     ): AutoSkipExecutionResult {
         var lastRejectedResult: AutoSkipExecutionResult? = null
         for (index in startIndex until attempts.size) {
             val attempt = attempts[index]
-            if (!isExecutorEnabled(attempt.type)) continue
+            if (!isExecutorEnabled(attempt.type, runtimeConfig)) continue
             if (!runAttempt(attempt.type, node, attempt.point)) continue
 
             val acceptedResult = AutoSkipExecutionResult(true, attempt.type.name, attempt.point, "ok")
@@ -61,6 +63,7 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
                                 attempts = attempts,
                                 startIndex = index + 1,
                                 firstPoint = firstPoint,
+                                runtimeConfig = runtimeConfig,
                                 verifier = verifier,
                                 asynchronousVerifier = asynchronousVerifier
                             )
@@ -81,8 +84,12 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         return lastRejectedResult ?: AutoSkipExecutionResult(false, "none", firstPoint, "All executors failed")
     }
 
-    private fun clickAttempts(rule: AutoSkipRule, points: List<Point>): List<ClickAttempt> {
-        return prioritizedExecutors(rule.action.fallbackExecutors).flatMap { type ->
+    private fun clickAttempts(
+        rule: AutoSkipRule,
+        points: List<Point>,
+        runtimeConfig: AutoSkipRuntimeConfig
+    ): List<ClickAttempt> {
+        return prioritizedExecutors(rule.action.fallbackExecutors, runtimeConfig).flatMap { type ->
             pointsForExecutor(type, points).map { point -> ClickAttempt(type, point) }
         }
     }
@@ -108,20 +115,23 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         }
     }
 
-    private fun prioritizedExecutors(executors: List<AutoSkipClickExecutorType>): List<AutoSkipClickExecutorType> {
+    private fun prioritizedExecutors(
+        executors: List<AutoSkipClickExecutorType>,
+        runtimeConfig: AutoSkipRuntimeConfig
+    ): List<AutoSkipClickExecutorType> {
         val enabledPrivileged = listOf(
             AutoSkipClickExecutorType.SHIZUKU_INPUT,
             AutoSkipClickExecutorType.ROOT_INPUT
-        ).filter { type -> type in executors && isExecutorEnabled(type) }
+        ).filter { type -> type in executors && isExecutorEnabled(type, runtimeConfig) }
         if (enabledPrivileged.isEmpty()) return executors
         return enabledPrivileged + executors.filterNot { type -> type in enabledPrivileged }
     }
 
-    private fun isExecutorEnabled(type: AutoSkipClickExecutorType): Boolean {
+    private fun isExecutorEnabled(type: AutoSkipClickExecutorType, runtimeConfig: AutoSkipRuntimeConfig): Boolean {
         return when (type) {
             AutoSkipClickExecutorType.ACCESSIBILITY_GESTURE -> true
-            AutoSkipClickExecutorType.SHIZUKU_INPUT -> AutoSkipSettings.useShizukuInput(appContext) && hasShizukuPermission()
-            AutoSkipClickExecutorType.ROOT_INPUT -> AutoSkipSettings.useRootInput(appContext)
+            AutoSkipClickExecutorType.SHIZUKU_INPUT -> runtimeConfig.useShizukuInput && hasShizukuPermission()
+            AutoSkipClickExecutorType.ROOT_INPUT -> runtimeConfig.useRootInput
             AutoSkipClickExecutorType.ACCESSIBILITY_ACTION -> true
         }
     }

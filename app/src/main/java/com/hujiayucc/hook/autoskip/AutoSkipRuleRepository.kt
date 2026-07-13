@@ -7,7 +7,6 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 
 class AutoSkipRuleRepository(private val context: Context) {
     private val appContext = context.applicationContext
@@ -16,9 +15,9 @@ class AutoSkipRuleRepository(private val context: Context) {
         return snapshot().rules
     }
 
-    fun executableRules(packageName: String, activity: String?): List<AutoSkipRule> {
+    fun executableRules(packageName: String, activity: String?, generation: Long? = null): List<AutoSkipRule> {
         if (isSensitivePackage(packageName) || isSensitiveActivity(activity)) return emptyList()
-        val snapshot = snapshot()
+        val snapshot = snapshot(generation)
         return snapshot.rulesForPackage(packageName)
             .filter { rule -> rule.appliesTo(packageName, activity) }
     }
@@ -266,16 +265,12 @@ class AutoSkipRuleRepository(private val context: Context) {
         AutoSkipSettings.setLastUpdateTime(appContext, System.currentTimeMillis())
     }
 
-    private fun snapshot(): RuleSnapshot {
-        val version = AutoSkipSettings.ruleDataVersion(appContext)
-        snapshotCache[version]?.let { return it }
-        val built = buildSnapshot(version)
-        snapshotCache.clear()
-        snapshotCache[version] = built
-        return built
+    private fun snapshot(generationOverride: Long? = null): RuleSnapshot {
+        val generation = generationOverride ?: AutoSkipSettings.ruleDataGeneration(appContext)
+        return snapshotCache.getOrBuild(generation, ::buildSnapshot)
     }
 
-    private fun buildSnapshot(version: Int): RuleSnapshot {
+    private fun buildSnapshot(generation: Long): RuleSnapshot {
         val disabled = AutoSkipSettings.disabledRuleIds(appContext)
         val sources = AutoSkipSettings.sources(appContext)
         val enabledSourceIds = sources.filter { it.enabled }.map { it.id }.toSet()
@@ -290,11 +285,11 @@ class AutoSkipRuleRepository(private val context: Context) {
         val orderedRules = merged.values
             .map { rule -> if (disabled.contains(rule.id)) rule.copy(enabled = false) else rule }
             .sortedWith(compareByDescending<AutoSkipRule> { it.priority }.thenBy { it.name })
-        return RuleSnapshot(version, orderedRules)
+        return RuleSnapshot(generation, orderedRules)
     }
 
     private class RuleSnapshot(
-        val version: Int,
+        val generation: Long,
         val rules: List<AutoSkipRule>
     ) {
         private val globalRules = rules.filter { it.packageName == "*" }
@@ -1126,7 +1121,7 @@ class AutoSkipRuleRepository(private val context: Context) {
         private const val MAX_PATTERN_LENGTH = 64
         private const val DEFAULT_EXTERNAL_COOLDOWN_MS = 3000L
         private const val MAX_SELECTOR_LENGTH = 512
-        private val snapshotCache = ConcurrentHashMap<Int, RuleSnapshot>()
+        private val snapshotCache = GenerationCache<RuleSnapshot>()
         private val JSON5_KEY_PATTERN_REGEX = Regex("""(?m)^\s*[_A-Za-z$][_A-Za-z0-9$]*\s*:""")
         private val SANITIZE_RULE_ID_INVALID_REGEX = Regex("[^A-Za-z0-9_.-]")
         private val SANITIZE_RULE_ID_DOTS_REGEX = Regex("\\.+")

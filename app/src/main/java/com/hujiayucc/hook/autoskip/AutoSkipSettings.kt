@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.autoskip
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.hujiayucc.hook.data.Data.prefsBridge
 import java.io.File
 import java.util.concurrent.Executors
@@ -20,6 +21,7 @@ object AutoSkipSettings {
     private const val KEY_LOCAL_RULES = "autoSkipLocalRules"
     private const val KEY_HIT_LOGS = "autoSkipHitLogs"
     private const val KEY_LAST_UPDATE_TIME = "autoSkipLastUpdateTime"
+    private const val KEY_RULE_GENERATION = "autoSkipRuleGeneration"
     private const val KEY_SERVICE_KEEP_ALIVE = "autoSkipServiceKeepAlive"
     private const val KEY_DAEMON_KEEP_ALIVE = "autoSkipDaemonKeepAlive"
 
@@ -35,6 +37,7 @@ object AutoSkipSettings {
     @Volatile
     private var disabledRuleIdsCache: Set<String> = emptySet()
 
+    private val ruleGenerationCoordinator = RuleGenerationCoordinator()
     private val hitLogLock = Any()
     private val hitLogExecutor = Executors.newSingleThreadScheduledExecutor { task ->
         Thread(task, "AutoSkipHitLogWriter").apply { isDaemon = true }
@@ -43,6 +46,17 @@ object AutoSkipSettings {
     private var pendingHitLogContext: Context? = null
     private var scheduledHitLogFlush: ScheduledFuture<*>? = null
     private var hitLogGeneration = 0L
+
+    fun runtimeConfig(context: Context): AutoSkipRuntimeConfig {
+        val prefs = context.prefsBridge
+        return AutoSkipRuntimeConfig(
+            enabled = prefs.getBoolean(KEY_ENABLED, false),
+            enabledPackages = enabledPackagesFromRaw(prefs.getString(KEY_ENABLED_PACKAGES, "").orEmpty()),
+            useShizukuInput = prefs.getBoolean(KEY_USE_SHIZUKU_INPUT, false),
+            useRootInput = prefs.getBoolean(KEY_USE_ROOT_INPUT, false),
+            ruleDataGeneration = prefs.getLong(KEY_RULE_GENERATION, 0L)
+        )
+    }
 
     fun isEnabled(context: Context): Boolean {
         return context.prefsBridge.getBoolean(KEY_ENABLED, false)
@@ -85,7 +99,10 @@ object AutoSkipSettings {
     }
 
     fun enabledPackages(context: Context): Set<String> {
-        val raw = context.prefsBridge.getString(KEY_ENABLED_PACKAGES, "").orEmpty()
+        return enabledPackagesFromRaw(context.prefsBridge.getString(KEY_ENABLED_PACKAGES, "").orEmpty())
+    }
+
+    private fun enabledPackagesFromRaw(raw: String): Set<String> {
         enabledPackagesRawCache?.let { cachedRaw ->
             if (cachedRaw == raw) return enabledPackagesCache
         }
@@ -146,19 +163,15 @@ object AutoSkipSettings {
 
     fun setRuleEnabled(context: Context, ruleId: String, enabled: Boolean) {
         val disabled = disabledRuleIds(context).toMutableSet()
-        if (enabled) disabled.remove(ruleId) else disabled.add(ruleId)
-        context.prefsBridge.edit().putString(KEY_DISABLED_RULE_IDS, JSONArray(disabled.sorted()).toString()).apply()
+        val changed = if (enabled) disabled.remove(ruleId) else disabled.add(ruleId)
+        if (!changed) return
+        editRules(context) {
+            putString(KEY_DISABLED_RULE_IDS, JSONArray(disabled.sorted()).toString())
+        }
     }
 
-    fun ruleDataVersion(context: Context): Int {
-        val prefs = context.prefsBridge
-        var result = 1
-        result = 31 * result + prefs.getString(KEY_DISABLED_RULE_IDS, "").orEmpty().hashCode()
-        result = 31 * result + prefs.getString(KEY_SOURCES, "").orEmpty().hashCode()
-        result = 31 * result + prefs.getString(KEY_SUBSCRIPTION_RULES, "").orEmpty().hashCode()
-        result = 31 * result + prefs.getString(KEY_LOCAL_RULES, "").orEmpty().hashCode()
-        result = 31 * result + prefs.getLong(KEY_LAST_UPDATE_TIME, 0L).toString().hashCode()
-        return result
+    fun ruleDataGeneration(context: Context): Long {
+        return context.prefsBridge.getLong(KEY_RULE_GENERATION, 0L)
     }
 
     fun sources(context: Context): List<AutoSkipRuleSourceConfig> {
@@ -180,7 +193,9 @@ object AutoSkipSettings {
     fun saveSources(context: Context, sources: List<AutoSkipRuleSourceConfig>) {
         val arr = JSONArray()
         normalizeSources(sources).forEach { arr.put(it.toJson()) }
-        context.prefsBridge.edit().putString(KEY_SOURCES, arr.toString()).apply()
+        editRules(context) {
+            putString(KEY_SOURCES, arr.toString())
+        }
     }
 
     fun subscriptionRules(context: Context): Map<String, List<AutoSkipRule>> {
@@ -225,7 +240,9 @@ object AutoSkipSettings {
             rules.forEach { arr.put(it.toJson()) }
             legacyObj.put(source.id, arr)
         }
-        context.prefsBridge.edit().putString(KEY_SUBSCRIPTION_RULES, legacyObj.toString()).apply()
+        editRules(context) {
+            putString(KEY_SUBSCRIPTION_RULES, legacyObj.toString())
+        }
     }
 
     fun deleteSubscriptionRulesCache(context: Context, source: AutoSkipRuleSourceConfig) {
@@ -249,7 +266,9 @@ object AutoSkipSettings {
     fun saveLocalRules(context: Context, rules: List<AutoSkipRule>) {
         val arr = JSONArray()
         rules.forEach { arr.put(it.toJson()) }
-        context.prefsBridge.edit().putString(KEY_LOCAL_RULES, arr.toString()).apply()
+        editRules(context) {
+            putString(KEY_LOCAL_RULES, arr.toString())
+        }
     }
 
     fun lastUpdateTime(context: Context): Long {
@@ -358,7 +377,9 @@ object AutoSkipSettings {
             obj.put(sourceId, arr)
         }
         val json = obj.toString()
-        context.prefsBridge.edit().putString(KEY_SUBSCRIPTION_RULES, json).apply()
+        editRules(context) {
+            putString(KEY_SUBSCRIPTION_RULES, json)
+        }
         saveSubscriptionRulesFile(context, json)
     }
 
@@ -381,13 +402,16 @@ object AutoSkipSettings {
     }
 
     private fun readSubscriptionRulesFile(context: Context): String {
-        return runCatching { subscriptionRulesFile(context).takeIf { it.isFile }?.readText().orEmpty() }.getOrDefault("")
+        return runCatching {
+            val file = subscriptionRulesFile(context)
+            if (AutoSkipAtomicFile.exists(file)) AutoSkipAtomicFile.readText(file) else ""
+        }.getOrDefault("")
     }
 
     private fun ensureSubscriptionRulesFile(context: Context, json: String) {
         runCatching {
             val file = subscriptionRulesFile(context)
-            if (file.isFile && file.length() > 0L) return@runCatching
+            if (AutoSkipAtomicFile.exists(file) && AutoSkipAtomicFile.readText(file).isNotEmpty()) return@runCatching
             saveSubscriptionRulesFile(context, json)
         }
     }
@@ -396,11 +420,10 @@ object AutoSkipSettings {
         runCatching {
             val file = subscriptionRulesFile(context)
             if (json == "{}") {
-                if (file.exists()) file.delete()
+                AutoSkipAtomicFile.delete(file)
                 return@runCatching
             }
-            file.parentFile?.mkdirs()
-            file.writeText(json)
+            AutoSkipAtomicFile.writeText(file, json)
         }
     }
 
@@ -409,7 +432,10 @@ object AutoSkipSettings {
     }
 
     private fun readSourceRulesFile(context: Context, cacheFile: String): String {
-        return runCatching { sourceRulesFile(context, cacheFile)?.takeIf { it.isFile }?.readText().orEmpty() }.getOrDefault("")
+        return runCatching {
+            val file = sourceRulesFile(context, cacheFile) ?: return@runCatching ""
+            if (AutoSkipAtomicFile.exists(file)) AutoSkipAtomicFile.readText(file) else ""
+        }.getOrDefault("")
     }
 
     private fun saveSourceRulesFile(context: Context, cacheFile: String, rules: List<AutoSkipRule>) {
@@ -417,13 +443,12 @@ object AutoSkipSettings {
             val file = sourceRulesFile(context, cacheFile) ?: return@runCatching
             val arr = JSONArray()
             rules.forEach { arr.put(it.toJson()) }
-            file.parentFile?.mkdirs()
-            file.writeText(arr.toString())
+            AutoSkipAtomicFile.writeText(file, arr.toString())
         }
     }
 
     private fun deleteSourceRulesFile(context: Context, cacheFile: String) {
-        runCatching { sourceRulesFile(context, cacheFile)?.takeIf { it.exists() }?.delete() }
+        runCatching { sourceRulesFile(context, cacheFile)?.let(AutoSkipAtomicFile::delete) }
     }
 
     private fun sourceRulesFile(context: Context, cacheFile: String): File? {
@@ -471,6 +496,19 @@ object AutoSkipSettings {
         return rules
     }
 
+    private fun editRules(context: Context, update: SharedPreferences.Editor.() -> Unit) {
+        val prefs = context.prefsBridge
+        ruleGenerationCoordinator.edit(
+            readGeneration = { prefs.getLong(KEY_RULE_GENERATION, 0L) },
+            write = { nextGeneration ->
+                prefs.edit()
+                    .apply(update)
+                    .putLong(KEY_RULE_GENERATION, nextGeneration)
+                    .apply()
+            }
+        )
+    }
+
     private fun readStringSet(json: String?): Set<String> {
         if (json.isNullOrBlank()) return emptySet()
         return runCatching {
@@ -489,6 +527,28 @@ object AutoSkipSettings {
     private const val HIT_LOG_FLUSH_DELAY_MS = 750L
     private const val CACHE_DIR = "auto_skip"
     private const val SUBSCRIPTION_RULES_FILE = "subscription_rules.json"
+}
+
+data class AutoSkipRuntimeConfig(
+    val enabled: Boolean,
+    val enabledPackages: Set<String>,
+    val useShizukuInput: Boolean,
+    val useRootInput: Boolean,
+    val ruleDataGeneration: Long
+) {
+    fun shouldProcess(packageName: String): Boolean {
+        return enabled && packageName.isNotBlank() && enabledPackages.contains(packageName)
+    }
+
+    companion object {
+        fun disabled() = AutoSkipRuntimeConfig(
+            enabled = false,
+            enabledPackages = emptySet(),
+            useShizukuInput = false,
+            useRootInput = false,
+            ruleDataGeneration = 0L
+        )
+    }
 }
 
 data class AutoSkipHitLog(

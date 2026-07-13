@@ -2,15 +2,22 @@ package com.hujiayucc.hook.autoskip
 
 import android.content.Context
 import java.io.File
+import java.util.concurrent.Executors
 import org.json.JSONObject
 
 object AutoSkipHealth {
     private const val HEALTH_FILE = "autoskip_health.json"
-    private const val TEMP_SUFFIX = ".tmp"
     private const val MAX_ERROR_LENGTH = 160
 
     private val lock = Any()
+    private val writer = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "AutoSkipHealthWriter").apply { isDaemon = true }
+    }
     private var cachedState = AutoSkipHealthState()
+    private var pendingState: AutoSkipHealthState? = null
+    private var pendingContext: Context? = null
+    private var writeScheduled = false
+    private var lastWrittenJson = ""
 
     fun stateFile(context: Context): File {
         return File(context.applicationContext.noBackupFilesDir, HEALTH_FILE)
@@ -122,29 +129,54 @@ object AutoSkipHealth {
     fun read(context: Context): AutoSkipHealthState? {
         return runCatching {
             val file = stateFile(context)
-            if (!file.isFile) return null
-            AutoSkipHealthState.fromJson(JSONObject(file.readText()))
+            if (!AutoSkipAtomicFile.exists(file)) return null
+            AutoSkipHealthState.fromJson(JSONObject(AutoSkipAtomicFile.readText(file)))
         }.getOrNull()
     }
 
     private fun update(context: Context, transform: (AutoSkipHealthState) -> AutoSkipHealthState) {
         synchronized(lock) {
-            cachedState = transform(cachedState)
-            writeState(context, cachedState)
+            val nextState = transform(cachedState)
+            if (nextState == cachedState) return
+            cachedState = nextState
+            pendingState = nextState
+            pendingContext = context.applicationContext
+            if (!writeScheduled) {
+                writeScheduled = true
+                writer.execute(::drainPendingWrites)
+            }
         }
     }
 
-    private fun writeState(context: Context, state: AutoSkipHealthState) {
-        runCatching {
-            val file = stateFile(context)
-            file.parentFile?.mkdirs()
-            val tempFile = File(file.parentFile, file.name + TEMP_SUFFIX)
-            tempFile.writeText(state.toJson().toString())
-            if (!tempFile.renameTo(file)) {
-                file.writeText(state.toJson().toString())
-                tempFile.delete()
+    private fun drainPendingWrites() {
+        while (true) {
+            val context: Context
+            val state: AutoSkipHealthState
+            synchronized(lock) {
+                state = pendingState ?: run {
+                    writeScheduled = false
+                    return
+                }
+                context = pendingContext ?: run {
+                    pendingState = null
+                    writeScheduled = false
+                    return
+                }
+                pendingState = null
+                pendingContext = null
+            }
+            val json = state.toJson().toString()
+            if (json != lastWrittenJson && writeState(context, json)) {
+                lastWrittenJson = json
             }
         }
+    }
+
+    private fun writeState(context: Context, json: String): Boolean {
+        return runCatching {
+            AutoSkipAtomicFile.writeText(stateFile(context), json)
+            true
+        }.getOrDefault(false)
     }
 }
 

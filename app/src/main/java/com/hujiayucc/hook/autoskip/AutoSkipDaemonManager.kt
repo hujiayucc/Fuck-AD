@@ -36,7 +36,9 @@ object AutoSkipDaemonManager {
             val appContext = context.applicationContext
             val file = configFile(appContext)
             file.parentFile?.mkdirs()
-            val existing = runCatching { if (file.exists()) file.readText() else null }.getOrNull()
+            val existing = runCatching {
+                if (AutoSkipAtomicFile.exists(file)) AutoSkipAtomicFile.readText(file) else null
+            }.getOrNull()
             val existingJson = existing?.let { text -> runCatching { JSONObject(text) }.getOrNull() }
             val daemonEnabled = enabledOverride ?: if (preserveExistingEnabled) {
                 existingJson?.optBoolean("enabled") ?: AutoSkipSettings.daemonKeepAliveEnabled(appContext)
@@ -56,12 +58,7 @@ object AutoSkipDaemonManager {
                 put("reenableWhenUserDisabled", false)
             }.toString().replace("\\/", "/")
             if (existing == jsonText) return@runCatching
-            val tempFile = File(file.parentFile, file.name + ".tmp")
-            tempFile.writeText(jsonText)
-            if (!tempFile.renameTo(file)) {
-                file.writeText(jsonText)
-                tempFile.delete()
-            }
+            AutoSkipAtomicFile.writeText(file, jsonText)
         }
     }
 
@@ -123,7 +120,7 @@ object AutoSkipDaemonManager {
             val file = File(context.applicationContext.noBackupFilesDir, LOCAL_SCRIPT_FILE)
             file.parentFile?.mkdirs()
             context.resources.openRawResource(R.raw.autoskip_watchdog).use { input ->
-                file.outputStream().use { output -> input.copyTo(output) }
+                AutoSkipAtomicFile.writeFrom(file, input)
             }
             file.setReadable(true, true)
             file.setExecutable(true, true)
