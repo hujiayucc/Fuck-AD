@@ -4,3 +4,6 @@
 [submodule "com.hujiayucc.hook"]
 	path = com.hujiayucc.hook
 	url = https://github.com/Xposed-Modules-Repo/com.hujiayucc.hook.git
+[submodule "gkd"]
+	path = gkd
+	url = https://github.com/gkd-kit/gkd.git
