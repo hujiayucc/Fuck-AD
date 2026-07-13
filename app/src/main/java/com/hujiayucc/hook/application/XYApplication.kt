@@ -2,7 +2,6 @@ package com.hujiayucc.hook.application
 
 import android.app.Application
 import android.os.LocaleList
-import android.os.StrictMode
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import io.github.libxposed.service.XposedService
@@ -37,8 +36,6 @@ class XYApplication: Application(), XposedServiceHelper.OnServiceListener {
     override fun onCreate() {
         super.onCreate()
         XposedServiceHelper.registerListener(this)
-        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
-        StrictMode.setThreadPolicy(policy)
         handleAppLocales()
     }
 

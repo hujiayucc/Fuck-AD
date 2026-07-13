@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.Process
 import android.provider.Settings
 import android.util.Log
 import android.view.Menu
@@ -205,29 +204,18 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
             else -> {
                 autoGrantInProgress = false
-                if (!PrivilegedPermissionGrantor.requestQueryAllPackagesBySystemApi(this, REQUEST_QUERY_ALL_PACKAGES)) {
-                    showEssentialPermissionSettingsGuide()
-                }
+                showEssentialPermissionSettingsGuide()
             }
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            REQUEST_QUERY_ALL_PACKAGES -> {
-                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED || hasQueryAllPackagesPermission()) {
-                    loadAppList()
-                } else {
-                    showEssentialPermissionSettingsGuide()
-                }
-            }
-            REQUEST_AUTO_SKIP_POST_NOTIFICATIONS -> {
-                notificationPermissionRequestInProgress = false
-                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED && isAutoSkipAccessibilityServiceEnabled()) {
-                    AutoSkipAccessibilityService.refreshRunningNotification(this)
-                    scheduleAutoSkipNotificationRefresh()
-                }
+        if (requestCode == REQUEST_AUTO_SKIP_POST_NOTIFICATIONS) {
+            notificationPermissionRequestInProgress = false
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED && isAutoSkipAccessibilityServiceEnabled()) {
+                AutoSkipAccessibilityService.refreshRunningNotification(this)
+                scheduleAutoSkipNotificationRefresh()
             }
         }
     }
@@ -272,6 +260,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         Toast.makeText(
             this, getString(R.string.data_load_failed, error.localizedMessage), Toast.LENGTH_LONG
         ).show()
+    }
+
+    override fun onStop() {
+        mainHandler.removeCallbacks(initializeRunnable)
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -364,10 +357,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.menu_minimize -> {
-                finish()
-                Handler(Looper.getMainLooper()).postDelayed({
-                    Process.killProcess(Process.myPid())
-                }, 300)
+                moveTaskToBack(true)
                 true
             }
 
@@ -475,7 +465,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     companion object {
         const val TAG = "MainActivity"
         private const val LANGUAGE_PREF_KEY = "language"
-        private const val REQUEST_QUERY_ALL_PACKAGES = 2601
         private const val REQUEST_AUTO_SKIP_POST_NOTIFICATIONS = 2603
         private const val AUTO_SKIP_NOTIFICATION_REFRESH_DELAY_MS = 800L
     }
