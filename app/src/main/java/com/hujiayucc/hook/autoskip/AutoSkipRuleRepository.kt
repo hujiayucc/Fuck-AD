@@ -123,88 +123,142 @@ class AutoSkipRuleRepository(private val context: Context) {
 
     fun updateSources(autoEnableAllForUrls: Set<String> = emptySet()): AutoSkipUpdateResult {
         val sources = AutoSkipSettings.sources(appContext)
-        val urlsForFullEnable = autoEnableAllForUrls.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-        val enabledSources = sources.filter { it.enabled }
-        if (enabledSources.isEmpty()) {
+        if (sources.none { it.enabled }) {
             return AutoSkipUpdateResult(false, appContext.getString(R.string.auto_skip_result_no_enabled_source), 0, 0, 0)
         }
 
-        val oldRules = AutoSkipSettings.subscriptionRules(appContext, sources)
-        val newRules = LinkedHashMap(oldRules)
-        val updatedSources = ArrayList<AutoSkipRuleSourceConfig>()
-        val detailLines = ArrayList<String>()
-        var added = 0
-        var changed = 0
-        var removed = 0
-        var failed = 0
-        var successful = 0
-        val packagesToEnable = LinkedHashSet<String>()
+        val urlsForFullEnable = autoEnableAllForUrls.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        val state = SourceUpdateState(AutoSkipSettings.subscriptionRules(appContext, sources))
+        sources.forEach { source -> updateSource(source, urlsForFullEnable, state) }
+        persistSourceUpdate(state)
+        return sourceUpdateResult(state)
+    }
 
-        sources.forEach { source ->
-            if (!source.enabled) {
-                updatedSources.add(source)
-                return@forEach
-            }
-            val result = runCatching { downloadRules(source) }
-            result.onSuccess { rules ->
-                val previous = oldRules[source.id].orEmpty()
-                if (rules.isEmpty()) {
-                    failed += 1
-                    updatedSources.add(source.copy(lastUpdateTime = System.currentTimeMillis(), lastResult = appContext.getString(R.string.auto_skip_result_empty_rules)))
-                    detailLines.add(appContext.getString(R.string.auto_skip_result_detail_empty_rules, compactUrl(source.url)))
-                    return@onSuccess
-                }
-                if (previous.size >= 10 && rules.size < previous.size / 3) {
-                    failed += 1
-                    updatedSources.add(source.copy(lastUpdateTime = System.currentTimeMillis(), lastResult = appContext.getString(R.string.auto_skip_result_abnormal_rule_decrease)))
-                    detailLines.add(appContext.getString(R.string.auto_skip_result_detail_abnormal_decrease, compactUrl(source.url), previous.size, rules.size))
-                    return@onSuccess
-                }
-                val diff = diffRules(previous, rules)
-                added += diff.added
-                changed += diff.changed
-                removed += diff.removed
-                packagesToEnable.addAll(
-                    if (urlsForFullEnable.contains(source.url)) {
-                        packageNamesForAutoEnable(rules)
-                    } else {
-                        packagesForAutoEnable(previous, rules)
-                    }
+    private fun updateSource(
+        source: AutoSkipRuleSourceConfig,
+        urlsForFullEnable: Set<String>,
+        state: SourceUpdateState
+    ) {
+        if (!source.enabled) {
+            state.updatedSources.add(source)
+            return
+        }
+        runCatching { downloadRules(source) }
+            .onSuccess { rules -> applyDownloadedRules(source, rules, urlsForFullEnable, state) }
+            .onFailure { error ->
+                val message = error.message ?: appContext.getString(R.string.auto_skip_update_failed)
+                recordSourceFailure(
+                    source,
+                    message,
+                    appContext.getString(R.string.auto_skip_result_detail_failed, compactUrl(source.url), message),
+                    state
                 )
-                successful += 1
-                newRules[source.id] = rules
-                updatedSources.add(
-                    source.copy(
-                        lastUpdateTime = System.currentTimeMillis(),
-                        lastResult = appContext.getString(R.string.auto_skip_result_source_update_detail, diff.added, diff.changed, diff.removed, rules.size)
-                    )
-                )
-                detailLines.add(appContext.getString(R.string.auto_skip_result_detail_source_update, compactUrl(source.url), diff.added, diff.changed, diff.removed, rules.size))
-            }.onFailure { error ->
-                failed += 1
-                updatedSources.add(source.copy(lastUpdateTime = System.currentTimeMillis(), lastResult = error.message ?: appContext.getString(R.string.auto_skip_update_failed)))
-                detailLines.add(appContext.getString(R.string.auto_skip_result_detail_failed, compactUrl(source.url), error.message ?: appContext.getString(R.string.auto_skip_update_failed)))
             }
+    }
+
+    private fun applyDownloadedRules(
+        source: AutoSkipRuleSourceConfig,
+        rules: List<AutoSkipRule>,
+        urlsForFullEnable: Set<String>,
+        state: SourceUpdateState
+    ) {
+        val previous = state.oldRules[source.id].orEmpty()
+        when (downloadedRuleRejection(previous.size, rules.size)) {
+            DownloadedRuleRejection.EMPTY -> {
+                recordSourceFailure(
+                    source,
+                    appContext.getString(R.string.auto_skip_result_empty_rules),
+                    appContext.getString(R.string.auto_skip_result_detail_empty_rules, compactUrl(source.url)),
+                    state
+                )
+                return
+            }
+            DownloadedRuleRejection.ABNORMAL_DECREASE -> {
+                recordSourceFailure(
+                    source,
+                    appContext.getString(R.string.auto_skip_result_abnormal_rule_decrease),
+                    appContext.getString(
+                        R.string.auto_skip_result_detail_abnormal_decrease,
+                        compactUrl(source.url),
+                        previous.size,
+                        rules.size
+                    ),
+                    state
+                )
+                return
+            }
+            null -> Unit
         }
 
-        AutoSkipSettings.saveSources(appContext, updatedSources)
-        if (successful > 0) {
-            AutoSkipSettings.saveSubscriptionRules(appContext, updatedSources, newRules)
-            AutoSkipSettings.addEnabledPackages(appContext, packagesToEnable)
-            AutoSkipSettings.setLastUpdateTime(appContext, System.currentTimeMillis())
-        }
+        val diff = diffRules(previous, rules)
+        state.recordDiff(diff)
+        state.packagesToEnable.addAll(
+            if (source.url in urlsForFullEnable) {
+                packageNamesForAutoEnable(rules)
+            } else {
+                packagesForAutoEnable(previous, rules)
+            }
+        )
+        state.recordSuccess()
+        state.newRules[source.id] = rules
+        state.updatedSources.add(
+            source.copy(
+                lastUpdateTime = System.currentTimeMillis(),
+                lastResult = appContext.getString(
+                    R.string.auto_skip_result_source_update_detail,
+                    diff.added,
+                    diff.changed,
+                    diff.removed,
+                    rules.size
+                )
+            )
+        )
+        state.detailLines.add(
+            appContext.getString(
+                R.string.auto_skip_result_detail_source_update,
+                compactUrl(source.url),
+                diff.added,
+                diff.changed,
+                diff.removed,
+                rules.size
+            )
+        )
+    }
+
+    private fun recordSourceFailure(
+        source: AutoSkipRuleSourceConfig,
+        result: String,
+        detail: String,
+        state: SourceUpdateState
+    ) {
+        state.recordFailure()
+        state.updatedSources.add(
+            source.copy(lastUpdateTime = System.currentTimeMillis(), lastResult = result)
+        )
+        state.detailLines.add(detail)
+    }
+
+    private fun persistSourceUpdate(state: SourceUpdateState) {
+        AutoSkipSettings.saveSources(appContext, state.updatedSources)
+        if (!state.shouldPersistRules) return
+        AutoSkipSettings.saveSubscriptionRules(appContext, state.updatedSources, state.newRules)
+        AutoSkipSettings.addEnabledPackages(appContext, state.packagesToEnable)
+        AutoSkipSettings.setLastUpdateTime(appContext, System.currentTimeMillis())
+    }
+
+    private fun sourceUpdateResult(state: SourceUpdateState): AutoSkipUpdateResult {
         return AutoSkipUpdateResult(
-            success = successful > 0,
-            message = if (failed == 0) {
+            success = state.successful > 0,
+            message = if (state.failed == 0) {
                 appContext.getString(R.string.auto_skip_result_update_complete)
             } else {
-                appContext.getString(R.string.auto_skip_result_update_complete_failed, failed)
+                appContext.getString(R.string.auto_skip_result_update_complete_failed, state.failed)
             },
-            added = added,
-            changed = changed,
-            failed = failed,
-            removed = removed,
-            details = detailLines.joinToString("\n")
+            added = state.added,
+            changed = state.changed,
+            failed = state.failed,
+            removed = state.removed,
+            details = state.detailLines.joinToString("\n")
         )
     }
 
@@ -1167,7 +1221,55 @@ class AutoSkipRuleRepository(private val context: Context) {
     }
 }
 
-private data class RuleDiff(
+internal enum class DownloadedRuleRejection {
+    EMPTY,
+    ABNORMAL_DECREASE
+}
+
+internal fun downloadedRuleRejection(previousCount: Int, downloadedCount: Int): DownloadedRuleRejection? {
+    if (downloadedCount == 0) return DownloadedRuleRejection.EMPTY
+    return DownloadedRuleRejection.ABNORMAL_DECREASE.takeIf {
+        previousCount >= 10 && downloadedCount < previousCount / 3
+    }
+}
+
+internal class SourceUpdateState(
+    val oldRules: Map<String, List<AutoSkipRule>>
+) {
+    val newRules: LinkedHashMap<String, List<AutoSkipRule>> = LinkedHashMap(oldRules)
+    val updatedSources: MutableList<AutoSkipRuleSourceConfig> = ArrayList()
+    val detailLines: MutableList<String> = ArrayList()
+    val packagesToEnable: MutableSet<String> = LinkedHashSet()
+    var added: Int = 0
+        private set
+    var changed: Int = 0
+        private set
+    var removed: Int = 0
+        private set
+    var failed: Int = 0
+        private set
+    var successful: Int = 0
+        private set
+
+    val shouldPersistRules: Boolean
+        get() = successful > 0
+
+    fun recordDiff(diff: RuleDiff) {
+        added += diff.added
+        changed += diff.changed
+        removed += diff.removed
+    }
+
+    fun recordSuccess() {
+        successful += 1
+    }
+
+    fun recordFailure() {
+        failed += 1
+    }
+}
+
+internal data class RuleDiff(
     val added: Int,
     val changed: Int,
     val removed: Int

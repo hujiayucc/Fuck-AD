@@ -5,7 +5,8 @@ import android.content.SharedPreferences
 import com.hujiayucc.hook.application.XYApplication
 import io.github.libxposed.service.XposedService
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 object Data {
     private const val PREFS_NAME = "config"
@@ -48,7 +49,7 @@ object Data {
     }
 
     fun String.formatTime(pattern: String = "yyyy-MM-dd"): Date {
-        val forMat = SimpleDateFormat(pattern)
+        val forMat = SimpleDateFormat(pattern, Locale.US)
         return forMat.parse(this)!!
     }
 }

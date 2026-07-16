@@ -13,7 +13,6 @@ import androidx.core.content.ContextCompat
 import rikka.shizuku.Shizuku
 import java.lang.reflect.Method
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 object PrivilegedPermissionGrantor {
     const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
@@ -40,8 +39,6 @@ object PrivilegedPermissionGrantor {
     private var cachedUnsafeCheckOpNoThrowMethod: Method? = null
     @Volatile
     private var cachedCheckOpNoThrowMethod: Method? = null
-    @Volatile
-    private var cachedShizukuNewProcessMethod: Method? = null
 
     enum class GrantResult {
         GRANTED,
@@ -67,8 +64,7 @@ object PrivilegedPermissionGrantor {
             arrayOf("settings", "put", "secure", Settings.Secure.ACCESSIBILITY_ENABLED, "1"),
             arrayOf("settings", "put", "secure", Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updatedServices)
         )
-        val shizukuResult = runAccessibilityEnableCommands(commands)
-        if (shizukuResult == GrantResult.WAITING_FOR_SHIZUKU) return shizukuResult
+        runAccessibilityEnableCommands(commands)
         if (isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
 
         val rootSucceeded = runRootCommands(commands)
@@ -98,19 +94,13 @@ object PrivilegedPermissionGrantor {
         if (hasQueryAllPackages(context)) return GrantResult.GRANTED
 
         val shizukuResult = grantByShizuku(context)
-        if (shizukuResult == GrantResult.GRANTED || shizukuResult == GrantResult.WAITING_FOR_SHIZUKU) {
-            return shizukuResult
-        }
+        if (shizukuResult == GrantResult.GRANTED) return shizukuResult
 
         return if (grantByRoot(context)) GrantResult.GRANTED else GrantResult.FAILED
     }
 
     fun hasQueryAllPackages(context: Context): Boolean {
         return hasQueryAllPackagesPermission(context) && isQueryAllPackagesAppOpAllowed(context)
-    }
-
-    fun canQueryAllPackages(context: Context): Boolean {
-        return hasQueryAllPackages(context)
     }
 
     private fun hasQueryAllPackagesPermission(context: Context): Boolean {
@@ -121,7 +111,6 @@ object PrivilegedPermissionGrantor {
     }
 
     private fun isQueryAllPackagesAppOpAllowed(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return true
         val requiredAllowed = requiredAppOpsForInstalledApps.all { operation ->
             queryAppOpMode(context, operation) == AppOpsManager.MODE_ALLOWED
         }
@@ -228,7 +217,8 @@ object PrivilegedPermissionGrantor {
     private fun grantByRoot(context: Context): Boolean {
         return runGrantCommands(context) { command ->
             runCatching {
-                Runtime.getRuntime().exec(arrayOf("su", "-c", command.joinToString(" "))).waitForSuccess()
+                Runtime.getRuntime().exec(arrayOf("su", "-c", command.joinToString(" ")))
+                    .waitForSuccess(COMMAND_TIMEOUT_SECONDS)
             }.getOrDefault(false)
         }
     }
@@ -254,7 +244,8 @@ object PrivilegedPermissionGrantor {
     private fun runRootCommands(commands: List<Array<String>>): Boolean {
         return commands.all { command ->
             runCatching {
-                Runtime.getRuntime().exec(arrayOf("su", "-c", shellCommand(command))).waitForSuccess()
+                Runtime.getRuntime().exec(arrayOf("su", "-c", shellCommand(command)))
+                    .waitForSuccess(COMMAND_TIMEOUT_SECONDS)
             }.getOrDefault(false)
         }
     }
@@ -289,12 +280,6 @@ object PrivilegedPermissionGrantor {
         return "'" + argument.replace("'", "'\"'\"'") + "'"
     }
 
-    private fun grantCommands(context: Context): List<Array<String>> {
-        return appOpsForInstalledApps.flatMap { operation ->
-            grantCommandsForOperation(context, operation)
-        }
-    }
-
     private fun grantCommandsForOperation(context: Context, operation: String): List<Array<String>> {
         val userId = AndroidProcess.myUid() / 100000
         return listOf(
@@ -311,38 +296,10 @@ object PrivilegedPermissionGrantor {
     }
 
     private fun runShizukuCommand(command: Array<String>): Boolean {
-        return runCatching {
-            shizukuNewProcessMethod()
-                .invoke(null, command, null, null)
-                .let { it as Process }
-                .waitForSuccess()
-        }.getOrDefault(false)
-    }
-
-    private fun shizukuNewProcessMethod(): Method {
-        cachedShizukuNewProcessMethod?.let { return it }
-        return synchronized(PrivilegedPermissionGrantor::class.java) {
-            cachedShizukuNewProcessMethod ?: Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-                .also { cachedShizukuNewProcessMethod = it }
-        }
-    }
-
-    private fun Process.waitForSuccess(): Boolean {
-        val finished = waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        if (!finished) {
-            destroy()
-            return false
-        }
-        return exitValue() == 0
+        return ShizukuProcessExecutor.run(command, COMMAND_TIMEOUT_SECONDS)
     }
 
     private fun isShizukuAvailable(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && runCatching { Shizuku.pingBinder() }
-            .getOrDefault(false)
+        return runCatching { Shizuku.pingBinder() }.getOrDefault(false)
     }
 }

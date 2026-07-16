@@ -155,18 +155,15 @@ class SDKActivity : BaseActivity<ActivitySdkBinding>() {
     }
 
     private fun handleAutoGrantResult(result: GrantResult) {
+        autoGrantInProgress = false
         when {
             result == GrantResult.GRANTED || PrivilegedPermissionGrantor.hasQueryAllPackages(this) -> {
-                autoGrantInProgress = false
                 loadSdkItems()
             }
 
-            result == GrantResult.WAITING_FOR_SHIZUKU -> {
-                autoGrantInProgress = false
-            }
+            result == GrantResult.WAITING_FOR_SHIZUKU -> Unit
 
             else -> {
-                autoGrantInProgress = false
                 showMessage(getString(R.string.permission_denied_forever_message))
             }
         }

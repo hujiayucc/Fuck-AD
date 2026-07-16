@@ -1,6 +1,5 @@
 package com.hujiayucc.hook.autoskip
 
-import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.concurrent.ConcurrentHashMap
 
@@ -63,18 +62,11 @@ internal class GkdSelectorMatcher(
     }
 
     private fun isUsable(node: AccessibilityNodeInfo, visible: Boolean, region: AutoSkipRegion?): Boolean {
-        val bounds = node.bounds()
+        val bounds = node.boundsInScreen()
         if (visible && !node.isVisibleToUser) return false
-        if (!isReasonableBounds(bounds)) return false
+        if (!bounds.isReasonableForScreen(screenWidth, screenHeight)) return false
         if (region?.contains(bounds, screenWidth, screenHeight) == false) return false
         return true
-    }
-
-    private fun isReasonableBounds(bounds: Rect): Boolean {
-        if (bounds.isEmpty) return false
-        if (bounds.right <= 0 || bounds.bottom <= 0 || bounds.left >= screenWidth || bounds.top >= screenHeight) return false
-        val area = bounds.width() * bounds.height()
-        return bounds.width() >= 8 && bounds.height() >= 8 && area <= screenWidth * screenHeight * 0.6f
     }
 }
 
@@ -626,6 +618,7 @@ private sealed class GkdValue {
     private fun GkdNodeRef?.nodeMember(name: String): GkdValue {
         val ref = this ?: return NullValue
         val node = ref.node
+        val bounds = node.boundsInScreen()
         return when (name) {
             "_id", "_pid" -> NullValue
             "id" -> node.viewIdResourceName?.let { StringValue(it) } ?: NullValue
@@ -640,12 +633,12 @@ private sealed class GkdValue {
             "editable" -> BoolValue(node.isEditable)
             "longClickable" -> BoolValue(node.isLongClickable)
             "visibleToUser" -> BoolValue(node.isVisibleToUser)
-            "left" -> IntValue(node.bounds().left)
-            "top" -> IntValue(node.bounds().top)
-            "right" -> IntValue(node.bounds().right)
-            "bottom" -> IntValue(node.bounds().bottom)
-            "width" -> IntValue(node.bounds().width())
-            "height" -> IntValue(node.bounds().height())
+            "left" -> IntValue(bounds.left)
+            "top" -> IntValue(bounds.top)
+            "right" -> IntValue(bounds.right)
+            "bottom" -> IntValue(bounds.bottom)
+            "width" -> IntValue(bounds.width())
+            "height" -> IntValue(bounds.height())
             "childCount" -> IntValue(node.childCount)
             "index" -> IntValue(ref.index)
             "depth" -> IntValue(ref.depth)
@@ -1156,10 +1149,4 @@ private class GkdBoolParser(private val source: String) {
     private fun skipWhitespace() {
         while (index < source.length && source[index].isWhitespace()) index += 1
     }
-}
-
-private fun AccessibilityNodeInfo.bounds(): Rect {
-    val rect = Rect()
-    getBoundsInScreen(rect)
-    return rect
 }

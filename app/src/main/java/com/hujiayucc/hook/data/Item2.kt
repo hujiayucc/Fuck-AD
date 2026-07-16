@@ -8,25 +8,4 @@ data class Item2(
     val action: String,
     val sdkIds: List<String>,
     var appIcon: Drawable
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as Item2
-        if (appName != other.appName) return false
-        if (packageName != other.packageName) return false
-        if (action != other.action) return false
-        if (sdkIds != other.sdkIds) return false
-        if (appIcon != other.appIcon) return false
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = appName.hashCode()
-        result = 31 * result + packageName.hashCode()
-        result = 31 * result + action.hashCode()
-        result = 31 * result + sdkIds.hashCode()
-        result = 31 * result + appIcon.hashCode()
-        return result
-    }
-}
+)

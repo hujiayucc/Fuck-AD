@@ -12,7 +12,6 @@ internal class HookInstaller(
     private val fallbackClassLoader: () -> ClassLoader?,
     private val handles: HookHandleRegistry
 ) {
-    private object UnsetResult
 
     fun install(executable: Executable, dsl: HookDsl) {
         val installKey = executable.installKey()
@@ -23,77 +22,11 @@ internal class HookInstaller(
 
         try {
             val handle = module.hook(executable).intercept { hookChain ->
-                var currentResult: Any? = UnsetResult
-                var originalExecuted = false
-
-                fun currentResultOrNull(): Any? {
-                    return if (currentResult === UnsetResult) null else currentResult
-                }
-
-                fun proceedOriginalWithNonNull(thisObject: Any, args: Array<Any?>): Any? {
-                    if (originalExecuted) {
-                        HookerLogger.hookError(
-                            "Original method already proceeded: ${executable.toGenericString()}",
-                            IllegalStateException("Use HookCallback.result instead of proceeding twice.")
-                        )
-                        return currentResultOrNull()
-                    }
-                    originalExecuted = true
-                    return hookChain.proceedWith(thisObject, args).also { currentResult = it }
-                }
-
-                fun proceedOriginalWith(thisObject: Any?, args: Array<Any?>): Any? {
-                    if (thisObject == null) {
-                        HookerLogger.hookError(
-                            "Cannot proceed with null thisObject: ${executable.toGenericString()}",
-                            IllegalArgumentException("thisObject must be non-null for proceedWith.")
-                        )
-                        return currentResultOrNull()
-                    }
-                    return proceedOriginalWithNonNull(thisObject, args)
-                }
-
-                fun proceedOriginal(args: Array<Any?>? = null): Any? {
-                    if (originalExecuted) {
-                        HookerLogger.hookError(
-                            "Original method already proceeded: ${executable.toGenericString()}",
-                            IllegalStateException("Use HookCallback.result instead of proceeding twice.")
-                        )
-                        return currentResultOrNull()
-                    }
-                    if (args != null) return proceedOriginalWith(hookChain.thisObject, args)
-
-                    originalExecuted = true
-                    return hookChain.proceed().also { currentResult = it }
-                }
-
-                val callback = object : HookCallback {
-                    override val chain: XposedInterface.Chain
-                        get() = hookChain
-                    override val thisObject: Any?
-                        get() = hookChain.thisObject
-                    override val args: List<Any?>
-                        get() = hookChain.args
-                    override val hasResult: Boolean
-                        get() = currentResult !== UnsetResult
-                    override var result: Any?
-                        get() = currentResultOrNull()
-                        set(value) {
-                            currentResult = value
-                        }
-
-                    override fun proceed(): Any? = proceedOriginal()
-
-                    override fun proceedWith(args: Array<Any?>): Any? = proceedOriginal(args)
-
-                    override fun proceedWith(thisObject: Any?, args: Array<Any?>): Any? {
-                        return proceedOriginalWith(thisObject, args)
-                    }
-                }
+                val callback = InstalledHookCallback(executable, hookChain)
 
                 dsl.replaceBlock?.let { replace ->
                     return@intercept try {
-                        replace.invoke(callback).also { currentResult = it }
+                        replace.invoke(callback).also { callback.result = it }
                     } catch (error: Throwable) {
                         HookerLogger.hookError("Hook replace failed: ${executable.toGenericString()}", error)
                         callback.proceed()
@@ -127,6 +60,55 @@ internal class HookInstaller(
         } catch (error: Throwable) {
             installedHookKeys.remove(installKey)
             throw error
+        }
+    }
+
+    private class InstalledHookCallback(
+        private val executable: Executable,
+        override val chain: XposedInterface.Chain
+    ) : HookCallback {
+        private val state = HookInvocationState()
+
+        override val thisObject: Any?
+            get() = chain.thisObject
+        override val args: List<Any?>
+            get() = chain.args
+        override val hasResult: Boolean
+            get() = state.hasResult
+        override var result: Any?
+            get() = state.result
+            set(value) {
+                state.result = value
+            }
+
+        override fun proceed(): Any? {
+            if (!state.startOriginal()) return rejectRepeatedOriginal()
+            return chain.proceed().also { state.result = it }
+        }
+
+        override fun proceedWith(args: Array<Any?>): Any? {
+            if (state.originalExecuted) return rejectRepeatedOriginal()
+            return proceedWith(chain.thisObject, args)
+        }
+
+        override fun proceedWith(thisObject: Any?, args: Array<Any?>): Any? {
+            if (thisObject == null) {
+                HookerLogger.hookError(
+                    "Cannot proceed with null thisObject: ${executable.toGenericString()}",
+                    IllegalArgumentException("thisObject must be non-null for proceedWith.")
+                )
+                return state.result
+            }
+            if (!state.startOriginal()) return rejectRepeatedOriginal()
+            return chain.proceedWith(thisObject, args).also { state.result = it }
+        }
+
+        private fun rejectRepeatedOriginal(): Any? {
+            HookerLogger.hookError(
+                "Original method already proceeded: ${executable.toGenericString()}",
+                IllegalStateException("Use HookCallback.result instead of proceeding twice.")
+            )
+            return state.result
         }
     }
 
@@ -172,6 +154,28 @@ internal class HookInstaller(
 
     private companion object {
         val installedHookKeys = ConcurrentHashMap.newKeySet<String>()
+    }
+}
+
+internal class HookInvocationState {
+    private object UnsetResult
+
+    private var currentResult: Any? = UnsetResult
+    var originalExecuted: Boolean = false
+        private set
+
+    val hasResult: Boolean
+        get() = currentResult !== UnsetResult
+    var result: Any?
+        get() = if (hasResult) currentResult else null
+        set(value) {
+            currentResult = value
+        }
+
+    fun startOriginal(): Boolean {
+        if (originalExecuted) return false
+        originalExecuted = true
+        return true
     }
 }
 

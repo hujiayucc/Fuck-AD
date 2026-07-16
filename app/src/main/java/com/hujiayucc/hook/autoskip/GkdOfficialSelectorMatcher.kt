@@ -1,6 +1,5 @@
 package com.hujiayucc.hook.autoskip
 
-import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import li.songe.selector.MatchOption
 import li.songe.selector.QueryContext
@@ -108,18 +107,11 @@ internal class GkdOfficialSelectorMatcher(
     }
 
     private fun isUsable(node: AccessibilityNodeInfo, visible: Boolean, region: AutoSkipRegion?): Boolean {
-        val bounds = node.bounds()
+        val bounds = node.boundsInScreen()
         if (visible && !node.isVisibleToUser) return false
-        if (!isReasonableBounds(bounds)) return false
+        if (!bounds.isReasonableForScreen(screenWidth, screenHeight)) return false
         if (region?.contains(bounds, screenWidth, screenHeight) == false) return false
         return true
-    }
-
-    private fun isReasonableBounds(bounds: Rect): Boolean {
-        if (bounds.isEmpty) return false
-        if (bounds.right <= 0 || bounds.bottom <= 0 || bounds.left >= screenWidth || bounds.top >= screenHeight) return false
-        val area = bounds.width() * bounds.height()
-        return bounds.width() >= 8 && bounds.height() >= 8 && area <= screenWidth * screenHeight * 0.6f
     }
 
     private companion object {
@@ -157,7 +149,7 @@ internal class GkdOfficialSelectorMatcher(
 
         private fun getNodeAttr(ref: GkdAccessibilityNodeRef, name: String): Any? {
             val node = ref.node
-            val bounds = node.bounds()
+            val bounds = node.boundsInScreen()
             return when (name) {
                 "id" -> node.viewIdResourceName
                 "vid" -> node.vid()
@@ -265,10 +257,4 @@ private class GkdAccessibilityNodeRef(
     val order: Int
 ) {
     val children = ArrayList<GkdAccessibilityNodeRef>()
-}
-
-private fun AccessibilityNodeInfo.bounds(): Rect {
-    val rect = Rect()
-    getBoundsInScreen(rect)
-    return rect
 }

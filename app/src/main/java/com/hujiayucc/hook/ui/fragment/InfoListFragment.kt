@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.ui.fragment
 
 import android.annotation.SuppressLint
+import android.content.pm.ComponentInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -10,7 +11,6 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ListView
 import androidx.fragment.app.Fragment
 import com.hujiayucc.hook.databinding.FragmentAppInfoListBinding
 import com.hujiayucc.hook.ui.adapter.InfoListAdapter
@@ -22,7 +22,6 @@ class InfoListFragment : Fragment() {
     private var _binding: FragmentAppInfoListBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var listView: ListView
     private lateinit var adapter: InfoListAdapter
     private val componentList = ArrayList<InfoListAdapter.ComponentItem>()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -80,9 +79,8 @@ class InfoListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        listView = binding.componentList
         adapter = InfoListAdapter(componentList)
-        listView.adapter = adapter
+        binding.componentList.adapter = adapter
         setupSearchReceiver()
 
         loadComponents()
@@ -116,7 +114,7 @@ class InfoListFragment : Fragment() {
 
         binding.progressBar.visibility = View.VISIBLE
         binding.textView.visibility = View.VISIBLE
-        listView.visibility = View.GONE
+        binding.componentList.visibility = View.GONE
 
         loadExecutor?.shutdownNow()
         val executor = Executors.newSingleThreadExecutor()
@@ -139,35 +137,17 @@ class InfoListFragment : Fragment() {
     }
 
     private fun buildComponentItems(packageInfo: PackageInfo): List<InfoListAdapter.ComponentItem> {
-        val items = ArrayList<InfoListAdapter.ComponentItem>()
-        when (componentType) {
-            InfoListAdapter.ComponentType.ACTIVITY -> {
-                val activities = packageInfo.activities ?: emptyArray()
-                activities.forEach { activityInfo ->
-                    items.add(
-                        InfoListAdapter.ComponentItem(
-                            name = activityInfo.name,
-                            type = InfoListAdapter.ComponentType.ACTIVITY,
-                            exported = activityInfo.exported
-                        )
-                    )
-                }
-            }
-
-            InfoListAdapter.ComponentType.SERVICE -> {
-                val services = packageInfo.services ?: emptyArray()
-                services.forEach { serviceInfo ->
-                    items.add(
-                        InfoListAdapter.ComponentItem(
-                            name = serviceInfo.name,
-                            type = InfoListAdapter.ComponentType.SERVICE,
-                            exported = serviceInfo.exported
-                        )
-                    )
-                }
-            }
+        val components: Array<out ComponentInfo> = when (componentType) {
+            InfoListAdapter.ComponentType.ACTIVITY -> packageInfo.activities ?: emptyArray()
+            InfoListAdapter.ComponentType.SERVICE -> packageInfo.services ?: emptyArray()
         }
-        return items.sortedBy { it.name.lowercase(Locale.getDefault()) }
+        return components.map { component ->
+            InfoListAdapter.ComponentItem(
+                name = component.name,
+                type = componentType,
+                exported = component.exported
+            )
+        }.sortedBy { it.name.lowercase(Locale.getDefault()) }
     }
 
     private fun showComponents(items: List<InfoListAdapter.ComponentItem>) {
@@ -178,7 +158,7 @@ class InfoListFragment : Fragment() {
 
         binding.progressBar.visibility = View.GONE
         binding.textView.visibility = View.GONE
-        listView.visibility = View.VISIBLE
+        binding.componentList.visibility = View.VISIBLE
     }
 
     @SuppressLint("SetTextI18n")
@@ -187,6 +167,6 @@ class InfoListFragment : Fragment() {
         binding.progressBar.visibility = View.GONE
         binding.textView.text = message
         binding.textView.visibility = View.VISIBLE
-        if (::listView.isInitialized) listView.visibility = View.GONE
+        binding.componentList.visibility = View.GONE
     }
 }

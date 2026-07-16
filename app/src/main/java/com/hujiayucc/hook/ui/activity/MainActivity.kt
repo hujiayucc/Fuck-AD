@@ -192,18 +192,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     private fun handleAutoGrantResult(result: GrantResult) {
+        autoGrantInProgress = false
         when {
             result == GrantResult.GRANTED || hasQueryAllPackagesPermission() -> {
-                autoGrantInProgress = false
                 loadAppList()
             }
 
-            result == GrantResult.WAITING_FOR_SHIZUKU -> {
-                autoGrantInProgress = false
-            }
+            result == GrantResult.WAITING_FOR_SHIZUKU -> Unit
 
             else -> {
-                autoGrantInProgress = false
                 showEssentialPermissionSettingsGuide()
             }
         }

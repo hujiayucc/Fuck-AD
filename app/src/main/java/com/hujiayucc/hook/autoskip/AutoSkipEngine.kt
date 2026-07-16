@@ -169,7 +169,11 @@ class AutoSkipEngine(
                 verifyClickResult(matcher, match.rule, activePackageName, runtimeConfig)
             },
             asynchronousVerifier = AutoSkipAsyncVerifier { clickResult, verifier, retry ->
-                scheduleVerifyResult(activePackageName, activity, match.rule, clickResult, verifier, retry)
+                scheduleVerifyResult(
+                    VerificationContext(activePackageName, activity, match.rule, clickResult),
+                    verifier,
+                    retry
+                )
             }
         )
         if (result.success) {
@@ -180,56 +184,40 @@ class AutoSkipEngine(
     }
 
     private fun scheduleVerifyResult(
-        activePackageName: String,
-        activity: String,
-        rule: AutoSkipRule,
-        result: AutoSkipExecutionResult,
+        context: VerificationContext,
         verifier: () -> AutoSkipClickVerification,
         retry: (() -> AutoSkipExecutionResult?)?
     ) {
         runCatching {
             executor.schedule(
                 {
-                    runCatching {
-                        val verification = runCatching { verifier() }.getOrElse { error ->
-                            AutoSkipClickVerification(true, "ok; verification failed: ${error.javaClass.simpleName}")
-                        }
-                        if (verification.accepted) {
-                            recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
-                            return@runCatching
-                        }
-
-                        val retryResult = retry?.invoke()
-                        when {
-                            retryResult == null -> {
-                                recordClickResult(activePackageName, activity, rule, result.copy(message = verification.message))
-                            }
-
-                            retryResult.success -> {
-                                markClickCooldown(activePackageName, rule)
-                                if (retryResult.message != VERIFICATION_SCHEDULED_MESSAGE) {
-                                    recordClickResult(activePackageName, activity, rule, retryResult)
-                                }
-                            }
-
-                            else -> {
-                                recordClickResult(activePackageName, activity, rule, retryResult)
-                            }
-                        }
-                    }.onFailure { error ->
-                        errorReporter("verify", error)
-                    }
+                    runCatching { verifyScheduledResult(context, verifier, retry) }
+                        .onFailure { error -> errorReporter("verify", error) }
                 },
                 VERIFY_DELAY_MS,
                 TimeUnit.MILLISECONDS
             )
         }.onFailure { error ->
             recordClickResult(
-                activePackageName,
-                activity,
-                rule,
-                result.copy(message = "ok; verification schedule failed: ${error.javaClass.simpleName}")
+                context.activePackageName,
+                context.activity,
+                context.rule,
+                context.result.copy(message = "ok; verification schedule failed: ${error.javaClass.simpleName}")
             )
+        }
+    }
+
+    private fun verifyScheduledResult(
+        context: VerificationContext,
+        verifier: () -> AutoSkipClickVerification,
+        retry: (() -> AutoSkipExecutionResult?)?
+    ) {
+        val outcome = runAutoSkipVerificationFlow(context.result, verifier, retry)
+        if (outcome.markCooldown) {
+            markClickCooldown(context.activePackageName, context.rule)
+        }
+        outcome.resultToRecord?.let { result ->
+            recordClickResult(context.activePackageName, context.activity, context.rule, result)
         }
     }
 
@@ -300,6 +288,13 @@ class AutoSkipEngine(
             eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED
     }
 
+    private data class VerificationContext(
+        val activePackageName: String,
+        val activity: String,
+        val rule: AutoSkipRule,
+        val result: AutoSkipExecutionResult
+    )
+
     private data class PendingEvaluation(
         val packageName: String,
         val activity: String,
@@ -312,4 +307,37 @@ class AutoSkipEngine(
         private const val APP_COOLDOWN_MS = 3000L
         private const val VERIFY_DELAY_MS = 350L
     }
+}
+
+internal data class AutoSkipVerificationOutcome(
+    val resultToRecord: AutoSkipExecutionResult?,
+    val markCooldown: Boolean
+)
+
+internal fun runAutoSkipVerificationFlow(
+    originalResult: AutoSkipExecutionResult,
+    verifier: () -> AutoSkipClickVerification,
+    retry: (() -> AutoSkipExecutionResult?)?
+): AutoSkipVerificationOutcome {
+    val verification = runCatching { verifier() }.getOrElse { error ->
+        AutoSkipClickVerification(true, "ok; verification failed: ${error.javaClass.simpleName}")
+    }
+    if (verification.accepted) {
+        return AutoSkipVerificationOutcome(
+            resultToRecord = originalResult.copy(message = verification.message),
+            markCooldown = false
+        )
+    }
+    val retryResult = retry?.invoke()
+        ?: return AutoSkipVerificationOutcome(
+            resultToRecord = originalResult.copy(message = verification.message),
+            markCooldown = false
+        )
+    val retrySucceeded = retryResult.success
+    return AutoSkipVerificationOutcome(
+        resultToRecord = retryResult.takeUnless {
+            retrySucceeded && it.message == VERIFICATION_SCHEDULED_MESSAGE
+        },
+        markCooldown = retrySucceeded
+    )
 }

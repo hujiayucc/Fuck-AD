@@ -15,13 +15,13 @@ object AppInfoUtil {
     val Context.appVersionName get() = packageInfo.versionName.orEmpty()
 
     /** 获取版本号 */
-    val Context.appVersionCode get() = packageInfo.versionCodeCompat
+    val Context.appVersionCode get() = packageInfo.longVersionCode
 
     /** 获取应用名 */
-    val Context.appName get() = packageInfo.applicationInfoCompat?.loadLabel(packageManager).toString()
+    val Context.appName get() = packageInfo.applicationInfo?.loadLabel(packageManager).toString()
 
     /** 获取应用图标 */
-    val Context.appIcon get() = packageInfo.applicationInfoCompat?.loadIcon(packageManager)
+    val Context.appIcon get() = packageInfo.applicationInfo?.loadIcon(packageManager)
 
     /** 获取应用列表 */
     private val Context.allApps: List<PackageInfo>
@@ -36,21 +36,21 @@ object AppInfoUtil {
     fun Context.appVersionName(packageName: String) = packageInfo(packageName).versionName.orEmpty()
 
     /** 获取版本号 */
-    fun Context.appVersionCode(packageName: String) = packageInfo(packageName).versionCodeCompat
+    fun Context.appVersionCode(packageName: String) = packageInfo(packageName).longVersionCode
 
     /** 获取应用名 */
     fun Context.appName(packageName: String) =
-        packageInfo(packageName).applicationInfoCompat?.loadLabel(packageManager).toString()
+        packageInfo(packageName).applicationInfo?.loadLabel(packageManager).toString()
 
     /** 获取应用图标 */
     fun Context.appIcon(packageName: String) =
-        packageInfo(packageName).applicationInfoCompat?.loadIcon(packageManager)
+        packageInfo(packageName).applicationInfo?.loadIcon(packageManager)
 
     /** 获取用户应用列表 */
     val Context.onlyUserApps: List<PackageInfo>
         get() {
             return allApps.filter { packageInfo ->
-                packageInfo.applicationInfoCompat.isSystemApp().not()
+                packageInfo.applicationInfo.isSystemApp().not()
             }
         }
 
@@ -58,7 +58,7 @@ object AppInfoUtil {
     val Context.onlySystemApps: List<PackageInfo>
         get() {
             return allApps.filter { packageInfo ->
-                packageInfo.applicationInfoCompat.isSystemApp()
+                packageInfo.applicationInfo.isSystemApp()
             }
         }
 
@@ -72,22 +72,6 @@ object AppInfoUtil {
             packageManager.getPackageInfo(packageName, 0)
         }
     }
-
-    private val PackageInfo.versionCodeCompat: Long
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            versionCode.toLong()
-        }
-
-    private val PackageInfo.applicationInfoCompat: ApplicationInfo?
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            applicationInfo
-        } else {
-            @Suppress("DEPRECATION")
-            applicationInfo
-        }
 
     private fun ApplicationInfo?.isSystemApp(): Boolean {
         return ((this?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM) != 0

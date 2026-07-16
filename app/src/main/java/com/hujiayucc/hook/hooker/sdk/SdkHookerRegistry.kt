@@ -29,22 +29,6 @@ private fun tieredTarget(
 }
 
 object SdkHookerRegistry {
-    val hookers = listOf(
-        GDT,
-        KW,
-        Pangle,
-        BaiQingTeng,
-        Sigmob,
-        Mintegral,
-        TopOn,
-        TradPlus,
-        GoogleAds,
-        AppLovin,
-        UnityAds,
-        Vungle,
-        LevelPlay
-    )
-
     val targets = listOf(
         tieredTarget(
             id = SdkHookerConfig.GDT,

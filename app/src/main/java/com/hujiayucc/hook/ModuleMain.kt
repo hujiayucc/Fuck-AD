@@ -5,10 +5,8 @@ import android.util.Log
 import com.hujiayucc.hook.data.FallbackSharedPreferences
 import com.hujiayucc.hook.data.SdkHookerConfig
 import com.hujiayucc.hook.hooker.app.HookerRegistry
-import com.hujiayucc.hook.hooker.sdk.SdkHookerRegistry
 import com.hujiayucc.hook.hooker.sdk.SdkHookerResolver
 import com.hujiayucc.hook.hooker.util.ClickInfo
-import com.hujiayucc.hook.hooker.util.Hooker
 import com.hujiayucc.hook.hooker.util.Loader
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface
@@ -18,14 +16,10 @@ class ModuleMain : XposedModule() {
         private const val TAG = "ModuleMain"
         private const val PREFS_NAME = "config"
 
-        val BUILTIN_HOOKERS = listOf(Loader)
-        val SDK_HOOKERS: List<Hooker> = SdkHookerRegistry.hookers
+        private val BUILTIN_HOOKERS = listOf(Loader)
 
         @Volatile
-        private var dexKitLoadAttempted = false
-
-        @Volatile
-        private var dexKitLoaded = false
+        private var dexKitLoadResult: Boolean? = null
 
         var prefs: SharedPreferences = FallbackSharedPreferences
             private set
@@ -33,21 +27,12 @@ class ModuleMain : XposedModule() {
             private set
 
         fun ensureDexKitLoaded(): Boolean {
-            if (dexKitLoaded) return true
+            dexKitLoadResult?.let { return it }
 
             return synchronized(this) {
-                if (dexKitLoaded) {
-                    true
-                } else if (dexKitLoadAttempted) {
-                    false
-                } else {
-                    val loaded = runCatching {
-                        System.loadLibrary("dexkit")
-                    }.isSuccess
-                    dexKitLoaded = loaded
-                    dexKitLoadAttempted = true
-                    loaded
-                }
+                dexKitLoadResult ?: runCatching {
+                    System.loadLibrary("dexkit")
+                }.isSuccess.also { dexKitLoadResult = it }
             }
         }
     }
@@ -78,11 +63,7 @@ class ModuleMain : XposedModule() {
                 "Package ready: package=${param.packageName}, appHookers=" +
                     appHookers.joinToString { it.javaClass.simpleName }.ifEmpty { "none" }
             )
-            val hookers = if (ClickInfo.isEnabled()) {
-                BUILTIN_HOOKERS + ClickInfo + appHookers
-            } else {
-                BUILTIN_HOOKERS + appHookers
-            }
+            val hookers = BUILTIN_HOOKERS + listOfNotNull(ClickInfo.takeIf { it.isEnabled() }) + appHookers
             hookers.forEach { it.call(param) }
             if (appHookers.isEmpty()) {
                 resolveSdkHookerTargets(param.packageName, param.classLoader).forEach { match ->
@@ -109,12 +90,14 @@ class ModuleMain : XposedModule() {
     }
 
     private fun logIfDebug(message: String) {
-        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
-        if (shouldLog) log(Log.DEBUG, TAG, message, null)
+        if (isDebugLoggingEnabled()) log(Log.DEBUG, TAG, message, null)
     }
 
     private fun logIfDebug(stage: String, error: Throwable) {
-        val shouldLog = runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
-        if (shouldLog) log(Log.ERROR, TAG, "$stage error", error)
+        if (isDebugLoggingEnabled()) log(Log.ERROR, TAG, "$stage error", error)
+    }
+
+    private fun isDebugLoggingEnabled(): Boolean {
+        return runCatching { prefs.getBoolean("errorLog", false) }.getOrDefault(false)
     }
 }

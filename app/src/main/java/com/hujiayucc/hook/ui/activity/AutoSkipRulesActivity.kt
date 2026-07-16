@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -63,6 +64,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     private var autoEnableAccessibilityInProgress = false
     private var notificationPermissionRequestInProgress = false
     private var keepAliveSwitchUpdateInProgress = false
+    private var serviceKeepAliveRequestPending = false
     private var daemonRepairInProgress = false
     private var autoLoadSubscriptionsStarted = false
     private var refreshRulesRequestId = 0
@@ -202,6 +204,14 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
 
     override fun onResume() {
         super.onResume()
+        if (serviceKeepAliveRequestPending) {
+            serviceKeepAliveRequestPending = false
+            AutoSkipSettings.setServiceKeepAliveEnabled(
+                this,
+                AutoSkipSettings.isBatteryUsageUnrestricted(this)
+            )
+        }
+        refreshServiceKeepAliveSwitch()
         val autoSkipEnabled = AutoSkipSettings.isEnabled(this)
         val accessibilityEnabled = isAccessibilityServiceEnabled()
         val canShowNotification = if (autoSkipEnabled || accessibilityEnabled) {
@@ -264,6 +274,13 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             AutoSkipSettings.setUseRootInput(this, isChecked)
         }
         binding.serviceKeepAliveSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (keepAliveSwitchUpdateInProgress) return@setOnCheckedChangeListener
+            if (isChecked && !AutoSkipSettings.isBatteryUsageUnrestricted(this)) {
+                AutoSkipSettings.setServiceKeepAliveEnabled(this, false)
+                refreshServiceKeepAliveSwitch()
+                requestUnrestrictedBatteryUsage()
+                return@setOnCheckedChangeListener
+            }
             AutoSkipSettings.setServiceKeepAliveEnabled(this, isChecked)
             AutoSkipDaemonManager.writeConfig(this)
             AutoSkipAccessibilityService.refreshRunningNotification(this)
@@ -273,6 +290,26 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             if (!keepAliveSwitchUpdateInProgress) setDaemonKeepAliveEnabled(isChecked)
         }
         refreshKeepAliveStatus()
+    }
+
+    private fun refreshServiceKeepAliveSwitch() {
+        keepAliveSwitchUpdateInProgress = true
+        binding.serviceKeepAliveSwitch.isChecked = AutoSkipSettings.serviceKeepAliveEnabled(this)
+        keepAliveSwitchUpdateInProgress = false
+    }
+
+    private fun requestUnrestrictedBatteryUsage() {
+        serviceKeepAliveRequestPending = true
+        val requestIntent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:$packageName")
+        )
+        val settingsIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        runCatching {
+            startActivity(requestIntent.takeIf { it.resolveActivity(packageManager) != null } ?: settingsIntent)
+        }.onFailure {
+            serviceKeepAliveRequestPending = false
+        }
     }
 
     private fun setDaemonKeepAliveEnabled(enabled: Boolean) {

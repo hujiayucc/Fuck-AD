@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.hujiayucc.hook.ui.activity.MainActivity
@@ -33,12 +32,7 @@ object LanguageUtils {
             val appResources = packageManager.getResourcesForApplication(appInfo)
             val configuration = Configuration(appResources.configuration)
             currentLocaleList().takeIf { !it.isEmpty }?.let { locales ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    configuration.setLocales(android.os.LocaleList.forLanguageTags(locales.toLanguageTags()))
-                } else {
-                    @Suppress("DEPRECATION")
-                    configuration.locale = Locale.forLanguageTag(locales[0]?.toLanguageTag().orEmpty())
-                }
+                configuration.setLocales(android.os.LocaleList.forLanguageTags(locales.toLanguageTags()))
             }
             val localizedResources = Resources(
                 appResources.assets,

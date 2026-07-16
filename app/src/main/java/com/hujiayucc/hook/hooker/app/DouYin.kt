@@ -1,8 +1,6 @@
 package com.hujiayucc.hook.hooker.app
 
 import android.app.Activity
-import android.os.Handler
-import android.os.Looper
 import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.hooker.util.Hooker
 import io.github.libxposed.api.XposedModuleInterface
@@ -21,9 +19,16 @@ object DouYin : Hooker() {
                 after {
                     instance.javaClass.fields.forEach { field ->
                         if (field.type.name == "com.ss.android.excitingvideo.sdk.ExcitingVideoFragment") {
-                            val obj = getField(instance, field.name)
+                            val activity = instance as? Activity
+                            val fragment = getField(instance, field.name)
+                            if (fragment == null) {
+                                logW("Unable to read ExcitingVideoFragment field: ${field.name}")
+                                return@after
+                            }
                             runMainDelayed(1000) {
-                                obj!!.runnable(instance)
+                                if (fragment.sendReward()) {
+                                    activity?.finish()
+                                }
                             }
                             return@after
                         }
@@ -32,19 +37,13 @@ object DouYin : Hooker() {
             }
     }
 
-    private fun Any.runnable(any: Any) = Runnable {
-        if (!check()) return@Runnable
-        if (any is Activity) any.finish()
-    }
-
-    private fun Any.check(): Boolean {
-        try {
-            val method = this.javaClass.method("sendRewardWhenLiveNotAvailable")
-            method.isAccessible = true
-            method.invoke(this)
-            return true
-        } catch (_: Exception) {
-        }
-        return false
+    private fun Any.sendReward(): Boolean {
+        return runCatching {
+            javaClass.method("sendRewardWhenLiveNotAvailable").apply {
+                isAccessible = true
+            }.invoke(this)
+        }.onFailure { error ->
+            logW("Failed to send DouYin exciting video reward", error)
+        }.isSuccess
     }
 }

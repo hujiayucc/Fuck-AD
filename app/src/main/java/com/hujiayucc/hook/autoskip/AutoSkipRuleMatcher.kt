@@ -10,6 +10,7 @@ class AutoSkipRuleMatcher(
 ) {
     private val legacyGkdMatcher = GkdSelectorMatcher(screenWidth, screenHeight)
     private val gkdMatcher = GkdOfficialSelectorMatcher(screenWidth, screenHeight, legacyGkdMatcher)
+    private val tapPointResolver = AutoSkipTapPointResolver(screenWidth, screenHeight)
 
     fun findMatch(root: AccessibilityNodeInfo, rules: List<AutoSkipRule>): AutoSkipMatchResult? {
         val selectorSnapshot = gkdMatcher.snapshot(root)
@@ -17,14 +18,16 @@ class AutoSkipRuleMatcher(
         rules.forEach { rule ->
             findGkdMatchingNode(selectorSnapshot, rule)?.let { selectorMatch ->
                 if (selectorMatch.node != null) {
-                    val points = tapPoints(selectorMatch.node, rule)
+                    val points = tapPointResolver.resolve(AccessibilityTapNode(selectorMatch.node), rule.action.toTapRequest())
+                        .map { point -> Point(point.x, point.y) }
                     if (points.isNotEmpty()) return AutoSkipMatchResult(rule, selectorMatch.node, points)
                 }
                 if (selectorMatch.attempted) return@forEach
             }
             val snapshot = nodeSnapshot ?: AutoSkipNodeSnapshot(root).also { nodeSnapshot = it }
             findMatchingNode(snapshot, rule)?.let { ref ->
-                val points = tapPoints(ref, rule)
+                val points = tapPointResolver.resolve(ref, rule.action.toTapRequest())
+                    .map { point -> Point(point.x, point.y) }
                 if (points.isNotEmpty()) return AutoSkipMatchResult(rule, ref.node, points)
             }
         }
@@ -44,7 +47,7 @@ class AutoSkipRuleMatcher(
     private fun matches(ref: AutoSkipNodeRef, rule: AutoSkipRule): Boolean {
         val bounds = ref.bounds
         if (rule.match.visible && !ref.visibleToUser) return false
-        if (!isReasonableBounds(bounds)) return false
+        if (!bounds.isReasonableForScreen(screenWidth, screenHeight)) return false
         if (rule.match.region?.contains(bounds, screenWidth, screenHeight) == false) return false
         if (matchesExcludedField(ref, rule.match)) return false
         return matchesPositiveField(ref, rule.match)
@@ -74,123 +77,6 @@ class AutoSkipRuleMatcher(
         }
     }
 
-    private fun tapPoints(ref: AutoSkipNodeRef, rule: AutoSkipRule): List<Point> {
-        val bounds = clickableBounds(ref)
-        if (!isReasonableBounds(bounds)) return emptyList()
-        return when (rule.action.tapStrategy) {
-            AutoSkipTapStrategy.CENTER -> listOf(bounds.pointAt(0.5f, 0.5f))
-            AutoSkipTapStrategy.TOP_RIGHT -> listOf(bounds.pointAt(0.86f, 0.28f))
-            AutoSkipTapStrategy.BOTTOM_RIGHT -> listOf(bounds.pointAt(0.86f, 0.72f))
-            AutoSkipTapStrategy.CUSTOM_RATIO -> listOf(bounds.pointAt(rule.action.customXRatio, rule.action.customYRatio))
-            AutoSkipTapStrategy.PROBE -> probePoints(ref)
-        }.filter { point -> point.x in 0 until screenWidth && point.y in 0 until screenHeight }.distinctBy { it.x to it.y }
-    }
-
-    private fun tapPoints(node: AccessibilityNodeInfo, rule: AutoSkipRule): List<Point> {
-        val bounds = clickableBounds(node)
-        if (!isReasonableBounds(bounds)) return emptyList()
-        return when (rule.action.tapStrategy) {
-            AutoSkipTapStrategy.CENTER -> listOf(bounds.pointAt(0.5f, 0.5f))
-            AutoSkipTapStrategy.TOP_RIGHT -> listOf(bounds.pointAt(0.86f, 0.28f))
-            AutoSkipTapStrategy.BOTTOM_RIGHT -> listOf(bounds.pointAt(0.86f, 0.72f))
-            AutoSkipTapStrategy.CUSTOM_RATIO -> listOf(bounds.pointAt(rule.action.customXRatio, rule.action.customYRatio))
-            AutoSkipTapStrategy.PROBE -> probePoints(node)
-        }.filter { point -> point.x in 0 until screenWidth && point.y in 0 until screenHeight }.distinctBy { it.x to it.y }
-    }
-
-    private fun probePoints(ref: AutoSkipNodeRef): List<Point> {
-        val points = ArrayList<Point>()
-        val own = ref.bounds
-        if (isReasonableBounds(own)) {
-            points.add(own.pointAt(0.5f, 0.5f))
-            points.add(own.pointAt(0.86f, 0.32f))
-            points.add(own.pointAt(0.86f, 0.68f))
-        }
-        var parent = ref.parent
-        var depth = 0
-        while (parent != null && depth < 3) {
-            val bounds = parent.bounds
-            if (isReasonableBounds(bounds)) {
-                points.add(bounds.pointAt(0.5f, 0.5f))
-                points.add(bounds.pointAt(0.86f, 0.32f))
-            }
-            if (parent.clickable) break
-            parent = parent.parent
-            depth += 1
-        }
-        return points
-    }
-
-    private fun probePoints(node: AccessibilityNodeInfo): List<Point> {
-        val points = ArrayList<Point>()
-        val own = node.bounds()
-        if (isReasonableBounds(own)) {
-            points.add(own.pointAt(0.5f, 0.5f))
-            points.add(own.pointAt(0.86f, 0.32f))
-            points.add(own.pointAt(0.86f, 0.68f))
-        }
-        var parent = node.parent
-        var depth = 0
-        while (parent != null && depth < 3) {
-            val bounds = parent.bounds()
-            if (isReasonableBounds(bounds)) {
-                points.add(bounds.pointAt(0.5f, 0.5f))
-                points.add(bounds.pointAt(0.86f, 0.32f))
-            }
-            if (parent.isClickable) break
-            parent = parent.parent
-            depth += 1
-        }
-        return points
-    }
-
-    private fun clickableBounds(ref: AutoSkipNodeRef): Rect {
-        var candidate: AutoSkipNodeRef? = ref
-        var depth = 0
-        while (candidate != null && depth < 3) {
-            val bounds = candidate.bounds
-            if (candidate.clickable && isReasonableBounds(bounds)) return bounds
-            candidate = candidate.parent
-            depth += 1
-        }
-        return ref.bounds
-    }
-
-    private fun clickableBounds(node: AccessibilityNodeInfo): Rect {
-        var candidate: AccessibilityNodeInfo? = node
-        var depth = 0
-        while (candidate != null && depth < 3) {
-            val bounds = candidate.bounds()
-            if (candidate.isClickable && isReasonableBounds(bounds)) return bounds
-            candidate = candidate.parent
-            depth += 1
-        }
-        return node.bounds()
-    }
-
-    private fun isReasonableBounds(bounds: Rect): Boolean {
-        if (bounds.isEmpty) return false
-        if (bounds.right <= 0 || bounds.bottom <= 0 || bounds.left >= screenWidth || bounds.top >= screenHeight) return false
-        val width = bounds.width()
-        val height = bounds.height()
-        val screenArea = screenWidth * screenHeight
-        val area = width * height
-        return width >= 8 && height >= 8 && area <= screenArea * 0.6f
-    }
-
-    private fun AccessibilityNodeInfo.bounds(): Rect {
-        val rect = Rect()
-        getBoundsInScreen(rect)
-        return rect
-    }
-
-    private fun Rect.pointAt(xRatio: Float, yRatio: Float): Point {
-        return Point(
-            (left + width() * xRatio.coerceIn(0f, 1f)).toInt(),
-            (top + height() * yRatio.coerceIn(0f, 1f)).toInt()
-        )
-    }
-
     private inner class AutoSkipNodeSnapshot(root: AccessibilityNodeInfo) {
         val nodes = ArrayList<AutoSkipNodeRef>()
 
@@ -202,7 +88,7 @@ class AutoSkipRuleMatcher(
             val ref = AutoSkipNodeRef(
                 node = node,
                 parent = parent,
-                bounds = node.bounds(),
+                bounds = node.boundsInScreen(),
                 text = node.text?.toString(),
                 desc = node.contentDescription?.toString(),
                 resourceId = node.viewIdResourceName,
@@ -221,14 +107,130 @@ class AutoSkipRuleMatcher(
 
     private class AutoSkipNodeRef(
         val node: AccessibilityNodeInfo,
-        val parent: AutoSkipNodeRef?,
+        override val parent: AutoSkipNodeRef?,
         val bounds: Rect,
         val text: String?,
         val desc: String?,
         val resourceId: String?,
         val className: String?,
         val visibleToUser: Boolean,
-        val clickable: Boolean
+        override val clickable: Boolean
+    ) : AutoSkipTapNode {
+        override val tapBounds = bounds.toTapBounds()
+    }
+}
+
+internal interface AutoSkipTapNode {
+    val parent: AutoSkipTapNode?
+    val tapBounds: AutoSkipTapBounds
+    val clickable: Boolean
+}
+
+internal data class AutoSkipTapBounds(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int
+) {
+    fun isReasonableForScreen(screenWidth: Int, screenHeight: Int): Boolean {
+        return isReasonableBounds(left, top, right, bottom, screenWidth, screenHeight)
+    }
+
+    fun pointAt(xRatio: Float, yRatio: Float): AutoSkipTapPoint {
+        return AutoSkipTapPoint(
+            (left + (right - left) * xRatio.coerceIn(0f, 1f)).toInt(),
+            (top + (bottom - top) * yRatio.coerceIn(0f, 1f)).toInt()
+        )
+    }
+}
+
+internal data class AutoSkipTapPoint(val x: Int, val y: Int)
+
+internal enum class AutoSkipTapMode {
+    CENTER,
+    TOP_RIGHT,
+    BOTTOM_RIGHT,
+    CUSTOM_RATIO,
+    PROBE
+}
+
+internal data class AutoSkipTapRequest(
+    val mode: AutoSkipTapMode,
+    val customXRatio: Float = 0.5f,
+    val customYRatio: Float = 0.5f
+)
+
+internal class AutoSkipTapPointResolver(
+    private val screenWidth: Int,
+    private val screenHeight: Int
+) {
+    fun resolve(node: AutoSkipTapNode, request: AutoSkipTapRequest): List<AutoSkipTapPoint> {
+        val bounds = clickableBounds(node)
+        if (!bounds.isReasonableForScreen(screenWidth, screenHeight)) return emptyList()
+        return when (request.mode) {
+            AutoSkipTapMode.CENTER -> listOf(bounds.pointAt(0.5f, 0.5f))
+            AutoSkipTapMode.TOP_RIGHT -> listOf(bounds.pointAt(0.86f, 0.28f))
+            AutoSkipTapMode.BOTTOM_RIGHT -> listOf(bounds.pointAt(0.86f, 0.72f))
+            AutoSkipTapMode.CUSTOM_RATIO -> listOf(bounds.pointAt(request.customXRatio, request.customYRatio))
+            AutoSkipTapMode.PROBE -> probePoints(node)
+        }.filter { point -> point.x in 0 until screenWidth && point.y in 0 until screenHeight }
+            .distinctBy { it.x to it.y }
+    }
+
+    private fun probePoints(node: AutoSkipTapNode): List<AutoSkipTapPoint> {
+        val points = ArrayList<AutoSkipTapPoint>()
+        val own = node.tapBounds
+        if (own.isReasonableForScreen(screenWidth, screenHeight)) {
+            points.add(own.pointAt(0.5f, 0.5f))
+            points.add(own.pointAt(0.86f, 0.32f))
+            points.add(own.pointAt(0.86f, 0.68f))
+        }
+        var parent = node.parent
+        var depth = 0
+        while (parent != null && depth < 3) {
+            val bounds = parent.tapBounds
+            if (bounds.isReasonableForScreen(screenWidth, screenHeight)) {
+                points.add(bounds.pointAt(0.5f, 0.5f))
+                points.add(bounds.pointAt(0.86f, 0.32f))
+            }
+            if (parent.clickable) break
+            parent = parent.parent
+            depth += 1
+        }
+        return points
+    }
+
+    private fun clickableBounds(node: AutoSkipTapNode): AutoSkipTapBounds {
+        var candidate: AutoSkipTapNode? = node
+        var depth = 0
+        while (candidate != null && depth < 3) {
+            val bounds = candidate.tapBounds
+            if (candidate.clickable && bounds.isReasonableForScreen(screenWidth, screenHeight)) return bounds
+            candidate = candidate.parent
+            depth += 1
+        }
+        return node.tapBounds
+    }
+}
+
+private class AccessibilityTapNode(private val node: AccessibilityNodeInfo) : AutoSkipTapNode {
+    override val parent: AutoSkipTapNode?
+        get() = node.parent?.let(::AccessibilityTapNode)
+    override val tapBounds: AutoSkipTapBounds
+        get() = node.boundsInScreen().toTapBounds()
+    override val clickable: Boolean
+        get() = node.isClickable
+}
+
+private fun Rect.toTapBounds(): AutoSkipTapBounds {
+    return AutoSkipTapBounds(left, top, right, bottom)
+}
+
+private fun AutoSkipAction.toTapRequest(): AutoSkipTapRequest {
+    return AutoSkipTapRequest(
+        mode = AutoSkipTapMode.valueOf(tapStrategy.name),
+        customXRatio = customXRatio,
+        customYRatio = customYRatio
     )
 }
 

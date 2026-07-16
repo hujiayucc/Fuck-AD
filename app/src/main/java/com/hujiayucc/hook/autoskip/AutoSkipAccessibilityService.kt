@@ -140,12 +140,29 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     }
 
     private fun notificationPackageNameFromEvent(event: AccessibilityEvent): String {
-        val packageName = event.packageName?.toString().orEmpty()
-        return packageName.takeIf { !isIgnoredNotificationPackage(this, it) }.orEmpty()
+        val eventPackageName = event.packageName?.toString().orEmpty()
+            .takeIf { !isIgnoredNotificationPackage(it) }
+            .orEmpty()
+        val activeWindowPackageName = runCatching {
+            rootInActiveWindow?.packageName?.toString().orEmpty()
+        }.getOrDefault("")
+            .takeIf { !isIgnoredNotificationPackage(it) }
+            .orEmpty()
+        return selectNotificationTitlePackageName(
+            eventType = event.eventType,
+            eventPackageName = eventPackageName,
+            activeWindowPackageName = activeWindowPackageName
+        )
     }
 
     private fun isNotificationTitleEvent(event: AccessibilityEvent, packageName: String): Boolean {
-        return packageName.isNotBlank() && event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        return packageName.isNotBlank() && when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+            AccessibilityEvent.TYPE_WINDOWS_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_FOCUSED -> true
+            else -> false
+        }
     }
 
     private fun markNotificationEventIfNeeded(event: AccessibilityEvent, packageName: String) {
@@ -224,10 +241,10 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         }
 
         private fun notificationTitle(context: Context, packageName: String?): String {
-            val cleanPackageName = packageName?.takeIf { !isIgnoredNotificationPackage(context, it) }
+            val cleanPackageName = packageName?.takeIf { !isIgnoredNotificationPackage(it) }
                 ?: AutoSkipHealth.read(context)?.let { state ->
-                    state.lastTitlePackageName.takeIf { !isIgnoredNotificationPackage(context, it) }
-                        ?: state.lastEventPackageName.takeIf { !isIgnoredNotificationPackage(context, it) }
+                    state.lastTitlePackageName.takeIf { !isIgnoredNotificationPackage(it) }
+                        ?: state.lastEventPackageName.takeIf { !isIgnoredNotificationPackage(it) }
                 }
             if (cleanPackageName.isNullOrBlank()) return context.getString(R.string.auto_skip_notification_title)
             return runCatching {
@@ -236,9 +253,8 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             }.getOrDefault(cleanPackageName)
         }
 
-        private fun isIgnoredNotificationPackage(context: Context, packageName: String?): Boolean {
+        private fun isIgnoredNotificationPackage(packageName: String?): Boolean {
             if (packageName.isNullOrBlank()) return true
-            if (packageName == context.packageName) return true
             val normalized = packageName.lowercase(Locale.ROOT)
             return normalized == "android" ||
                 normalized == "system" ||
@@ -249,7 +265,6 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         }
 
         private fun createNotificationChannel(context: Context) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val manager = context.getSystemService(NotificationManager::class.java)
             if (manager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) != null) return
             manager.createNotificationChannel(
@@ -281,5 +296,19 @@ class AutoSkipAccessibilityService : AccessibilityService() {
                 }
             }
         }
+    }
+}
+
+internal fun selectNotificationTitlePackageName(
+    eventType: Int,
+    eventPackageName: String,
+    activeWindowPackageName: String
+): String {
+    return when (eventType) {
+        AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> eventPackageName.ifBlank { activeWindowPackageName }
+        AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+        AccessibilityEvent.TYPE_WINDOWS_CHANGED,
+        AccessibilityEvent.TYPE_VIEW_FOCUSED -> activeWindowPackageName.ifBlank { eventPackageName }
+        else -> ""
     }
 }

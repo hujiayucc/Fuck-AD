@@ -2,6 +2,7 @@ package com.hujiayucc.hook.autoskip
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.PowerManager
 import com.hujiayucc.hook.data.Data.prefsBridge
 import java.io.File
 import java.util.concurrent.Executors
@@ -83,7 +84,15 @@ object AutoSkipSettings {
     }
 
     fun serviceKeepAliveEnabled(context: Context): Boolean {
-        return context.prefsBridge.getBoolean(KEY_SERVICE_KEEP_ALIVE, true)
+        val configured = context.prefsBridge.getBoolean(KEY_SERVICE_KEEP_ALIVE, true)
+        return serviceKeepAliveCondition(configured, isBatteryUsageUnrestricted(context))
+    }
+
+    fun isBatteryUsageUnrestricted(context: Context): Boolean {
+        val powerManager = context.getSystemService(PowerManager::class.java)
+        return runCatching {
+            powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+        }.getOrDefault(false)
     }
 
     fun setServiceKeepAliveEnabled(context: Context, enabled: Boolean) {
@@ -549,6 +558,10 @@ data class AutoSkipRuntimeConfig(
             ruleDataGeneration = 0L
         )
     }
+}
+
+internal fun serviceKeepAliveCondition(configured: Boolean, unrestricted: Boolean): Boolean {
+    return configured && unrestricted
 }
 
 data class AutoSkipHitLog(

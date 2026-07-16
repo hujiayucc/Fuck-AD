@@ -63,7 +63,7 @@ object XiaoBaiRecord : Hooker() {
                 returnType = "boolean"
                 addUsingString("key_debug_force_vip", StringMatchType.Equals)
             }
-        }.firstOrNull()?.getMethodInstance(targetClassLoader)
+        }.singleOrNull()?.getMethodInstance(targetClassLoader)
     }
 
     private fun DexKitBridge.findLoginMethod(targetClassLoader: ClassLoader): Method? {
@@ -73,6 +73,6 @@ object XiaoBaiRecord : Hooker() {
                 name = "isLogin"
                 returnType = "boolean"
             }
-        }.firstOrNull()?.getMethodInstance(targetClassLoader)
+        }.singleOrNull()?.getMethodInstance(targetClassLoader)
     }
 }

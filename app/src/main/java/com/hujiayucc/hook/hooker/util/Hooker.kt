@@ -147,10 +147,6 @@ abstract class Hooker {
         return HookerReflectionCache.exactMethod(this, name, parameterTypes.toList())
     }
 
-    fun Class<*>.methodExactOrNull(name: String, vararg parameterTypes: Class<*>): Method? {
-        return runCatching { methodExact(name, *parameterTypes) }.getOrNull()
-    }
-
     fun Class<*>.constructor(): Array<out Constructor<*>>? {
         return runCatching { HookerReflectionCache.declaredConstructors(this) }.getOrElse { error ->
             logHookError("Failed to get constructors: ${name}", error)
@@ -163,15 +159,6 @@ abstract class Hooker {
             HookerReflectionCache.declaredMethods(this).filter { it.name == name }
         }.getOrElse { error ->
             logHookError("Failed to get methods $name: ${this.name}", error)
-            emptyList()
-        }
-    }
-
-    fun Class<*>.methodContains(name: String): List<Method> {
-        return runCatching {
-            HookerReflectionCache.declaredMethods(this).filter { it.name.contains(name) }
-        }.getOrElse { error ->
-            logHookError("Failed to get methods contains $name: ${this.name}", error)
             emptyList()
         }
     }
@@ -200,24 +187,6 @@ abstract class Hooker {
 
     protected fun hookHandleCount(owner: String = appName): Int {
         return hookHandles.count(owner)
-    }
-
-    protected fun hookHandleExecutables(owner: String = appName): List<String> {
-        return hookHandles.executables(owner)
-    }
-
-    protected fun logHookHandles(owner: String = appName) {
-        val executables = hookHandleExecutables(owner)
-        logHookDebug("Registered ${executables.size} hook handles for $owner")
-        executables.forEach { executable ->
-            logHookDebug("Hook handle for $owner: $executable")
-        }
-    }
-
-    protected fun clearHookHandleRecords(owner: String = appName): Int {
-        val removedCount = hookHandles.clear(owner)
-        logHookDebug("Cleared $removedCount hook handle records for $owner")
-        return removedCount
     }
 
     fun Method.hook(block: HookDsl.() -> Unit) {
@@ -283,13 +252,6 @@ abstract class Hooker {
         if (pangle) Pangle.callWithClassLoader(param, currentClassLoader)
         if (gdt) GDT.callWithClassLoader(param, currentClassLoader)
         if (kw) KW.callWithClassLoader(param, currentClassLoader)
-    }
-
-    fun loadAllSDK(param: XposedModuleInterface.PackageReadyParam) {
-        val currentClassLoader = classLoader
-        GDT.callWithClassLoader(param, currentClassLoader)
-        KW.callWithClassLoader(param, currentClassLoader)
-        Pangle.callWithClassLoader(param, currentClassLoader)
     }
 
     protected fun logI(message: String, throwable: Throwable? = null) {
