@@ -31,8 +31,12 @@ object AutoSkipDaemonManager {
         return File(context.applicationContext.noBackupFilesDir, STATUS_FILE)
     }
 
-    fun writeConfig(context: Context, preserveExistingEnabled: Boolean = false, enabledOverride: Boolean? = null) {
-        runCatching {
+    fun writeConfig(
+        context: Context,
+        preserveExistingEnabled: Boolean = false,
+        enabledOverride: Boolean? = null
+    ): Boolean {
+        return runCatching {
             val appContext = context.applicationContext
             val file = configFile(appContext)
             file.parentFile?.mkdirs()
@@ -57,9 +61,10 @@ object AutoSkipDaemonManager {
                 put("maxRecoverPerHour", DEFAULT_MAX_RECOVER_PER_HOUR)
                 put("reenableWhenUserDisabled", false)
             }.toString().replace("\\/", "/")
-            if (existing == jsonText) return@runCatching
+            if (existing == jsonText) return@runCatching true
             AutoSkipAtomicFile.writeText(file, jsonText)
-        }
+            true
+        }.getOrDefault(false)
     }
 
     fun readStatus(context: Context): DaemonStatus? {
@@ -82,7 +87,9 @@ object AutoSkipDaemonManager {
     }
 
     fun installOrUpdate(context: Context): DaemonOperationResult {
-        writeConfig(context, enabledOverride = true)
+        if (!writeConfig(context, enabledOverride = true)) {
+            return DaemonOperationResult(false, "config write failed")
+        }
         val appContext = context.applicationContext
         val localScript = writeLocalScript(appContext)
             ?: return DaemonOperationResult(false, "script write failed")

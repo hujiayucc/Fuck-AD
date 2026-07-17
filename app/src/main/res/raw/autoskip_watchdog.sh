@@ -3,8 +3,14 @@
 CONFIG_FILE="/data/user/0/com.hujiayucc.hook/no_backup/autoskip_daemon_config.json"
 PROCESS_NAME="fkad-daemon"
 PID_FILE="/data/local/tmp/fkad-daemon.pid"
-DEFAULT_LOG_FILE="/data/user/0/com.hujiayucc.hook/no_backup/autoskip_watchdog.log"
-DEFAULT_STATUS_FILE="/data/user/0/com.hujiayucc.hook/no_backup/autoskip_watchdog_status.json"
+APP_DATA_DIR="/data/user/0/com.hujiayucc.hook/no_backup"
+SERVICE_COMPONENT="com.hujiayucc.hook/com.hujiayucc.hook.autoskip.AutoSkipAccessibilityService"
+HEALTH_FILE="$APP_DATA_DIR/autoskip_health.json"
+DEFAULT_LOG_FILE="$APP_DATA_DIR/autoskip_watchdog.log"
+DEFAULT_STATUS_FILE="$APP_DATA_DIR/autoskip_watchdog_status.json"
+INTERVAL_SECONDS=20
+STALE_SECONDS=45
+MAX_RECOVER_PER_HOUR=3
 
 json_value() {
     key="$1"
@@ -144,10 +150,8 @@ loop_watchdog() {
             continue
         fi
 
-        log_file=$(json_value "logFile" "$CONFIG_FILE")
-        [ -n "$log_file" ] || log_file="$DEFAULT_LOG_FILE"
-        status_file=$(json_value "statusFile" "$CONFIG_FILE")
-        [ -n "$status_file" ] || status_file="$DEFAULT_STATUS_FILE"
+        log_file="$DEFAULT_LOG_FILE"
+        status_file="$DEFAULT_STATUS_FILE"
         if [ ! -f "$PID_FILE" ]; then
             echo $$ > "$PID_FILE"
         fi
@@ -158,15 +162,12 @@ loop_watchdog() {
             continue
         fi
 
-        component=$(json_value "serviceComponent" "$CONFIG_FILE")
-        health_file=$(json_value "healthFile" "$CONFIG_FILE")
-        interval=$(json_int "intervalSeconds" "$CONFIG_FILE" 20)
-        stale=$(json_int "staleSeconds" "$CONFIG_FILE" 45)
-        max_recover=$(json_int "maxRecoverPerHour" "$CONFIG_FILE" 3)
+        component="$SERVICE_COMPONENT"
+        health_file="$HEALTH_FILE"
+        interval="$INTERVAL_SECONDS"
+        stale="$STALE_SECONDS"
+        max_recover="$MAX_RECOVER_PER_HOUR"
         reenable=false
-        if json_bool "reenableWhenUserDisabled" "$CONFIG_FILE"; then
-            reenable=true
-        fi
 
         [ -n "$component" ] || { sleep "$interval"; continue; }
         current_sec=$(date +%s)
@@ -202,7 +203,7 @@ loop_watchdog() {
             connected=true
         fi
 
-        if [ "$connected" = "true" ] && [ "$heartbeat" -gt 0 ] && [ "$age" -le "$stale" ]; then
+        if [ "$connected" = "true" ] && [ "$heartbeat" -gt 0 ] && [ "$age" -ge 0 ] && [ "$age" -le "$stale" ]; then
             write_status "$status_file" "healthy" true true "$age" "$recover_count" "$last_recover_at"
             sleep "$interval"
             continue
@@ -224,10 +225,17 @@ loop_watchdog() {
     done
 }
 
+pid_matches_daemon() {
+    pid="$1"
+    [ -n "$pid" ] || return 1
+    [ -r "/proc/$pid/cmdline" ] || return 1
+    tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -Fq "$0 __daemon_child"
+}
+
 start_watchdog() {
     if [ -f "$PID_FILE" ]; then
         old_pid=$(cat "$PID_FILE" 2>/dev/null)
-        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null && pid_matches_daemon "$old_pid"; then
             exit 0
         fi
         rm -f "$PID_FILE"
@@ -239,7 +247,7 @@ start_watchdog() {
 stop_watchdog() {
     if [ -f "$PID_FILE" ]; then
         old_pid=$(cat "$PID_FILE" 2>/dev/null)
-        if [ -n "$old_pid" ]; then
+        if [ -n "$old_pid" ] && pid_matches_daemon "$old_pid"; then
             kill "$old_pid" 2>/dev/null
         fi
         rm -f "$PID_FILE"
