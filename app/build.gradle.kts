@@ -25,10 +25,11 @@ kotlin {
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
+if (keystorePropertiesFile.isFile) {
     keystorePropertiesFile.inputStream().use(keystoreProperties::load)
 }
 
+val useDebugSigningForRelease = !keystorePropertiesFile.exists()
 val releaseSigningPropertyNames = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 val hasReleaseSigningConfig = keystorePropertiesFile.isFile &&
     releaseSigningPropertyNames.all { !keystoreProperties.getProperty(it).isNullOrBlank() } &&
@@ -43,8 +44,8 @@ val buildTimeMillis = sourceDateEpoch?.let { value ->
 
 val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
     doLast {
-        check(hasReleaseSigningConfig) {
-            "Release signing requires keystore.properties with storeFile, storePassword, keyAlias, " +
+        check(useDebugSigningForRelease || hasReleaseSigningConfig) {
+            "When keystore.properties exists, release signing requires storeFile, storePassword, keyAlias, " +
                 "keyPassword, and an existing keystore file"
         }
     }
@@ -217,8 +218,8 @@ android {
         applicationId = "com.hujiayucc.hook"
         minSdk = 30
         targetSdk = 37
-        versionCode = 10400
-        versionName = "3.0.4"
+        versionCode = 10500
+        versionName = "3.0.5"
         buildConfigField("Long", "BUILD_TIME", "${buildTimeMillis}L")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -233,8 +234,10 @@ android {
             // versionNameSuffix = "-release"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             
-            if (hasReleaseSigningConfig) {
-                signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
             }
         }
 
