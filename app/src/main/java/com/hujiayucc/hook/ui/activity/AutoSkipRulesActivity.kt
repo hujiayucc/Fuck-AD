@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.autoskip.AutoSkipAccessibilityService
+import com.hujiayucc.hook.autoskip.AutoSkipAppMode
 import com.hujiayucc.hook.autoskip.AutoSkipDaemonManager
 import com.hujiayucc.hook.autoskip.AutoSkipHealth
 import com.hujiayucc.hook.autoskip.AutoSkipHitLog
@@ -212,6 +213,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             )
         }
         refreshServiceKeepAliveSwitch()
+        refreshAppModeSelection()
         val autoSkipEnabled = AutoSkipSettings.isEnabled(this)
         val accessibilityEnabled = isAccessibilityServiceEnabled()
         val canShowNotification = if (autoSkipEnabled || accessibilityEnabled) {
@@ -251,6 +253,21 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
 
     private fun setupSwitches() {
         binding.autoSkipSwitch.isChecked = AutoSkipSettings.isEnabled(this)
+        val appModes = AutoSkipAppMode.entries
+        binding.appModeInput.setAdapter(
+            ArrayAdapter(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                appModes.map(::appModeLabel)
+            )
+        )
+        refreshAppModeSelection()
+        binding.appModeInput.setOnItemClickListener { _, _, position, _ ->
+            val mode = appModes[position]
+            if (mode != AutoSkipSettings.appMode(this)) {
+                AutoSkipSettings.setAppMode(this, mode)
+            }
+        }
         binding.shizukuSwitch.isChecked = AutoSkipSettings.useShizukuInput(this)
         binding.rootSwitch.isChecked = AutoSkipSettings.useRootInput(this)
         binding.serviceKeepAliveSwitch.isChecked = AutoSkipSettings.serviceKeepAliveEnabled(this)
@@ -290,6 +307,20 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             if (!keepAliveSwitchUpdateInProgress) setDaemonKeepAliveEnabled(isChecked)
         }
         refreshKeepAliveStatus()
+    }
+
+    private fun refreshAppModeSelection() {
+        binding.appModeInput.setText(appModeLabel(AutoSkipSettings.appMode(this)), false)
+    }
+
+    private fun appModeLabel(mode: AutoSkipAppMode): String {
+        return getString(
+            if (mode == AutoSkipAppMode.WHITELIST) {
+                R.string.auto_skip_whitelist_mode
+            } else {
+                R.string.auto_skip_blacklist_mode
+            }
+        )
     }
 
     private fun refreshServiceKeepAliveSwitch() {

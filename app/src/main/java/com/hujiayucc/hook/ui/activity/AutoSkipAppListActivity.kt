@@ -6,9 +6,11 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.Menu
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import com.hujiayucc.hook.R
+import com.hujiayucc.hook.autoskip.AutoSkipAppMode
 import com.hujiayucc.hook.autoskip.AutoSkipSettings
 import com.hujiayucc.hook.databinding.ActivityAutoSkipAppListBinding
 import com.hujiayucc.hook.ui.adapter.AutoSkipAppAdapter
@@ -28,7 +30,9 @@ class AutoSkipAppListActivity : BaseActivity<ActivityAutoSkipAppListBinding>() {
     private lateinit var adapter: AutoSkipAppAdapter
     private val disposables = CompositeDisposable()
     private var allApps: List<AutoSkipAppEntry> = emptyList()
+    private var appMode = AutoSkipAppMode.WHITELIST
     private var searchQuery = ""
+    private var loadAppsRequestId = 0
     private var filterAppsDisposable: Disposable? = null
     private var filterAppsRequestId = 0
 
@@ -38,6 +42,7 @@ class AutoSkipAppListActivity : BaseActivity<ActivityAutoSkipAppListBinding>() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        setupAppMode()
         adapter = AutoSkipAppAdapter(
             emptyList(),
             onAppEnabledChanged = { app, enabled -> updateAppEnabled(app, enabled) }
@@ -82,17 +87,48 @@ class AutoSkipAppListActivity : BaseActivity<ActivityAutoSkipAppListBinding>() {
     override fun onServiceStateChanged(service: XposedService?) {
     }
 
+    private fun setupAppMode() {
+        val modes = AutoSkipAppMode.entries
+        val labels = modes.map(::appModeLabel)
+        appMode = AutoSkipSettings.appMode(this)
+        binding.appModeInput.setAdapter(
+            ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, labels)
+        )
+        binding.appModeInput.setText(appModeLabel(appMode), false)
+        binding.appModeInput.setOnItemClickListener { _, _, position, _ ->
+            val selectedMode = modes[position]
+            if (selectedMode == appMode) return@setOnItemClickListener
+            appMode = selectedMode
+            AutoSkipSettings.setAppMode(this, selectedMode)
+            loadApps()
+        }
+    }
+
+    private fun appModeLabel(mode: AutoSkipAppMode): String {
+        return getString(
+            if (mode == AutoSkipAppMode.WHITELIST) {
+                R.string.auto_skip_whitelist_mode
+            } else {
+                R.string.auto_skip_blacklist_mode
+            }
+        )
+    }
+
     private fun loadApps() {
+        val requestId = ++loadAppsRequestId
+        val mode = appMode
         showLoading()
         disposables.add(
-            Observable.fromCallable { buildApps() }
+            Observable.fromCallable { buildApps(mode) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ apps ->
+                    if (requestId != loadAppsRequestId) return@subscribe
                     allApps = apps
                     refreshApps()
                     showList()
                 }, { error ->
+                    if (requestId != loadAppsRequestId) return@subscribe
                     Toast.makeText(this, error.message ?: getString(R.string.data_load_failed, ""), Toast.LENGTH_LONG).show()
                     showList()
                 })
@@ -129,12 +165,13 @@ class AutoSkipAppListActivity : BaseActivity<ActivityAutoSkipAppListBinding>() {
         return filtered.sortedWith(createAppComparator())
     }
 
-    private fun updateAppEnabled(app: AutoSkipAppEntry, enabled: Boolean) {
-        allApps.firstOrNull { it.packageName == app.packageName }?.enabled = enabled
+    private fun updateAppEnabled(app: AutoSkipAppEntry, listed: Boolean) {
+        allApps.firstOrNull { it.packageName == app.packageName }?.enabled = listed
         refreshApps()
+        val mode = appMode
         disposables.add(
             Observable.fromCallable {
-                AutoSkipSettings.setAppEnabled(this, app.packageName, enabled)
+                AutoSkipSettings.setAppListed(this, mode, app.packageName, listed)
                 true
             }
                 .subscribeOn(Schedulers.single())
@@ -149,18 +186,21 @@ class AutoSkipAppListActivity : BaseActivity<ActivityAutoSkipAppListBinding>() {
         return name.contains(query, ignoreCase = true) || packageName.contains(query, ignoreCase = true)
     }
 
-    private fun buildApps(): List<AutoSkipAppEntry> {
-        val enabledPackages = AutoSkipSettings.enabledPackages(this)
+    private fun buildApps(mode: AutoSkipAppMode): List<AutoSkipAppEntry> {
+        val listedPackages = AutoSkipSettings.appPackages(this, mode)
         return packageManager.getInstalledApplications(0)
             .asSequence()
-            .filter { appInfo -> (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .filter { appInfo ->
+                mode == AutoSkipAppMode.BLACKLIST ||
+                    (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+            }
             .filter { appInfo -> appInfo.packageName != packageName }
             .map { appInfo ->
                 AutoSkipAppEntry(
                     name = LanguageUtils.localizedAppLabel(this, appInfo),
                     packageName = appInfo.packageName,
                     icon = getAppIcon(appInfo.packageName),
-                    enabled = enabledPackages.contains(appInfo.packageName)
+                    enabled = listedPackages.contains(appInfo.packageName)
                 )
             }
             .sortedWith(createAppComparator())

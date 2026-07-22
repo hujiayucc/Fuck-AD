@@ -67,7 +67,10 @@
     <string name="auto_skip_update_rules">Update</string>
     <string name="auto_skip_search_rules">Search</string>
     <string name="auto_skip_search_rules_hint">Search rules</string>
-    <string name="auto_skip_app_switches">App Switches</string>
+    <string name="auto_skip_app_switches">App Lists</string>
+    <string name="auto_skip_app_mode">App mode</string>
+    <string name="auto_skip_whitelist_mode">Whitelist</string>
+    <string name="auto_skip_blacklist_mode">Blacklist</string>
     <string name="auto_skip_add_subscription">Add subscription</string>
     <string name="auto_skip_manage_subscriptions">Manage subscriptions</string>
     <string name="auto_skip_no_subscriptions">No subscription sources</string>

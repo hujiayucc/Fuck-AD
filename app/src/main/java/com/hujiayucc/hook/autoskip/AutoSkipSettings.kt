@@ -15,7 +15,9 @@ object AutoSkipSettings {
     private const val KEY_ENABLED = "autoSkipEnabled"
     private const val KEY_USE_SHIZUKU_INPUT = "autoSkipUseShizukuInput"
     private const val KEY_USE_ROOT_INPUT = "autoSkipUseRootInput"
+    private const val KEY_APP_MODE = "autoSkipAppMode"
     private const val KEY_ENABLED_PACKAGES = "autoSkipEnabledPackages"
+    private const val KEY_BLOCKED_PACKAGES = "autoSkipBlockedPackages"
     private const val KEY_DISABLED_RULE_IDS = "autoSkipDisabledRuleIds"
     private const val KEY_SOURCES = "autoSkipRuleSources"
     private const val KEY_SUBSCRIPTION_RULES = "autoSkipSubscriptionRules"
@@ -31,6 +33,12 @@ object AutoSkipSettings {
 
     @Volatile
     private var enabledPackagesCache: Set<String> = emptySet()
+
+    @Volatile
+    private var blockedPackagesRawCache: String? = null
+
+    @Volatile
+    private var blockedPackagesCache: Set<String> = emptySet()
 
     @Volatile
     private var disabledRuleIdsRawCache: String? = null
@@ -50,9 +58,11 @@ object AutoSkipSettings {
 
     fun runtimeConfig(context: Context): AutoSkipRuntimeConfig {
         val prefs = context.prefsBridge
+        val appMode = AutoSkipAppMode.fromPreference(prefs.getString(KEY_APP_MODE, null))
         return AutoSkipRuntimeConfig(
             enabled = prefs.getBoolean(KEY_ENABLED, false),
-            enabledPackages = enabledPackagesFromRaw(prefs.getString(KEY_ENABLED_PACKAGES, "").orEmpty()),
+            appMode = appMode,
+            appPackages = appPackagesFromPrefs(prefs, appMode),
             useShizukuInput = prefs.getBoolean(KEY_USE_SHIZUKU_INPUT, false),
             useRootInput = prefs.getBoolean(KEY_USE_ROOT_INPUT, false),
             ruleDataGeneration = prefs.getLong(KEY_RULE_GENERATION, 0L)
@@ -107,8 +117,42 @@ object AutoSkipSettings {
         context.prefsBridge.edit().putBoolean(KEY_DAEMON_KEEP_ALIVE, enabled).apply()
     }
 
+    fun appMode(context: Context): AutoSkipAppMode {
+        return AutoSkipAppMode.fromPreference(context.prefsBridge.getString(KEY_APP_MODE, null))
+    }
+
+    fun setAppMode(context: Context, mode: AutoSkipAppMode) {
+        context.prefsBridge.edit().putString(KEY_APP_MODE, mode.preferenceValue).apply()
+    }
+
+    fun appPackages(context: Context, mode: AutoSkipAppMode = appMode(context)): Set<String> {
+        val prefs = context.prefsBridge
+        return when (mode) {
+            AutoSkipAppMode.WHITELIST -> enabledPackagesFromRaw(
+                prefs.getString(KEY_ENABLED_PACKAGES, "").orEmpty()
+            )
+            AutoSkipAppMode.BLACKLIST -> blockedPackagesFromRaw(
+                prefs.getString(KEY_BLOCKED_PACKAGES, "").orEmpty()
+            )
+        }
+    }
+
+    private fun appPackagesFromPrefs(
+        prefs: SharedPreferences,
+        mode: AutoSkipAppMode
+    ): Set<String> {
+        return when (mode) {
+            AutoSkipAppMode.WHITELIST -> enabledPackagesFromRaw(
+                prefs.getString(KEY_ENABLED_PACKAGES, "").orEmpty()
+            )
+            AutoSkipAppMode.BLACKLIST -> blockedPackagesFromRaw(
+                prefs.getString(KEY_BLOCKED_PACKAGES, "").orEmpty()
+            )
+        }
+    }
+
     fun enabledPackages(context: Context): Set<String> {
-        return enabledPackagesFromRaw(context.prefsBridge.getString(KEY_ENABLED_PACKAGES, "").orEmpty())
+        return appPackages(context, AutoSkipAppMode.WHITELIST)
     }
 
     private fun enabledPackagesFromRaw(raw: String): Set<String> {
@@ -127,14 +171,44 @@ object AutoSkipSettings {
         }
     }
 
+    private fun blockedPackagesFromRaw(raw: String): Set<String> {
+        blockedPackagesRawCache?.let { cachedRaw ->
+            if (cachedRaw == raw) return blockedPackagesCache
+        }
+        return synchronized(this) {
+            if (blockedPackagesRawCache == raw) {
+                blockedPackagesCache
+            } else {
+                readStringSet(raw).also { packages ->
+                    blockedPackagesRawCache = raw
+                    blockedPackagesCache = packages
+                }
+            }
+        }
+    }
+
     fun isAppEnabled(context: Context, packageName: String): Boolean {
-        return enabledPackages(context).contains(packageName)
+        val mode = appMode(context)
+        return shouldProcessApp(mode, appPackages(context, mode), packageName)
+    }
+
+    fun setAppListed(
+        context: Context,
+        mode: AutoSkipAppMode,
+        packageName: String,
+        listed: Boolean
+    ) {
+        val packages = appPackages(context, mode).toMutableSet()
+        if (listed) packages.add(packageName) else packages.remove(packageName)
+        val key = when (mode) {
+            AutoSkipAppMode.WHITELIST -> KEY_ENABLED_PACKAGES
+            AutoSkipAppMode.BLACKLIST -> KEY_BLOCKED_PACKAGES
+        }
+        context.prefsBridge.edit().putString(key, JSONArray(packages.sorted()).toString()).apply()
     }
 
     fun setAppEnabled(context: Context, packageName: String, enabled: Boolean) {
-        val packages = enabledPackages(context).toMutableSet()
-        if (enabled) packages.add(packageName) else packages.remove(packageName)
-        context.prefsBridge.edit().putString(KEY_ENABLED_PACKAGES, JSONArray(packages.sorted()).toString()).apply()
+        setAppListed(context, AutoSkipAppMode.WHITELIST, packageName, enabled)
     }
 
     fun addEnabledPackages(context: Context, packageNames: Iterable<String>): Int {
@@ -538,21 +612,46 @@ object AutoSkipSettings {
     private const val SUBSCRIPTION_RULES_FILE = "subscription_rules.json"
 }
 
+enum class AutoSkipAppMode(val preferenceValue: String) {
+    WHITELIST("whitelist"),
+    BLACKLIST("blacklist");
+
+    companion object {
+        fun fromPreference(value: String?): AutoSkipAppMode {
+            return if (value == BLACKLIST.preferenceValue) BLACKLIST else WHITELIST
+        }
+    }
+}
+
+internal fun shouldProcessApp(
+    mode: AutoSkipAppMode,
+    appPackages: Set<String>,
+    packageName: String
+): Boolean {
+    if (packageName.isBlank()) return false
+    return when (mode) {
+        AutoSkipAppMode.WHITELIST -> appPackages.contains(packageName)
+        AutoSkipAppMode.BLACKLIST -> !appPackages.contains(packageName)
+    }
+}
+
 data class AutoSkipRuntimeConfig(
     val enabled: Boolean,
-    val enabledPackages: Set<String>,
+    val appMode: AutoSkipAppMode,
+    val appPackages: Set<String>,
     val useShizukuInput: Boolean,
     val useRootInput: Boolean,
     val ruleDataGeneration: Long
 ) {
     fun shouldProcess(packageName: String): Boolean {
-        return enabled && packageName.isNotBlank() && enabledPackages.contains(packageName)
+        return enabled && shouldProcessApp(appMode, appPackages, packageName)
     }
 
     companion object {
         fun disabled() = AutoSkipRuntimeConfig(
             enabled = false,
-            enabledPackages = emptySet(),
+            appMode = AutoSkipAppMode.WHITELIST,
+            appPackages = emptySet(),
             useShizukuInput = false,
             useRootInput = false,
             ruleDataGeneration = 0L

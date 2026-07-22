@@ -63,7 +63,10 @@
     <string name="auto_skip_update_rules">更新</string>
     <string name="auto_skip_search_rules">搜索</string>
     <string name="auto_skip_search_rules_hint">搜索规则</string>
-    <string name="auto_skip_app_switches">应用开关</string>
+    <string name="auto_skip_app_switches">应用名单</string>
+    <string name="auto_skip_app_mode">应用模式</string>
+    <string name="auto_skip_whitelist_mode">白名单</string>
+    <string name="auto_skip_blacklist_mode">黑名单</string>
     <string name="auto_skip_add_subscription">添加订阅</string>
     <string name="auto_skip_manage_subscriptions">管理订阅</string>
     <string name="auto_skip_no_subscriptions">没有订阅源</string>
