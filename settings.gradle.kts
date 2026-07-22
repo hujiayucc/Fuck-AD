@@ -36,7 +36,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Fuck AD"
-include(":app", ":FuckAD-Author", ":gkd-selector")
+include(":app", ":author", ":gkd-selector")
 project(":gkd-selector").apply {
     projectDir = file("gkd/selector")
     buildFileName = "../../gkd-selector.gradle.kts"
