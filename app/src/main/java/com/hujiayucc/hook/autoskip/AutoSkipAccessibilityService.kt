@@ -20,7 +20,14 @@ import com.hujiayucc.hook.utils.LanguageUtils
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+
+private const val DAEMON_HEARTBEAT_INTERVAL_MS = 10_000L
+private const val SERVICE_HEARTBEAT_INTERVAL_MS = 60_000L
+private const val NOTIFICATION_REFRESH_INTERVAL_MS = 60_000L
+private const val NOTIFICATION_STALE_TIMEOUT_MS = 130_000L
+private const val HEALTHY_ERROR_CLEAR_DELAY_MS = 60_000L
 
 class AutoSkipAccessibilityService : AccessibilityService() {
     private lateinit var engine: AutoSkipEngine
@@ -28,20 +35,30 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         Thread(task, "AutoSkipKeepAlive").apply { isDaemon = true }
     }
     private var notificationPackageName: String? = null
-    private var heartbeatStarted = false
+    private var heartbeatFuture: ScheduledFuture<*>? = null
+    private var scheduledHeartbeatIntervalMs = 0L
     private var engineGeneration = 0
     private var consecutiveEventFailures = 0
-    private var lastEventHealthWriteAt = 0L
+    @Volatile
+    private var lastHealthWriteAt = 0L
+    @Volatile
+    private var lastNotificationPostAt = 0L
+    @Volatile
+    private var healthySinceAt = 0L
+    @Volatile
+    private var healthErrorCleared = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         current = this
         ensureServiceInfo()
         recreateEngine("connected")
+        val now = System.currentTimeMillis()
+        healthySinceAt = now
+        lastHealthWriteAt = now
         AutoSkipHealth.markConnected(this, engineGeneration)
         AutoSkipDaemonManager.writeConfig(this, preserveExistingEnabled = true)
-        showRunningNotification()
-        startHeartbeat()
+        refreshKeepAlive()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -57,17 +74,24 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             engine.onAccessibilityEvent(event)
         }.onSuccess {
             consecutiveEventFailures = 0
+            markHealthy()
         }.onFailure { error ->
             handleServiceError("event", error)
         }
     }
 
     override fun onInterrupt() {
+        val now = System.currentTimeMillis()
+        if (now - lastHealthWriteAt < SERVICE_HEARTBEAT_INTERVAL_MS) return
+        lastHealthWriteAt = now
         AutoSkipHealth.markHeartbeat(this, engineGeneration)
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         AutoSkipHealth.markDisconnected(this, "unbind")
+        stopHeartbeat()
+        cancelRunningNotification(this)
+        if (current === this) current = null
         return super.onUnbind(intent)
     }
 
@@ -80,26 +104,72 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    private fun startHeartbeat() {
-        if (heartbeatStarted) return
-        heartbeatStarted = true
-        heartbeatExecutor.scheduleWithFixedDelay(
+    private fun refreshKeepAlive() {
+        val serviceKeepAliveEnabled = AutoSkipSettings.serviceKeepAliveEnabled(this)
+        val daemonKeepAliveEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this)
+        if (serviceKeepAliveEnabled) {
+            if (!::engine.isInitialized) recreateEngine("keep_alive")
+            showRunningNotification()
+        } else {
+            cancelRunningNotification(this)
+        }
+        if (keepAliveHeartbeatRequired(serviceKeepAliveEnabled, daemonKeepAliveEnabled)) {
+            startHeartbeat(heartbeatIntervalMs(serviceKeepAliveEnabled, daemonKeepAliveEnabled))
+        } else {
+            stopHeartbeat()
+        }
+    }
+
+    @Synchronized
+    private fun startHeartbeat(intervalMs: Long) {
+        val activeFuture = heartbeatFuture
+        if (activeFuture != null && !activeFuture.isCancelled && !activeFuture.isDone &&
+            scheduledHeartbeatIntervalMs == intervalMs
+        ) {
+            return
+        }
+        activeFuture?.cancel(false)
+        scheduledHeartbeatIntervalMs = intervalMs
+        heartbeatFuture = heartbeatExecutor.scheduleWithFixedDelay(
             {
                 runCatching { keepAliveTick() }
-                    .onFailure { error -> AutoSkipHealth.recordError(this, "heartbeat", error, engineGeneration) }
+                    .onFailure { error -> recordKeepAliveError("heartbeat", error) }
             },
-            0L,
-            HEARTBEAT_INTERVAL_MS,
+            intervalMs,
+            intervalMs,
             TimeUnit.MILLISECONDS
         )
     }
 
+    @Synchronized
+    private fun stopHeartbeat() {
+        heartbeatFuture?.cancel(false)
+        heartbeatFuture = null
+        scheduledHeartbeatIntervalMs = 0L
+    }
+
     private fun keepAliveTick() {
-        AutoSkipHealth.markHeartbeat(this, engineGeneration)
-        AutoSkipDaemonManager.writeConfig(this, preserveExistingEnabled = true)
-        if (!AutoSkipSettings.serviceKeepAliveEnabled(this)) return
-        if (!::engine.isInitialized) recreateEngine("heartbeat")
-        showRunningNotification()
+        val serviceKeepAliveEnabled = AutoSkipSettings.serviceKeepAliveEnabled(this)
+        val daemonKeepAliveEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this)
+        if (!serviceKeepAliveEnabled) {
+            cancelRunningNotification(this)
+        }
+        if (!keepAliveHeartbeatRequired(serviceKeepAliveEnabled, daemonKeepAliveEnabled)) {
+            stopHeartbeat()
+            return
+        }
+        val now = System.currentTimeMillis()
+        val writeIntervalMs = healthWriteIntervalMs(serviceKeepAliveEnabled, daemonKeepAliveEnabled)
+        if (now - lastHealthWriteAt >= writeIntervalMs) {
+            lastHealthWriteAt = now
+            AutoSkipHealth.markHeartbeat(this, engineGeneration)
+        }
+        if (serviceKeepAliveEnabled && now - lastNotificationPostAt >= NOTIFICATION_REFRESH_INTERVAL_MS) {
+            showRunningNotification()
+        }
+        if (serviceKeepAliveEnabled && !::engine.isInitialized) recreateEngine("heartbeat")
+        startHeartbeat(heartbeatIntervalMs(serviceKeepAliveEnabled, daemonKeepAliveEnabled))
+        markHealthy(now)
     }
 
     private fun ensureServiceInfo() {
@@ -123,20 +193,34 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             handleEngineError(stage, error)
         }
         if (reason != "connected") {
-            AutoSkipHealth.recordError(this, "engine_recreate", IllegalStateException(reason), engineGeneration)
+            recordKeepAliveError("engine_recreate", IllegalStateException(reason))
         }
     }
 
     private fun handleServiceError(stage: String, error: Throwable) {
+        recordKeepAliveError(stage, error)
         consecutiveEventFailures += 1
-        AutoSkipHealth.recordError(this, stage, error, engineGeneration)
         if (consecutiveEventFailures >= MAX_CONSECUTIVE_FAILURES) {
             recreateEngine(stage)
         }
     }
 
+    private fun recordKeepAliveError(stage: String, error: Throwable) {
+        healthySinceAt = 0L
+        healthErrorCleared = false
+        AutoSkipHealth.recordError(this, stage, error, engineGeneration)
+    }
+
     private fun handleEngineError(stage: String, error: Throwable) {
         handleServiceError("engine_$stage", error)
+    }
+
+    private fun markHealthy(now: Long = System.currentTimeMillis()) {
+        if (healthySinceAt == 0L) healthySinceAt = now
+        if (!healthErrorCleared && shouldClearHealthError(healthySinceAt, now, HEALTHY_ERROR_CLEAR_DELAY_MS)) {
+            healthErrorCleared = true
+            AutoSkipHealth.clearError(this, engineGeneration)
+        }
     }
 
     private fun notificationPackageNameFromEvent(event: AccessibilityEvent): String {
@@ -167,9 +251,13 @@ class AutoSkipAccessibilityService : AccessibilityService() {
 
     private fun markNotificationEventIfNeeded(event: AccessibilityEvent, packageName: String) {
         val now = System.currentTimeMillis()
-        val titleUnchanged = packageName.isBlank() || packageName == notificationPackageName
-        if (now - lastEventHealthWriteAt < EVENT_HEALTH_WRITE_INTERVAL_MS && titleUnchanged) return
-        lastEventHealthWriteAt = now
+        val serviceKeepAliveEnabled = AutoSkipSettings.serviceKeepAliveEnabled(this)
+        val daemonKeepAliveEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this)
+        val writeIntervalMs = healthWriteIntervalMs(serviceKeepAliveEnabled, daemonKeepAliveEnabled)
+            .takeIf { it > 0L }
+            ?: SERVICE_HEARTBEAT_INTERVAL_MS
+        if (now - lastHealthWriteAt < writeIntervalMs) return
+        lastHealthWriteAt = now
         AutoSkipHealth.markNotificationEvent(
             this,
             engineGeneration,
@@ -180,22 +268,22 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     }
 
     private fun showRunningNotification(packageName: String? = notificationPackageName) {
+        lastNotificationPostAt = System.currentTimeMillis()
         postRunningNotification(this, packageName, engineGeneration)
     }
 
     private fun updateNotificationForPackage(packageName: String) {
         if (packageName.isBlank() || packageName == notificationPackageName) return
         notificationPackageName = packageName
-        AutoSkipHealth.markCurrentPackage(this, engineGeneration, packageName)
-        showRunningNotification(packageName)
+        if (AutoSkipSettings.serviceKeepAliveEnabled(this)) {
+            showRunningNotification(packageName)
+        }
     }
 
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "auto_skip_service"
         private const val NOTIFICATION_ID = 2601
-        private const val HEARTBEAT_INTERVAL_MS = 10_000L
-        private const val SERVICE_HEARTBEAT_FRESH_MS = HEARTBEAT_INTERVAL_MS * 2
-        private const val EVENT_HEALTH_WRITE_INTERVAL_MS = 1_000L
+        private const val SERVICE_HEARTBEAT_FRESH_MS = SERVICE_HEARTBEAT_INTERVAL_MS * 2
         private const val MAX_CONSECUTIVE_FAILURES = 3
         @Volatile
         private var current: AutoSkipAccessibilityService? = null
@@ -228,6 +316,7 @@ class AutoSkipAccessibilityService : AccessibilityService() {
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
+                .setTimeoutAfter(NOTIFICATION_STALE_TIMEOUT_MS)
                 .setShowWhen(false)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -276,27 +365,86 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             )
         }
 
+        private fun cancelRunningNotification(context: Context) {
+            runCatching { NotificationManagerCompat.from(context.applicationContext).cancel(NOTIFICATION_ID) }
+        }
+
         private fun hasFreshServiceHeartbeat(context: Context): Boolean {
             val health = AutoSkipHealth.read(context) ?: return false
-            if (!health.serviceConnected) return false
-            val ageMs = System.currentTimeMillis() - health.lastHeartbeatAt
-            return ageMs in 0..SERVICE_HEARTBEAT_FRESH_MS
+            return isServiceHeartbeatFresh(
+                serviceConnected = health.serviceConnected,
+                lastHeartbeatAt = health.lastHeartbeatAt,
+                now = System.currentTimeMillis(),
+                freshWindowMs = SERVICE_HEARTBEAT_FRESH_MS
+            )
         }
 
         fun refreshRunningNotification(context: Context) {
+            AutoSkipDaemonManager.writeConfig(context, preserveExistingEnabled = true)
             val service = current
             if (service != null) {
-                service.startHeartbeat()
-                service.showRunningNotification()
-                AutoSkipDaemonManager.writeConfig(service, preserveExistingEnabled = true)
+                service.refreshKeepAlive()
+                return
+            }
+            if (AutoSkipSettings.serviceKeepAliveEnabled(context) && hasFreshServiceHeartbeat(context)) {
+                postRunningNotification(context, AutoSkipHealth.read(context)?.lastEventPackageName)
             } else {
-                AutoSkipDaemonManager.writeConfig(context, preserveExistingEnabled = true)
-                if (!hasFreshServiceHeartbeat(context)) {
-                    postRunningNotification(context, AutoSkipHealth.read(context)?.lastEventPackageName)
-                }
+                cancelRunningNotification(context)
             }
         }
     }
+}
+
+internal fun keepAliveHeartbeatRequired(
+    serviceKeepAliveEnabled: Boolean,
+    daemonKeepAliveEnabled: Boolean
+): Boolean {
+    return serviceKeepAliveEnabled || daemonKeepAliveEnabled
+}
+
+internal fun heartbeatIntervalMs(
+    serviceKeepAliveEnabled: Boolean,
+    daemonKeepAliveEnabled: Boolean
+): Long {
+    return if (daemonKeepAliveEnabled) {
+        DAEMON_HEARTBEAT_INTERVAL_MS
+    } else if (serviceKeepAliveEnabled) {
+        SERVICE_HEARTBEAT_INTERVAL_MS
+    } else {
+        0L
+    }
+}
+
+internal fun healthWriteIntervalMs(
+    serviceKeepAliveEnabled: Boolean,
+    daemonKeepAliveEnabled: Boolean
+): Long {
+    return if (daemonKeepAliveEnabled) {
+        DAEMON_HEARTBEAT_INTERVAL_MS
+    } else if (serviceKeepAliveEnabled) {
+        SERVICE_HEARTBEAT_INTERVAL_MS
+    } else {
+        0L
+    }
+}
+
+internal fun shouldClearHealthError(
+    healthySinceAt: Long,
+    now: Long,
+    clearDelayMs: Long
+): Boolean {
+    return healthySinceAt > 0L && now >= healthySinceAt && now - healthySinceAt >= clearDelayMs
+}
+
+internal fun isServiceHeartbeatFresh(
+    serviceConnected: Boolean,
+    lastHeartbeatAt: Long,
+    now: Long,
+    freshWindowMs: Long
+): Boolean {
+    if (!serviceConnected || lastHeartbeatAt <= 0L) return false
+    val ageMs = now - lastHeartbeatAt
+    return ageMs in 0..freshWindowMs
 }
 
 internal fun selectNotificationTitlePackageName(

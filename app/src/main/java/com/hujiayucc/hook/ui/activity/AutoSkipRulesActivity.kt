@@ -362,6 +362,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ result ->
+                    AutoSkipAccessibilityService.refreshRunningNotification(this)
                     binding.daemonKeepAliveSwitch.isEnabled = true
                     keepAliveSwitchUpdateInProgress = true
                     binding.daemonKeepAliveSwitch.isChecked = AutoSkipSettings.daemonKeepAliveEnabled(this)
@@ -379,6 +380,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
                 }, { error ->
                     AutoSkipSettings.setDaemonKeepAliveEnabled(this, false)
                     AutoSkipDaemonManager.writeConfig(this)
+                    AutoSkipAccessibilityService.refreshRunningNotification(this)
                     binding.daemonKeepAliveSwitch.isEnabled = true
                     keepAliveSwitchUpdateInProgress = true
                     binding.daemonKeepAliveSwitch.isChecked = false

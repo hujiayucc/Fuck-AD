@@ -126,6 +126,19 @@ object AutoSkipHealth {
         }
     }
 
+    fun clearError(context: Context, engineGeneration: Int) {
+        update(context) { state ->
+            if (state.lastError.isBlank()) {
+                state
+            } else {
+                state.copy(
+                    engineGeneration = engineGeneration,
+                    lastError = ""
+                )
+            }
+        }
+    }
+
     fun read(context: Context): AutoSkipHealthState? {
         return runCatching {
             val file = stateFile(context)
