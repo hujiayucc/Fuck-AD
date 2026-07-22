@@ -7,3 +7,6 @@
 [submodule "gkd"]
 	path = gkd
 	url = https://github.com/gkd-kit/gkd.git
+[submodule "backend"]
+	path = backend
+	url = https://github.com/hujiayucc/FuckAD-Backend.git
