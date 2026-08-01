@@ -27,6 +27,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hujiayucc.hook.BuildConfig
 import com.hujiayucc.hook.R
 import com.hujiayucc.hook.author.Author
+import com.hujiayucc.hook.author.DeviceIdentity
 import com.hujiayucc.hook.autoskip.AutoSkipAccessibilityService
 import com.hujiayucc.hook.autoskip.AutoSkipSettings
 import com.hujiayucc.hook.data.AppList
@@ -54,6 +55,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private lateinit var author: Author
     private var appListAdapter: AppListAdapter? = null
     private var initialized = false
+    private var identityResolutionStarted = false
     private var appListLoading = false
     private var autoGrantInProgress = false
     private var notificationPermissionRequestInProgress = false
@@ -93,10 +95,46 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             refreshStatus()
             return
         }
+        if (identityResolutionStarted) return
+
         initializeUI()
-        author = Author(this, true, prefsBridge)
+        identityResolutionStarted = true
+        if (prefsBridge.getBoolean(DEVICE_IDENTITY_RESOLVED_KEY, false)) {
+            resolveDeviceIdentity()
+        } else {
+            showRootIdentityPrompt()
+        }
+    }
+
+    private fun showRootIdentityPrompt() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.root_identity_title)
+            .setMessage(R.string.root_identity_message)
+            .setCancelable(false)
+            .setPositiveButton(R.string.root_identity_continue) { _, _ -> resolveDeviceIdentity() }
+            .show()
+    }
+
+    private fun resolveDeviceIdentity() {
+        val disposable = Observable.fromCallable { DeviceIdentity.resolve(applicationContext) }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { result -> completeInitialization(result) },
+                { completeInitialization(DeviceIdentity.fallback(applicationContext)) }
+            )
+        disposables.add(disposable)
+    }
+
+    private fun completeInitialization(identity: DeviceIdentity.Result) {
+        prefsBridge.edit { putBoolean(DEVICE_IDENTITY_RESOLVED_KEY, true) }
+        if (isFinishing || isDestroyed || initialized) return
+        author = Author(this, true, prefsBridge, identity.id)
         setupClickListeners()
         initialized = true
+        if (identity.source == DeviceIdentity.Source.ANDROID_ID) {
+            Toast.makeText(this, R.string.root_identity_fallback, Toast.LENGTH_SHORT).show()
+        }
         checkPermissions()
         refreshStatus()
     }
@@ -461,6 +499,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     companion object {
         const val TAG = "MainActivity"
+        private const val DEVICE_IDENTITY_RESOLVED_KEY = "deviceIdentityResolved"
         private const val LANGUAGE_PREF_KEY = "language"
         private const val REQUEST_AUTO_SKIP_POST_NOTIFICATIONS = 2603
         private const val AUTO_SKIP_NOTIFICATION_REFRESH_DELAY_MS = 800L
