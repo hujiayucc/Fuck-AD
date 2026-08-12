@@ -1,4 +1,3 @@
-
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
 
@@ -28,14 +27,12 @@
 - [LSPosed](https://github.com/LSPosed/LSPosed)
 - [Shizuku](https://github.com/thedjchi/Shizuku)
 - [KernelSu](https://kernelsu.org/zh_CN/)
-- ...
 
 ### 提交应用
 
 ---
 
 - [Fk AD](https://fkad.hujiayucc.cn)
-- [QQ文档](https://docs.qq.com/sheet/DQ3hndWZ0RWhCb0NU)
 
 ### 目前支持
 
@@ -43,7 +40,7 @@
 
 ### 贡献者文档
 
-- [Hooker 编写指南](HOOKER_GUIDE-zh_CN.md)
+- [Hooker 编写指南](CONTRIBUTING.zh_CN.md)
 
 ### 捐赠支持
 
