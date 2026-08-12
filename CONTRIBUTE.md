@@ -1,6 +1,6 @@
 # Hooker Development Guide
 
-**English** | [简体中文](HOOKER_GUIDE-zh_CN.md)
+**English** | [简体中文](CONTRIBUTE.zh_CN.md)
 
 
 This guide is for Fuck AD contributors. It explains how to write Hookers for new apps or advertising SDKs. The content matches the current project structure and mainly covers these paths:

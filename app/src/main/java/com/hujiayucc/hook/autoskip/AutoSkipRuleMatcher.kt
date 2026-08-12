@@ -97,12 +97,18 @@ class AutoSkipRuleMatcher(
                 clickable = node.isClickable
             )
             nodes.add(ref)
+            if (nodes.size >= MAX_NODE_SNAPSHOT_NODES) return ref
             for (childIndex in 0 until node.childCount) {
+                if (nodes.size >= MAX_NODE_SNAPSHOT_NODES) break
                 val child = node.getChild(childIndex) ?: continue
                 append(child, ref)
             }
             return ref
         }
+    }
+
+    private companion object {
+        private const val MAX_NODE_SNAPSHOT_NODES = 2_048
     }
 
     private class AutoSkipNodeRef(

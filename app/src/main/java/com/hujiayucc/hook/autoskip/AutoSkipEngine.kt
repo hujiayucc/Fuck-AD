@@ -1,6 +1,7 @@
 package com.hujiayucc.hook.autoskip
 
 import android.accessibilityservice.AccessibilityService
+import android.graphics.Point
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -56,7 +57,23 @@ class AutoSkipEngine(
 
     fun shutdown() {
         evaluationGate.clearPending()
+        lastRuleClickAt.clear()
+        lastAppClickAt.clear()
+        AutoSkipRuleRepository.clearMemoryCache()
         executor.shutdownNow()
+    }
+
+    fun trimMemory() {
+        runCatching {
+            executor.execute {
+                lastRuleClickAt.clear()
+                lastAppClickAt.clear()
+                AutoSkipRuleRepository.clearMemoryCache()
+            }
+        }.onFailure {
+            lastRuleClickAt.clear()
+            lastAppClickAt.clear()
+        }
     }
 
     private fun submitEvaluation(evaluation: PendingEvaluation) {
@@ -144,13 +161,28 @@ class AutoSkipEngine(
         activity: String,
         matcher: AutoSkipRuleMatcher,
         rule: AutoSkipRule,
-        runtimeConfig: AutoSkipRuntimeConfig
+        scheduledConfig: AutoSkipRuntimeConfig
     ) {
+        val latestConfig = refreshRuntimeConfig("delayed_click_config") ?: return
         val refreshedRoot = service.rootInActiveWindow ?: return
         val refreshedPackageName = activePackageName(refreshedRoot, activePackageName)
-        if (refreshedPackageName != activePackageName || !runtimeConfig.shouldProcess(refreshedPackageName)) return
+        if (refreshedPackageName != activePackageName) return
+        val currentRules = repository.executableRules(
+            refreshedPackageName,
+            activity,
+            latestConfig.ruleDataGeneration
+        )
+        if (!isRuleExecutionCurrent(
+                expectedGeneration = scheduledConfig.ruleDataGeneration,
+                currentConfig = latestConfig,
+                packageName = refreshedPackageName,
+                rule = rule,
+                executableRules = currentRules
+            )
+        ) return
         val refreshedMatch = matcher.findMatch(refreshedRoot, listOf(rule)) ?: return
-        clickMatched(activePackageName, activity, matcher, refreshedMatch, runtimeConfig)
+        if (!canClick(activePackageName, rule)) return
+        clickMatched(activePackageName, activity, matcher, refreshedMatch, latestConfig)
     }
 
     private fun clickMatched(
@@ -160,6 +192,7 @@ class AutoSkipEngine(
         match: AutoSkipMatchResult,
         runtimeConfig: AutoSkipRuntimeConfig
     ) {
+        val expectedWindowId = match.node.windowId
         val result = clickExecutor.execute(
             match.rule,
             match.node,
@@ -174,6 +207,17 @@ class AutoSkipEngine(
                     verifier,
                     retry
                 )
+            },
+            attemptValidator = { point ->
+                isClickAttemptStillValid(
+                    activePackageName = activePackageName,
+                    activity = activity,
+                    expectedWindowId = expectedWindowId,
+                    matcher = matcher,
+                    rule = match.rule,
+                    expectedGeneration = runtimeConfig.ruleDataGeneration,
+                    point = point
+                )
             }
         )
         if (result.success) {
@@ -181,6 +225,49 @@ class AutoSkipEngine(
             return
         }
         recordClickResult(activePackageName, activity, match.rule, result)
+    }
+
+    private fun isClickAttemptStillValid(
+        activePackageName: String,
+        activity: String,
+        expectedWindowId: Int,
+        matcher: AutoSkipRuleMatcher,
+        rule: AutoSkipRule,
+        expectedGeneration: Long,
+        point: Point
+    ): Boolean {
+        val latestConfig = refreshRuntimeConfig("click_attempt_config") ?: return false
+        return runCatching {
+            val root = service.rootInActiveWindow ?: return@runCatching false
+            val currentPackageName = activePackageName(root, activePackageName)
+            if (currentPackageName != activePackageName || root.windowId != expectedWindowId) {
+                return@runCatching false
+            }
+            val currentRules = repository.executableRules(
+                currentPackageName,
+                activity,
+                latestConfig.ruleDataGeneration
+            )
+            if (!isRuleExecutionCurrent(
+                    expectedGeneration = expectedGeneration,
+                    currentConfig = latestConfig,
+                    packageName = currentPackageName,
+                    rule = rule,
+                    executableRules = currentRules
+                )
+            ) return@runCatching false
+            val currentMatch = matcher.findMatch(root, listOf(rule)) ?: return@runCatching false
+            currentMatch.points.any { currentPoint -> currentPoint == point }
+        }.onFailure { error ->
+            errorReporter("click_attempt_guard", error)
+        }.getOrDefault(false)
+    }
+
+    private fun refreshRuntimeConfig(stage: String): AutoSkipRuntimeConfig? {
+        return runCatching { AutoSkipSettings.runtimeConfig(appContext) }
+            .onSuccess { latestConfig -> runtimeConfig = latestConfig }
+            .onFailure { error -> errorReporter(stage, error) }
+            .getOrNull()
     }
 
     private fun scheduleVerifyResult(
@@ -223,8 +310,10 @@ class AutoSkipEngine(
 
     private fun markClickCooldown(packageName: String, rule: AutoSkipRule) {
         val now = SystemClock.uptimeMillis()
+        pruneClickCooldowns(now)
         lastAppClickAt[packageName] = now
         lastRuleClickAt[rule.id] = now
+        boundCooldownEntries(lastRuleClickAt, MAX_RULE_COOLDOWN_ENTRIES)
     }
 
     private fun recordClickResult(
@@ -270,11 +359,20 @@ class AutoSkipEngine(
 
     private fun canClick(packageName: String, rule: AutoSkipRule): Boolean {
         val now = SystemClock.uptimeMillis()
+        pruneClickCooldowns(now)
         val lastApp = lastAppClickAt[packageName] ?: 0L
         if (now - lastApp < APP_COOLDOWN_MS) return false
-        val lastRule = lastRuleClickAt[rule.id] ?: 0L
-        if (now - lastRule < rule.cooldownMs) return false
+        val lastRule = lastRuleClickAt[rule.id]
+        if (lastRule != null) {
+            if (now - lastRule < rule.cooldownMs) return false
+            lastRuleClickAt.remove(rule.id)
+        }
         return true
+    }
+
+    private fun pruneClickCooldowns(now: Long) {
+        removeExpiredCooldownEntries(lastAppClickAt, now, APP_COOLDOWN_MS)
+        boundCooldownEntries(lastRuleClickAt, MAX_RULE_COOLDOWN_ENTRIES)
     }
 
     private fun activePackageName(root: AccessibilityNodeInfo, fallback: String): String {
@@ -306,7 +404,38 @@ class AutoSkipEngine(
         private const val MIN_EVENT_INTERVAL_MS = 250L
         private const val APP_COOLDOWN_MS = 3000L
         private const val VERIFY_DELAY_MS = 350L
+        private const val MAX_RULE_COOLDOWN_ENTRIES = 1024
     }
+}
+
+internal fun removeExpiredCooldownEntries(
+    entries: MutableMap<String, Long>,
+    now: Long,
+    durationMs: Long
+) {
+    entries.entries.removeAll { (_, timestamp) ->
+        now < timestamp || now - timestamp >= durationMs
+    }
+}
+
+internal fun boundCooldownEntries(entries: MutableMap<String, Long>, maxEntries: Int) {
+    val retainedEntries = maxEntries.coerceAtLeast(0)
+    while (entries.size > retainedEntries) {
+        val oldestKey = entries.minByOrNull { (_, timestamp) -> timestamp }?.key ?: return
+        entries.remove(oldestKey)
+    }
+}
+
+internal fun isRuleExecutionCurrent(
+    expectedGeneration: Long,
+    currentConfig: AutoSkipRuntimeConfig,
+    packageName: String,
+    rule: AutoSkipRule,
+    executableRules: List<AutoSkipRule>
+): Boolean {
+    if (currentConfig.ruleDataGeneration != expectedGeneration) return false
+    if (!currentConfig.shouldProcess(packageName)) return false
+    return executableRules.any { currentRule -> currentRule == rule }
 }
 
 internal data class AutoSkipVerificationOutcome(

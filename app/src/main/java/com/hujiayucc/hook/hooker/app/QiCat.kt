@@ -1,22 +1,16 @@
 package com.hujiayucc.hook.hooker.app
 
 import android.view.View
-import com.hujiayucc.hook.annotation.RunJiaGu
+import com.hujiayucc.hook.annotation.Run
 import com.hujiayucc.hook.hooker.util.Hooker
 import io.github.libxposed.api.XposedModuleInterface
 
-@RunJiaGu(
+@Run(
     appName = "七猫免费小说",
     packageName = "com.kmxs.reader",
     action = "开屏广告"
 )
 object QiCat : Hooker() {
-    override val jiaGuMarkerClasses = listOf(
-        "com.qimao.qmuser.model.entity.mine_v2.BaseInfo",
-        "com.qimao.qmuser.model.entity.AdDataConfig",
-        "com.qimao.qmuser.model.entity.AdPositionData"
-    )
-
     override fun XposedModuleInterface.PackageReadyParam.onPackageReady() {
         val baseInfo = "com.qimao.qmuser.model.entity.mine_v2.BaseInfo".toClassOrNull()
         val methods = arrayOf("isVipExpired", "isVipState", "isShowYearVip")

@@ -2,25 +2,50 @@ package com.hujiayucc.hook.autoskip
 
 import android.content.Context
 import java.io.File
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import org.json.JSONObject
 
 object AutoSkipHealth {
+    const val HEARTBEAT_FRESH_WINDOW_MS = 120_000L
+
     private const val HEALTH_FILE = "autoskip_health.json"
     private const val MAX_ERROR_LENGTH = 160
 
     private val lock = Any()
-    private val writer = Executors.newSingleThreadExecutor { task ->
-        Thread(task, "AutoSkipHealthWriter").apply { isDaemon = true }
-    }
+    private var writer: ExecutorService? = null
     private var cachedState = AutoSkipHealthState()
     private var pendingState: AutoSkipHealthState? = null
     private var pendingContext: Context? = null
     private var writeScheduled = false
     private var lastWrittenJson = ""
 
+    private fun writerLocked(): ExecutorService {
+        return writer ?: Executors.newSingleThreadExecutor { task ->
+            Thread(task, "AutoSkipHealthWriter").apply { isDaemon = true }
+        }.also { writer = it }
+    }
+
     fun stateFile(context: Context): File {
         return File(context.applicationContext.noBackupFilesDir, HEALTH_FILE)
+    }
+
+    fun hasFreshHeartbeat(
+        context: Context,
+        now: Long = System.currentTimeMillis(),
+        freshWindowMs: Long = HEARTBEAT_FRESH_WINDOW_MS
+    ): Boolean {
+        return hasFreshHeartbeat(read(context), now, freshWindowMs)
+    }
+
+    fun hasFreshHeartbeat(
+        state: AutoSkipHealthState?,
+        now: Long,
+        freshWindowMs: Long = HEARTBEAT_FRESH_WINDOW_MS
+    ): Boolean {
+        if (state?.serviceConnected != true || state.lastHeartbeatAt <= 0L) return false
+        val ageMs = now - state.lastHeartbeatAt
+        return ageMs in 0..freshWindowMs
     }
 
     fun markConnected(context: Context, engineGeneration: Int) {
@@ -105,9 +130,36 @@ object AutoSkipHealth {
         }
     }
 
+    fun markConnectionFailure(
+        context: Context,
+        stage: String,
+        error: Throwable,
+        engineGeneration: Int
+    ) {
+        update(context) { state ->
+            state.copy(
+                serviceConnected = false,
+                engineGeneration = engineGeneration,
+                lastError = errorMessage(stage, error),
+                lastDisconnectReason = "connect_failed"
+            )
+        }
+    }
+
     fun recordError(context: Context, stage: String, error: Throwable, engineGeneration: Int) {
         val now = System.currentTimeMillis()
-        val message = buildString {
+        update(context) { state ->
+            state.copy(
+                serviceConnected = true,
+                lastHeartbeatAt = now,
+                engineGeneration = engineGeneration,
+                lastError = errorMessage(stage, error)
+            )
+        }
+    }
+
+    private fun errorMessage(stage: String, error: Throwable): String {
+        return buildString {
             append(stage)
             append(": ")
             append(error.javaClass.simpleName)
@@ -116,14 +168,6 @@ object AutoSkipHealth {
                 append(detail)
             }
         }.take(MAX_ERROR_LENGTH)
-        update(context) { state ->
-            state.copy(
-                serviceConnected = true,
-                lastHeartbeatAt = now,
-                engineGeneration = engineGeneration,
-                lastError = message
-            )
-        }
     }
 
     fun clearError(context: Context, engineGeneration: Int) {
@@ -156,7 +200,7 @@ object AutoSkipHealth {
             pendingContext = context.applicationContext
             if (!writeScheduled) {
                 writeScheduled = true
-                writer.execute(::drainPendingWrites)
+                writerLocked().execute(::drainPendingWrites)
             }
         }
     }

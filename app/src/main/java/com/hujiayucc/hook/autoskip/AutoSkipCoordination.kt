@@ -56,4 +56,11 @@ internal class GenerationCache<T : Any> {
             value = built
         }
     }
+
+    fun clear() {
+        synchronized(lock) {
+            generation = null
+            value = null
+        }
+    }
 }

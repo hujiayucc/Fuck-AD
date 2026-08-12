@@ -1176,6 +1176,10 @@ class AutoSkipRuleRepository(private val context: Context) {
         private const val DEFAULT_EXTERNAL_COOLDOWN_MS = 3000L
         private const val MAX_SELECTOR_LENGTH = 512
         private val snapshotCache = GenerationCache<RuleSnapshot>()
+
+        internal fun clearMemoryCache() {
+            snapshotCache.clear()
+        }
         private val JSON5_KEY_PATTERN_REGEX = Regex("""(?m)^\s*[_A-Za-z$][_A-Za-z0-9$]*\s*:""")
         private val SANITIZE_RULE_ID_INVALID_REGEX = Regex("[^A-Za-z0-9_.-]")
         private val SANITIZE_RULE_ID_DOTS_REGEX = Regex("\\.+")

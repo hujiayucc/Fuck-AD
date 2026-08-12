@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -99,20 +98,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         initializeUI()
         identityResolutionStarted = true
-        if (prefsBridge.getBoolean(DEVICE_IDENTITY_RESOLVED_KEY, false)) {
-            resolveDeviceIdentity()
-        } else {
-            showRootIdentityPrompt()
-        }
-    }
-
-    private fun showRootIdentityPrompt() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.root_identity_title)
-            .setMessage(R.string.root_identity_message)
-            .setCancelable(false)
-            .setPositiveButton(R.string.root_identity_continue) { _, _ -> resolveDeviceIdentity() }
-            .show()
+        resolveDeviceIdentity()
     }
 
     private fun resolveDeviceIdentity() {
@@ -127,16 +113,23 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     private fun completeInitialization(identity: DeviceIdentity.Result) {
-        prefsBridge.edit { putBoolean(DEVICE_IDENTITY_RESOLVED_KEY, true) }
         if (isFinishing || isDestroyed || initialized) return
         author = Author(this, true, prefsBridge, identity.id)
         setupClickListeners()
         initialized = true
         if (identity.source == DeviceIdentity.Source.ANDROID_ID) {
-            Toast.makeText(this, R.string.root_identity_fallback, Toast.LENGTH_SHORT).show()
+            showRootUnavailablePrompt()
         }
         checkPermissions()
         refreshStatus()
+    }
+
+    private fun showRootUnavailablePrompt() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.root_identity_title)
+            .setMessage(R.string.root_identity_fallback)
+            .setPositiveButton(R.string.root_identity_continue) { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 
     private fun refreshStatus() {
@@ -356,8 +349,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     private fun isAutoSkipAccessibilityServiceEnabled(): Boolean {
-        val serviceName = ComponentName(this, AutoSkipAccessibilityService::class.java).flattenToString()
-        return PrivilegedPermissionGrantor.isAccessibilityServiceEnabled(this, serviceName)
+        return AutoSkipAccessibilityService.isRuntimeConnected(this)
     }
 
     private fun updateLanguageSelection(menu: Menu, languageTag: String) {
@@ -499,7 +491,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     companion object {
         const val TAG = "MainActivity"
-        private const val DEVICE_IDENTITY_RESOLVED_KEY = "deviceIdentityResolved"
         private const val LANGUAGE_PREF_KEY = "language"
         private const val REQUEST_AUTO_SKIP_POST_NOTIFICATIONS = 2603
         private const val AUTO_SKIP_NOTIFICATION_REFRESH_DELAY_MS = 800L

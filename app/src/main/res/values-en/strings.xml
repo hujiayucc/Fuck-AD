@@ -33,6 +33,10 @@
 
     <!-- Permission operation -->
     <string name="understand_and_grant">Understand and grant</string>
+    <string name="root_identity_title">Root access required</string>
+    <string name="root_identity_message">The app will request root access to read the board serial number and generate a device identifier. If root access is unavailable or no valid serial number is found, the system device ID will be used.</string>
+    <string name="root_identity_continue">Continue and request root</string>
+    <string name="root_identity_fallback">Board serial unavailable; using the system device ID</string>
     <string name="description">Fuck AD</string>
     <string name="open_fuck_ad">Open Fuck AD</string>
 
@@ -115,11 +119,13 @@
     <string name="auto_skip_service_description">Detect skip buttons and tap their screen coordinates to close ads.</string>
     <string name="auto_skip_accessibility_status_on">Accessibility service: activated</string>
     <string name="auto_skip_accessibility_status_off">Accessibility service: not activated</string>
+    <string name="auto_skip_accessibility_status_reconnecting">Accessibility service: enabled but reconnecting</string>
     <string name="auto_skip_notification_channel">Auto skip service</string>
     <string name="auto_skip_notification_title">Auto skip is active</string>
     <string name="auto_skip_notification_text">Accessibility service: activated</string>
     <string name="auto_skip_auto_enable_accessibility_success">Accessibility service activated</string>
     <string name="auto_skip_auto_enable_accessibility_waiting">Waiting for Shizuku authorization</string>
+    <string name="auto_skip_auto_enable_accessibility_settings_busy">Waiting for another accessibility settings update to finish</string>
     <string name="auto_skip_auto_enable_accessibility_failed">Could not activate accessibility automatically. Open accessibility settings to enable it manually.</string>
     <string name="auto_skip_service_keep_alive">Service self keep-alive</string>
     <string name="auto_skip_daemon_keep_alive">Root daemon keep-alive</string>

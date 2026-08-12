@@ -10,6 +10,8 @@ import android.os.Process as AndroidProcess
 import android.provider.Settings
 import android.text.TextUtils
 import androidx.core.content.ContextCompat
+import com.hujiayucc.hook.autoskip.AccessibilitySettingsLease
+import com.hujiayucc.hook.autoskip.AutoSkipHealth
 import rikka.shizuku.Shizuku
 import java.lang.reflect.Method
 import java.util.Locale
@@ -33,6 +35,8 @@ object PrivilegedPermissionGrantor {
         APP_OP_MIUI_INSTALLED_APPS
     )
     private const val COMMAND_TIMEOUT_SECONDS = 5L
+    private const val ACCESSIBILITY_CONNECTION_TIMEOUT_MS = 5_000L
+    private const val ACCESSIBILITY_CONNECTION_POLL_MS = 100L
     @Volatile
     private var miuiInstalledAppsGrantedByShell = false
     @Volatile
@@ -43,36 +47,115 @@ object PrivilegedPermissionGrantor {
     enum class GrantResult {
         GRANTED,
         WAITING_FOR_SHIZUKU,
+        WAITING_FOR_SETTINGS_LOCK,
         FAILED
     }
 
     fun ensureAccessibilityServiceEnabled(context: Context, serviceClass: Class<*>): GrantResult {
-        val componentName = ComponentName(context, serviceClass).flattenToString()
-        if (isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
+        val lease = AccessibilitySettingsLease.acquire(context, "client_accessibility_enable")
+            ?: return GrantResult.WAITING_FOR_SETTINGS_LOCK
+        return try {
+            ensureAccessibilityServiceEnabledLocked(context, serviceClass)
+        } finally {
+            lease.close()
+        }
+    }
 
+    private fun ensureAccessibilityServiceEnabledLocked(context: Context, serviceClass: Class<*>): GrantResult {
+        val componentName = ComponentName(context, serviceClass).flattenToString()
         val currentServices = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ).orEmpty()
-        val updatedServices = mergeColonList(currentServices, componentName)
         val enabledFlag = Settings.Secure.getInt(
             context.contentResolver,
             Settings.Secure.ACCESSIBILITY_ENABLED,
             0
         )
-        val commands = listOf(
-            arrayOf("settings", "put", "secure", Settings.Secure.ACCESSIBILITY_ENABLED, "1"),
-            arrayOf("settings", "put", "secure", Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updatedServices)
-        )
-        runAccessibilityEnableCommands(commands)
-        if (isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
+        val configured = isAccessibilityServiceEnabled(context, componentName)
+        val initialTransaction = buildAccessibilityEnableTransaction(currentServices, componentName, configured)
+        val transactionServiceValues = linkedSetOf<String>().apply {
+            addAll(initialTransaction.writtenServiceValues)
+        }
 
-        val rootSucceeded = runRootCommands(commands)
-        if (rootSucceeded && isAccessibilityServiceEnabled(context, componentName)) return GrantResult.GRANTED
+        val shizukuAttemptStartedAt = System.currentTimeMillis()
+        val shizukuResult = runAccessibilityEnableCommands(initialTransaction.commands)
+        if (shizukuResult == GrantResult.GRANTED &&
+            isAccessibilityServiceEnabled(context, componentName) &&
+            waitForAccessibilityServiceConnection(context, shizukuAttemptStartedAt)
+        ) {
+            return GrantResult.GRANTED
+        }
 
-        rollbackAccessibilityEnabledIfNeeded(enabledFlag)
+        // Shizuku can fail after a partial write. Re-read under the same shared
+        // lease before the Root fallback so a concurrent external update is not
+        // overwritten by commands calculated from the original snapshot.
+        val rootCurrentServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty()
+        val rootConfigured = isAccessibilityServiceEnabled(context, componentName)
+        val rootTransaction = buildAccessibilityEnableTransaction(rootCurrentServices, componentName, rootConfigured)
+        transactionServiceValues += rootTransaction.writtenServiceValues
+        val rootAttemptStartedAt = System.currentTimeMillis()
+        val rootSucceeded = runRootCommands(rootTransaction.commands)
+        if (rootSucceeded && isAccessibilityServiceEnabled(context, componentName) &&
+            waitForAccessibilityServiceConnection(context, rootAttemptStartedAt)
+        ) {
+            return GrantResult.GRANTED
+        }
+
+        rollbackAccessibilitySettings(context, enabledFlag, currentServices, transactionServiceValues)
         return GrantResult.FAILED
     }
+
+    private fun buildAccessibilityEnableTransaction(
+        currentServices: String,
+        componentName: String,
+        configured: Boolean
+    ): AccessibilityEnableTransaction {
+        val updatedServices = mergeColonList(currentServices, componentName)
+        val withoutTarget = removeColonList(currentServices, componentName)
+        val commands = if (configured) {
+            listOf(
+                arrayOf(
+                    "settings",
+                    "put",
+                    "secure",
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                    withoutTarget
+                ),
+                arrayOf("settings", "put", "secure", Settings.Secure.ACCESSIBILITY_ENABLED, "1"),
+                arrayOf(
+                    "settings",
+                    "put",
+                    "secure",
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                    updatedServices
+                )
+            )
+        } else {
+            listOf(
+                arrayOf("settings", "put", "secure", Settings.Secure.ACCESSIBILITY_ENABLED, "1"),
+                arrayOf(
+                    "settings",
+                    "put",
+                    "secure",
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                    updatedServices
+                )
+            )
+        }
+        return AccessibilityEnableTransaction(
+            commands = commands,
+            writtenServiceValues = if (configured) setOf(withoutTarget, updatedServices) else setOf(updatedServices)
+        )
+    }
+
+    private data class AccessibilityEnableTransaction(
+        val commands: List<Array<String>>,
+        val writtenServiceValues: Set<String>
+    )
 
     fun isAccessibilityServiceEnabled(context: Context, componentName: String): Boolean {
         if (Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) != 1) {
@@ -82,12 +165,9 @@ object PrivilegedPermissionGrantor {
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        val splitter = TextUtils.SimpleStringSplitter(':')
-        splitter.setString(enabledServices)
-        splitter.forEach { serviceName ->
-            if (serviceName.equals(componentName, ignoreCase = true)) return true
+        return enabledServices.split(':').any { serviceName ->
+            accessibilityComponentsEqual(serviceName, componentName)
         }
-        return false
     }
 
     fun ensureQueryAllPackages(context: Context): GrantResult {
@@ -250,9 +330,67 @@ object PrivilegedPermissionGrantor {
         }
     }
 
-    private fun rollbackAccessibilityEnabledIfNeeded(previousValue: Int) {
-        if (previousValue != 0) return
-        val rollbackCommands = commandsOf(Settings.Secure.ACCESSIBILITY_ENABLED, previousValue.toString())
+    private fun waitForAccessibilityServiceConnection(context: Context, attemptStartedAt: Long): Boolean {
+        val deadline = System.currentTimeMillis() + ACCESSIBILITY_CONNECTION_TIMEOUT_MS
+        while (System.currentTimeMillis() <= deadline) {
+            val health = AutoSkipHealth.read(context)
+            if (AutoSkipHealth.hasFreshHeartbeat(health, System.currentTimeMillis()) &&
+                (health?.lastConnectedAt ?: 0L) >= attemptStartedAt
+            ) {
+                return true
+            }
+            try {
+                Thread.sleep(ACCESSIBILITY_CONNECTION_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+        }
+        val health = AutoSkipHealth.read(context)
+        return AutoSkipHealth.hasFreshHeartbeat(health, System.currentTimeMillis()) &&
+            (health?.lastConnectedAt ?: 0L) >= attemptStartedAt
+    }
+
+    private fun rollbackAccessibilitySettings(
+        context: Context,
+        previousEnabledValue: Int,
+        previousServices: String,
+        transactionServiceValues: Set<String>
+    ) {
+        val appContext = context.applicationContext
+        val currentEnabled = runCatching {
+            Settings.Secure.getInt(
+                appContext.contentResolver,
+                Settings.Secure.ACCESSIBILITY_ENABLED,
+                -1
+            )
+        }.getOrNull()
+        val currentServices = runCatching {
+            Settings.Secure.getString(
+                appContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+        }.getOrNull()
+        val rollbackCommands = mutableListOf<Array<String>>()
+        if (shouldRollbackAccessibilityEnabled(currentEnabled)) {
+            rollbackCommands += arrayOf(
+                "settings",
+                "put",
+                "secure",
+                Settings.Secure.ACCESSIBILITY_ENABLED,
+                previousEnabledValue.toString()
+            )
+        }
+        if (shouldRollbackAccessibilityServices(currentServices, transactionServiceValues)) {
+            rollbackCommands += arrayOf(
+                "settings",
+                "put",
+                "secure",
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                previousServices
+            )
+        }
+        if (rollbackCommands.isEmpty()) return
         if (runAccessibilityEnableCommands(rollbackCommands) == GrantResult.GRANTED) return
         runRootCommands(rollbackCommands)
     }
@@ -263,12 +401,16 @@ object PrivilegedPermissionGrantor {
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .toMutableList()
-        if (values.none { it.equals(entry, ignoreCase = true) }) values += entry
+        if (values.none { accessibilityComponentsEqual(it, entry) }) values += entry
         return values.joinToString(":")
     }
 
-    private fun commandsOf(settingName: String, value: String): List<Array<String>> {
-        return listOf(arrayOf("settings", "put", "secure", settingName, value))
+    private fun removeColonList(current: String, entry: String): String {
+        return current
+            .split(':')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !accessibilityComponentsEqual(it, entry) }
+            .joinToString(":")
     }
 
     private fun shellCommand(command: Array<String>): String {
@@ -302,4 +444,39 @@ object PrivilegedPermissionGrantor {
     private fun isShizukuAvailable(): Boolean {
         return runCatching { Shizuku.pingBinder() }.getOrDefault(false)
     }
+}
+
+internal fun accessibilityComponentsEqual(left: String, right: String): Boolean {
+    val normalizedLeft = normalizeAccessibilityComponent(left)
+    val normalizedRight = normalizeAccessibilityComponent(right)
+    return if (normalizedLeft != null && normalizedRight != null) {
+        normalizedLeft == normalizedRight
+    } else {
+        left.trim().equals(right.trim(), ignoreCase = true)
+    }
+}
+
+internal fun shouldRollbackAccessibilityEnabled(currentEnabled: Int?): Boolean {
+    return currentEnabled == 1
+}
+
+internal fun shouldRollbackAccessibilityServices(
+    currentServices: String?,
+    transactionServiceValues: Set<String>
+): Boolean {
+    return currentServices != null && currentServices in transactionServiceValues
+}
+
+private fun normalizeAccessibilityComponent(value: String): String? {
+    val trimmed = value.trim()
+    val separator = trimmed.indexOf('/')
+    if (separator <= 0 || separator >= trimmed.lastIndex) return null
+    val packageName = trimmed.substring(0, separator)
+    val className = trimmed.substring(separator + 1)
+    val fullClassName = when {
+        className.startsWith(".") -> packageName + className
+        className.startsWith("$packageName.") -> className
+        else -> className
+    }
+    return "${packageName.lowercase(Locale.ROOT)}/${fullClassName.lowercase(Locale.ROOT)}"
 }

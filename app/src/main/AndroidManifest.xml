@@ -7,6 +7,8 @@
             android:name="android.permission.QUERY_ALL_PACKAGES"
             tools:ignore="QueryAllPackagesPermission"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23"/>
 
@@ -89,7 +91,11 @@
                 android:name=".autoskip.AutoSkipAccessibilityService"
                 android:exported="true"
                 android:process=":autoskip"
+                android:foregroundServiceType="specialUse"
                 android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <property
+                    android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                    android:value="Accessibility event monitoring and automatic UI interaction"/>
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>

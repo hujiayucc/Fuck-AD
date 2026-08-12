@@ -6,6 +6,7 @@ import android.os.PowerManager
 import com.hujiayucc.hook.data.Data.prefsBridge
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import org.json.JSONArray
@@ -27,6 +28,7 @@ object AutoSkipSettings {
     private const val KEY_RULE_GENERATION = "autoSkipRuleGeneration"
     private const val KEY_SERVICE_KEEP_ALIVE = "autoSkipServiceKeepAlive"
     private const val KEY_DAEMON_KEEP_ALIVE = "autoSkipDaemonKeepAlive"
+    private const val KEY_DAEMON_LAST_REPAIR_ATTEMPT = "autoSkipDaemonLastRepairAttemptAt"
 
     @Volatile
     private var enabledPackagesRawCache: String? = null
@@ -48,13 +50,17 @@ object AutoSkipSettings {
 
     private val ruleGenerationCoordinator = RuleGenerationCoordinator()
     private val hitLogLock = Any()
-    private val hitLogExecutor = Executors.newSingleThreadScheduledExecutor { task ->
-        Thread(task, "AutoSkipHitLogWriter").apply { isDaemon = true }
-    }
+    private var hitLogExecutor: ScheduledExecutorService? = null
     private val pendingHitLogs = ArrayList<AutoSkipHitLog>()
     private var pendingHitLogContext: Context? = null
     private var scheduledHitLogFlush: ScheduledFuture<*>? = null
     private var hitLogGeneration = 0L
+
+    private fun hitLogExecutorLocked(): ScheduledExecutorService {
+        return hitLogExecutor ?: Executors.newSingleThreadScheduledExecutor { task ->
+            Thread(task, "AutoSkipHitLogWriter").apply { isDaemon = true }
+        }.also { hitLogExecutor = it }
+    }
 
     fun runtimeConfig(context: Context): AutoSkipRuntimeConfig {
         val prefs = context.prefsBridge
@@ -115,6 +121,14 @@ object AutoSkipSettings {
 
     fun setDaemonKeepAliveEnabled(context: Context, enabled: Boolean) {
         context.prefsBridge.edit().putBoolean(KEY_DAEMON_KEEP_ALIVE, enabled).apply()
+    }
+
+    fun daemonLastRepairAttemptAt(context: Context): Long {
+        return context.prefsBridge.getLong(KEY_DAEMON_LAST_REPAIR_ATTEMPT, 0L)
+    }
+
+    fun setDaemonLastRepairAttemptAt(context: Context, timestamp: Long) {
+        context.prefsBridge.edit().putLong(KEY_DAEMON_LAST_REPAIR_ATTEMPT, timestamp).apply()
     }
 
     fun appMode(context: Context): AutoSkipAppMode {
@@ -378,7 +392,7 @@ object AutoSkipSettings {
             pendingHitLogContext = context.applicationContext
             if (scheduledHitLogFlush?.isDone != false) {
                 val generation = hitLogGeneration
-                scheduledHitLogFlush = hitLogExecutor.schedule(
+                scheduledHitLogFlush = hitLogExecutorLocked().schedule(
                     { flushPendingHitLogs(generation) },
                     HIT_LOG_FLUSH_DELAY_MS,
                     TimeUnit.MILLISECONDS

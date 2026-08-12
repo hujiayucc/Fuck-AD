@@ -3,9 +3,11 @@ package com.hujiayucc.hook.autoskip
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -30,7 +32,8 @@ private const val NOTIFICATION_STALE_TIMEOUT_MS = 130_000L
 private const val HEALTHY_ERROR_CLEAR_DELAY_MS = 60_000L
 
 class AutoSkipAccessibilityService : AccessibilityService() {
-    private lateinit var engine: AutoSkipEngine
+    @Volatile
+    private var engine: AutoSkipEngine? = null
     private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { task ->
         Thread(task, "AutoSkipKeepAlive").apply { isDaemon = true }
     }
@@ -44,26 +47,39 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastNotificationPostAt = 0L
     @Volatile
+    private var foregroundStarted = false
+    @Volatile
     private var healthySinceAt = 0L
     @Volatile
     private var healthErrorCleared = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        current = this
-        ensureServiceInfo()
-        recreateEngine("connected")
-        val now = System.currentTimeMillis()
-        healthySinceAt = now
-        lastHealthWriteAt = now
-        AutoSkipHealth.markConnected(this, engineGeneration)
-        AutoSkipDaemonManager.writeConfig(this, preserveExistingEnabled = true)
-        refreshKeepAlive()
+        current = null
+        runCatching {
+            ensureServiceInfo()
+            recreateEngine()
+            val now = System.currentTimeMillis()
+            healthySinceAt = now
+            lastHealthWriteAt = now
+            AutoSkipHealth.markConnected(this, engineGeneration)
+            AutoSkipDaemonManager.writeConfig(this, preserveExistingEnabled = true)
+            refreshKeepAlive()
+            current = this
+        }.onFailure { error ->
+            stopHeartbeat()
+            runCatching { engine?.shutdown() }
+            engine = null
+            AutoSkipHealth.markConnectionFailure(this, "connect", error, engineGeneration)
+            stopForegroundNotification()
+            cancelRunningNotification(this)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        if (!::engine.isInitialized) recreateEngine("event")
+        if (!ensureEngine("event")) return
+        val activeEngine = engine ?: return
         val packageName = notificationPackageNameFromEvent(event)
         val canUpdateTitle = isNotificationTitleEvent(event, packageName)
         runCatching {
@@ -71,7 +87,7 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             if (canUpdateTitle) {
                 updateNotificationForPackage(packageName)
             }
-            engine.onAccessibilityEvent(event)
+            activeEngine.onAccessibilityEvent(event)
         }.onSuccess {
             consecutiveEventFailures = 0
             markHealthy()
@@ -81,36 +97,73 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
+        if (current !== this || engine == null) return
         val now = System.currentTimeMillis()
         if (now - lastHealthWriteAt < SERVICE_HEARTBEAT_INTERVAL_MS) return
         lastHealthWriteAt = now
         AutoSkipHealth.markHeartbeat(this, engineGeneration)
     }
 
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            engine?.trimMemory()
+        }
+    }
+
     override fun onUnbind(intent: Intent?): Boolean {
         AutoSkipHealth.markDisconnected(this, "unbind")
         stopHeartbeat()
+        stopForegroundNotification()
         cancelRunningNotification(this)
         if (current === this) current = null
+        releaseEngine()
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         AutoSkipHealth.markDisconnected(this, "destroy")
         if (current === this) current = null
+        stopForegroundNotification()
         runCatching { NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID) }
-        runCatching { if (::engine.isInitialized) engine.shutdown() }
+        releaseEngine()
         heartbeatExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    private fun releaseEngine() {
+        val activeEngine = engine
+        engine = null
+        runCatching { activeEngine?.shutdown() }
+    }
+
+    private fun ensureEngine(reason: String): Boolean {
+        if (engine != null) return true
+        return runCatching {
+            recreateEngine()
+            val now = System.currentTimeMillis()
+            healthySinceAt = now
+            lastHealthWriteAt = now
+            AutoSkipHealth.markConnected(this, engineGeneration)
+            current = this
+            true
+        }.onFailure { error ->
+            current = null
+            AutoSkipHealth.markConnectionFailure(this, "engine_$reason", error, engineGeneration)
+            stopForegroundNotification()
+            cancelRunningNotification(this)
+        }.getOrDefault(false)
     }
 
     private fun refreshKeepAlive() {
         val serviceKeepAliveEnabled = AutoSkipSettings.serviceKeepAliveEnabled(this)
         val daemonKeepAliveEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this)
-        if (serviceKeepAliveEnabled) {
-            if (!::engine.isInitialized) recreateEngine("keep_alive")
+        val engineReady = serviceKeepAliveEnabled && ensureEngine("keep_alive")
+        if (shouldRunAccessibilityForeground(serviceKeepAliveEnabled, engineReady)) {
             showRunningNotification()
         } else {
+            stopForegroundNotification()
             cancelRunningNotification(this)
         }
         if (keepAliveHeartbeatRequired(serviceKeepAliveEnabled, daemonKeepAliveEnabled)) {
@@ -152,24 +205,31 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         val serviceKeepAliveEnabled = AutoSkipSettings.serviceKeepAliveEnabled(this)
         val daemonKeepAliveEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this)
         if (!serviceKeepAliveEnabled) {
+            stopForegroundNotification()
             cancelRunningNotification(this)
         }
         if (!keepAliveHeartbeatRequired(serviceKeepAliveEnabled, daemonKeepAliveEnabled)) {
             stopHeartbeat()
             return
         }
+        val engineReady = ensureEngine("heartbeat")
         val now = System.currentTimeMillis()
         val writeIntervalMs = healthWriteIntervalMs(serviceKeepAliveEnabled, daemonKeepAliveEnabled)
-        if (now - lastHealthWriteAt >= writeIntervalMs) {
+        if (engineReady && now - lastHealthWriteAt >= writeIntervalMs) {
             lastHealthWriteAt = now
             AutoSkipHealth.markHeartbeat(this, engineGeneration)
         }
-        if (serviceKeepAliveEnabled && now - lastNotificationPostAt >= NOTIFICATION_REFRESH_INTERVAL_MS) {
+        if (shouldRunAccessibilityForeground(serviceKeepAliveEnabled, engineReady) &&
+            now - lastNotificationPostAt >= NOTIFICATION_REFRESH_INTERVAL_MS
+        ) {
             showRunningNotification()
         }
-        if (serviceKeepAliveEnabled && !::engine.isInitialized) recreateEngine("heartbeat")
+        if (!engineReady) {
+            stopForegroundNotification()
+            cancelRunningNotification(this)
+        }
         startHeartbeat(heartbeatIntervalMs(serviceKeepAliveEnabled, daemonKeepAliveEnabled))
-        markHealthy(now)
+        if (engineReady) markHealthy(now)
     }
 
     private fun ensureServiceInfo() {
@@ -185,15 +245,14 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     }
 
     @Synchronized
-    private fun recreateEngine(reason: String) {
-        runCatching { if (::engine.isInitialized) engine.shutdown() }
+    private fun recreateEngine() {
+        val previousEngine = engine
+        engine = null
+        runCatching { previousEngine?.shutdown() }
         engineGeneration += 1
         consecutiveEventFailures = 0
         engine = AutoSkipEngine(this) { stage, error ->
             handleEngineError(stage, error)
-        }
-        if (reason != "connected") {
-            recordKeepAliveError("engine_recreate", IllegalStateException(reason))
         }
     }
 
@@ -201,7 +260,19 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         recordKeepAliveError(stage, error)
         consecutiveEventFailures += 1
         if (consecutiveEventFailures >= MAX_CONSECUTIVE_FAILURES) {
-            recreateEngine(stage)
+            runCatching {
+                recreateEngine()
+                val now = System.currentTimeMillis()
+                healthySinceAt = now
+                lastHealthWriteAt = now
+                AutoSkipHealth.markConnected(this, engineGeneration)
+                current = this
+            }.onFailure { restartError ->
+                current = null
+                AutoSkipHealth.markConnectionFailure(this, "engine_recreate", restartError, engineGeneration)
+                stopForegroundNotification()
+                cancelRunningNotification(this)
+            }
         }
     }
 
@@ -269,7 +340,26 @@ class AutoSkipAccessibilityService : AccessibilityService() {
 
     private fun showRunningNotification(packageName: String? = notificationPackageName) {
         lastNotificationPostAt = System.currentTimeMillis()
-        postRunningNotification(this, packageName, engineGeneration)
+        val notification = buildRunningNotification(this, packageName, engineGeneration)
+        val foregroundUpdated = runCatching {
+            startForeground(NOTIFICATION_ID, notification)
+            foregroundStarted = true
+            true
+        }.onFailure { error ->
+            AutoSkipHealth.recordError(this, "foreground", error, engineGeneration)
+        }.getOrDefault(false)
+        if (!foregroundUpdated) {
+            postNotification(this, notification, engineGeneration)
+        }
+    }
+
+    private fun stopForegroundNotification() {
+        if (!foregroundStarted) return
+        runCatching {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        foregroundStarted = false
     }
 
     private fun updateNotificationForPackage(packageName: String) {
@@ -283,24 +373,25 @@ class AutoSkipAccessibilityService : AccessibilityService() {
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "auto_skip_service"
         private const val NOTIFICATION_ID = 2601
-        private const val SERVICE_HEARTBEAT_FRESH_MS = SERVICE_HEARTBEAT_INTERVAL_MS * 2
         private const val MAX_CONSECUTIVE_FAILURES = 3
         @Volatile
         private var current: AutoSkipAccessibilityService? = null
 
-        private fun postRunningNotification(
+        fun isConnectedInCurrentProcess(): Boolean {
+            return current != null
+        }
+
+        fun isRuntimeConnected(context: Context): Boolean {
+            return isConnectedInCurrentProcess() || AutoSkipHealth.hasFreshHeartbeat(context)
+        }
+
+        private fun buildRunningNotification(
             context: Context,
             packageName: String?,
             generation: Int = 0
-        ) {
+        ): Notification {
             val appContext = context.applicationContext
             createNotificationChannel(appContext)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
-
             val intent = Intent(appContext, AutoSkipRulesActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val pendingIntent = PendingIntent.getActivity(
@@ -309,7 +400,7 @@ class AutoSkipAccessibilityService : AccessibilityService() {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            val notification = NotificationCompat.Builder(appContext, NOTIFICATION_CHANNEL_ID)
+            return NotificationCompat.Builder(appContext, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_auto_skip_notification)
                 .setContentTitle(notificationTitle(appContext, packageName))
                 .setContentText(appContext.getString(R.string.auto_skip_accessibility_status_on))
@@ -321,7 +412,27 @@ class AutoSkipAccessibilityService : AccessibilityService() {
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build()
+        }
 
+        private fun postRunningNotification(
+            context: Context,
+            packageName: String?,
+            generation: Int = 0
+        ) {
+            postNotification(
+                context,
+                buildRunningNotification(context, packageName, generation),
+                generation
+            )
+        }
+
+        private fun postNotification(context: Context, notification: Notification, generation: Int) {
+            val appContext = context.applicationContext
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
             runCatching {
                 NotificationManagerCompat.from(appContext).notify(NOTIFICATION_ID, notification)
             }.onFailure { error ->
@@ -370,13 +481,7 @@ class AutoSkipAccessibilityService : AccessibilityService() {
         }
 
         private fun hasFreshServiceHeartbeat(context: Context): Boolean {
-            val health = AutoSkipHealth.read(context) ?: return false
-            return isServiceHeartbeatFresh(
-                serviceConnected = health.serviceConnected,
-                lastHeartbeatAt = health.lastHeartbeatAt,
-                now = System.currentTimeMillis(),
-                freshWindowMs = SERVICE_HEARTBEAT_FRESH_MS
-            )
+            return AutoSkipHealth.hasFreshHeartbeat(context)
         }
 
         fun refreshRunningNotification(context: Context) {
@@ -393,6 +498,13 @@ class AutoSkipAccessibilityService : AccessibilityService() {
             }
         }
     }
+}
+
+internal fun shouldRunAccessibilityForeground(
+    serviceKeepAliveEnabled: Boolean,
+    engineReady: Boolean
+): Boolean {
+    return serviceKeepAliveEnabled && engineReady
 }
 
 internal fun keepAliveHeartbeatRequired(

@@ -37,6 +37,7 @@ import com.hujiayucc.hook.autoskip.AutoSkipRuleStats
 import com.hujiayucc.hook.autoskip.AutoSkipSettings
 import com.hujiayucc.hook.autoskip.AutoSkipTapStrategy
 import com.hujiayucc.hook.autoskip.AutoSkipUpdateResult
+import com.hujiayucc.hook.autoskip.shouldAutoRepairDaemon
 import com.hujiayucc.hook.utils.PrivilegedPermissionGrantor
 import com.hujiayucc.hook.databinding.ActivityAutoSkipRulesBinding
 import com.hujiayucc.hook.databinding.DialogAutoSkipRuleEditorBinding
@@ -215,16 +216,17 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         refreshServiceKeepAliveSwitch()
         refreshAppModeSelection()
         val autoSkipEnabled = AutoSkipSettings.isEnabled(this)
-        val accessibilityEnabled = isAccessibilityServiceEnabled()
-        val canShowNotification = if (autoSkipEnabled || accessibilityEnabled) {
+        val accessibilityConfigured = isAccessibilityServiceConfigured()
+        val accessibilityRunning = isAccessibilityServiceRunning()
+        val canShowNotification = if (autoSkipEnabled || accessibilityConfigured) {
             requestNotificationPermissionIfNeeded()
         } else {
             false
         }
-        if (autoSkipEnabled && !accessibilityEnabled) {
+        if (autoSkipEnabled && !accessibilityRunning) {
             autoEnableAccessibilityServiceIfNeeded()
         }
-        if (accessibilityEnabled && canShowNotification) {
+        if (accessibilityRunning && canShowNotification) {
             AutoSkipAccessibilityService.refreshRunningNotification(this)
         }
         repairDaemonIfStatusMissing()
@@ -236,7 +238,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_POST_NOTIFICATIONS) {
             notificationPermissionRequestInProgress = false
-            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED && isAccessibilityServiceEnabled()) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED && isAccessibilityServiceRunning()) {
                 AutoSkipAccessibilityService.refreshRunningNotification(this)
             }
         }
@@ -392,11 +394,18 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     }
 
     private fun repairDaemonIfStatusMissing() {
-        if (!AutoSkipSettings.daemonKeepAliveEnabled(this) || daemonRepairInProgress) return
-        val status = AutoSkipDaemonManager.readStatus(this)
+        if (daemonRepairInProgress) return
         val now = System.currentTimeMillis()
-        val statusFresh = status != null && now - status.lastCheckAt <= 90_000L
-        if (statusFresh) return
+        val status = AutoSkipDaemonManager.readStatus(this)
+        val shouldRepair = shouldAutoRepairDaemon(
+            daemonEnabled = AutoSkipSettings.daemonKeepAliveEnabled(this),
+            statusLastCheckAt = status?.lastCheckAt,
+            lastRepairAttemptAt = AutoSkipSettings.daemonLastRepairAttemptAt(this),
+            now = now,
+            statusSchemaVersion = status?.schemaVersion
+        )
+        if (!shouldRepair) return
+        AutoSkipSettings.setDaemonLastRepairAttemptAt(this, now)
         daemonRepairInProgress = true
         disposables.add(
             Observable.fromCallable { AutoSkipDaemonManager.installOrUpdate(this) }
@@ -536,9 +545,14 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     }
 
     private fun updateAccessibilityStatusAndStats(stats: AutoSkipRuleStats) {
-        val accessibilityEnabled = isAccessibilityServiceEnabled()
-        val accessibilityStateText = if (accessibilityEnabled) getString(R.string.is_active) else getString(R.string.not_active)
-        updateAccessibilityStatus(accessibilityEnabled)
+        val accessibilityConfigured = isAccessibilityServiceConfigured()
+        val accessibilityRunning = isAccessibilityServiceRunning()
+        val accessibilityStateText = when {
+            accessibilityRunning -> getString(R.string.is_active)
+            accessibilityConfigured -> getString(R.string.auto_skip_accessibility_status_reconnecting)
+            else -> getString(R.string.not_active)
+        }
+        updateAccessibilityStatus(accessibilityRunning, accessibilityConfigured)
         updateStatsText(stats, accessibilityStateText)
     }
 
@@ -621,15 +635,23 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             match.excludeGkdSelectors
     }
 
-    private fun isAccessibilityServiceEnabled(): Boolean {
+    private fun isAccessibilityServiceConfigured(): Boolean {
         return PrivilegedPermissionGrantor.isAccessibilityServiceEnabled(this, expectedAccessibilityServiceName())
     }
 
-    private fun updateAccessibilityStatus(enabled: Boolean) {
-        binding.accessibilityStatusChip.setText(
-            if (enabled) R.string.auto_skip_accessibility_status_on else R.string.auto_skip_accessibility_status_off
-        )
-        binding.accessibilityStatusChip.setChipIconResource(if (enabled) R.drawable.ic_success else R.drawable.ic_warn)
+    private fun isAccessibilityServiceRunning(): Boolean {
+        // This activity shares the :autoskip process with the service, so this avoids stale Secure Settings state.
+        return AutoSkipAccessibilityService.isConnectedInCurrentProcess()
+    }
+
+    private fun updateAccessibilityStatus(running: Boolean, configured: Boolean) {
+        val textRes = when {
+            running -> R.string.auto_skip_accessibility_status_on
+            configured -> R.string.auto_skip_accessibility_status_reconnecting
+            else -> R.string.auto_skip_accessibility_status_off
+        }
+        binding.accessibilityStatusChip.setText(textRes)
+        binding.accessibilityStatusChip.setChipIconResource(if (running) R.drawable.ic_success else R.drawable.ic_warn)
     }
 
     private fun requestNotificationPermissionIfNeeded(): Boolean {
@@ -647,7 +669,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
     }
 
     private fun autoEnableAccessibilityServiceIfNeeded() {
-        if (isAccessibilityServiceEnabled() || autoEnableAccessibilityInProgress) return
+        if (isAccessibilityServiceRunning() || autoEnableAccessibilityInProgress) return
         autoEnableAccessibilityInProgress = true
         if (PrivilegedPermissionGrantor.requestShizukuPermissionIfNeeded()) {
             Toast.makeText(this, R.string.auto_skip_auto_enable_accessibility_waiting, Toast.LENGTH_LONG).show()
@@ -673,6 +695,10 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
                         PrivilegedPermissionGrantor.GrantResult.WAITING_FOR_SHIZUKU -> {
                             Toast.makeText(this, R.string.auto_skip_auto_enable_accessibility_waiting, Toast.LENGTH_LONG).show()
                         }
+                        PrivilegedPermissionGrantor.GrantResult.WAITING_FOR_SETTINGS_LOCK -> {
+                            Toast.makeText(this, R.string.auto_skip_auto_enable_accessibility_settings_busy, Toast.LENGTH_LONG).show()
+                            scheduleAccessibilityStatusRefresh()
+                        }
                         PrivilegedPermissionGrantor.GrantResult.FAILED -> {
                             Toast.makeText(this, R.string.auto_skip_auto_enable_accessibility_failed, Toast.LENGTH_LONG).show()
                         }
@@ -691,7 +717,7 @@ class AutoSkipRulesActivity : BaseActivity<ActivityAutoSkipRulesBinding>() {
             Observable.timer(800L, TimeUnit.MILLISECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe {
-                    if (isAccessibilityServiceEnabled() && canPostNotifications()) {
+                    if (isAccessibilityServiceRunning() && canPostNotifications()) {
                         AutoSkipAccessibilityService.refreshRunningNotification(this)
                     }
                     refreshRules()

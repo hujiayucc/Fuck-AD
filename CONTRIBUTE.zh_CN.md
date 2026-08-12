@@ -1,6 +1,6 @@
 # Hooker 编写指南
 
-[English](HOOKER_GUIDE.md) | **简体中文**
+[English](CONTRIBUTE.md) | **简体中文**
 
 本文档面向 Fuck AD 贡献者，说明如何为新应用或广告 SDK 编写 Hooker。内容以当前代码结构为准，主要涉及以下目录：
 

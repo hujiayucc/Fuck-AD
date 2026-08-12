@@ -41,6 +41,44 @@ class AutoSkipServiceKeepAliveTest {
     }
 
     @Test
+    fun healthStateUsesConnectionFlagAndFreshHeartbeat() {
+        val connected = AutoSkipHealthState(serviceConnected = true, lastHeartbeatAt = 99_000L)
+        val disconnected = connected.copy(serviceConnected = false)
+
+        assertTrue(AutoSkipHealth.hasFreshHeartbeat(connected, now = 100_000L, freshWindowMs = 120_000L))
+        assertFalse(AutoSkipHealth.hasFreshHeartbeat(disconnected, now = 100_000L, freshWindowMs = 120_000L))
+        assertFalse(AutoSkipHealth.hasFreshHeartbeat(connected, now = 221_000L, freshWindowMs = 120_000L))
+    }
+
+    @Test
+    fun cooldownCachesDiscardExpiredEntriesAndStayBounded() {
+        val appEntries = hashMapOf(
+            "com.example.active" to 99_000L,
+            "com.example.expired" to 96_000L,
+            "com.example.future" to 101_000L
+        )
+        removeExpiredCooldownEntries(appEntries, now = 100_000L, durationMs = 3_000L)
+
+        assertEquals(setOf("com.example.active"), appEntries.keys)
+
+        val ruleEntries = hashMapOf(
+            "old" to 1L,
+            "middle" to 2L,
+            "new" to 3L
+        )
+        boundCooldownEntries(ruleEntries, maxEntries = 2)
+
+        assertEquals(setOf("middle", "new"), ruleEntries.keys)
+    }
+
+    @Test
+    fun foregroundDecisionRequiresKeepAliveAndReadyEngine() {
+        assertTrue(shouldRunAccessibilityForeground(serviceKeepAliveEnabled = true, engineReady = true))
+        assertFalse(shouldRunAccessibilityForeground(serviceKeepAliveEnabled = false, engineReady = true))
+        assertFalse(shouldRunAccessibilityForeground(serviceKeepAliveEnabled = true, engineReady = false))
+    }
+
+    @Test
     fun healthErrorClearsOnlyAfterContinuousHealthyPeriod() {
         assertFalse(shouldClearHealthError(healthySinceAt = 0L, now = 60_000L, clearDelayMs = 60_000L))
         assertFalse(shouldClearHealthError(healthySinceAt = 1_000L, now = 60_999L, clearDelayMs = 60_000L))

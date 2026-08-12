@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription
 import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Point
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import com.hujiayucc.hook.utils.ShizukuProcessExecutor
 import com.hujiayucc.hook.utils.waitForSuccess
@@ -20,7 +21,8 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         points: List<Point>,
         runtimeConfig: AutoSkipRuntimeConfig,
         verifier: (() -> AutoSkipClickVerification)? = null,
-        asynchronousVerifier: AutoSkipAsyncVerifier? = null
+        asynchronousVerifier: AutoSkipAsyncVerifier? = null,
+        attemptValidator: (Point) -> Boolean = { true }
     ): AutoSkipExecutionResult {
         if (points.isEmpty()) return AutoSkipExecutionResult(false, "none", null, "No tap point")
         val context = AttemptContext(
@@ -29,7 +31,9 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
             firstPoint = points.firstOrNull(),
             runtimeConfig = runtimeConfig,
             verifier = verifier,
-            asynchronousVerifier = asynchronousVerifier
+            asynchronousVerifier = asynchronousVerifier,
+            attemptValidator = attemptValidator,
+            deadlineAt = SystemClock.uptimeMillis() + CLICK_CHAIN_BUDGET_MS
         )
         return executeAttempts(context, startIndex = 0)
     }
@@ -39,7 +43,11 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         val outcome = runAutoSkipAttemptFlow(
             attempts = context.attempts,
             startIndex = startIndex,
-            isEnabled = { attempt -> isExecutorEnabled(attempt.type, context.runtimeConfig) },
+            isEnabled = { attempt ->
+                isExecutorEnabled(attempt.type, context.runtimeConfig) &&
+                    hasAttemptBudget(attempt.type, context.deadlineAt)
+            },
+            shouldContinue = { attempt -> context.attemptValidator(attempt.point) },
             execute = { attempt -> runAttempt(attempt.type, context.node, attempt.point) },
             verifier = context.verifier,
             deferVerification = deferVerification
@@ -119,6 +127,10 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         }
     }
 
+    private fun hasAttemptBudget(type: AutoSkipClickExecutorType, deadlineAt: Long): Boolean {
+        return hasAutoSkipAttemptBudget(SystemClock.uptimeMillis(), deadlineAt, type)
+    }
+
     private fun dispatchGesture(point: Point): Boolean {
         val path = Path().apply { moveTo(point.x.toFloat(), point.y.toFloat()) }
         val gesture = GestureDescription.Builder()
@@ -182,6 +194,7 @@ class AutoSkipClickExecutor(private val service: AccessibilityService) {
         private const val TAP_DURATION_MS = 80L
         private const val GESTURE_TIMEOUT_MS = 600L
         private const val COMMAND_TIMEOUT_SECONDS = 2L
+        private const val CLICK_CHAIN_BUDGET_MS = 3_000L
         private const val MAX_POINTS_PER_RULE = 4
     }
 }
@@ -198,6 +211,7 @@ internal fun <T> runAutoSkipAttemptFlow(
     attempts: List<T>,
     startIndex: Int,
     isEnabled: (T) -> Boolean,
+    shouldContinue: (T) -> Boolean = { true },
     execute: (T) -> Boolean,
     verifier: (() -> AutoSkipClickVerification)?,
     deferVerification: Boolean
@@ -206,7 +220,9 @@ internal fun <T> runAutoSkipAttemptFlow(
     var lastRejection: AutoSkipClickVerification? = null
     for (index in startIndex until attempts.size) {
         val attempt = attempts[index]
-        if (!isEnabled(attempt) || !execute(attempt)) continue
+        if (!isEnabled(attempt)) continue
+        if (!shouldContinue(attempt)) break
+        if (!execute(attempt)) continue
         if (deferVerification) {
             return AutoSkipAttemptOutcome(
                 acceptedAttempt = attempt,
@@ -241,13 +257,32 @@ fun interface AutoSkipAsyncVerifier {
     )
 }
 
+internal fun requiredAttemptBudgetMs(type: AutoSkipClickExecutorType): Long {
+    return when (type) {
+        AutoSkipClickExecutorType.SHIZUKU_INPUT,
+        AutoSkipClickExecutorType.ROOT_INPUT -> 2_000L
+        AutoSkipClickExecutorType.ACCESSIBILITY_GESTURE -> 600L
+        AutoSkipClickExecutorType.ACCESSIBILITY_ACTION -> 0L
+    }
+}
+
+internal fun hasAutoSkipAttemptBudget(
+    now: Long,
+    deadlineAt: Long,
+    type: AutoSkipClickExecutorType
+): Boolean {
+    return deadlineAt - now >= requiredAttemptBudgetMs(type)
+}
+
 private data class AttemptContext(
     val node: AccessibilityNodeInfo,
     val attempts: List<ClickAttempt>,
     val firstPoint: Point?,
     val runtimeConfig: AutoSkipRuntimeConfig,
     val verifier: (() -> AutoSkipClickVerification)?,
-    val asynchronousVerifier: AutoSkipAsyncVerifier?
+    val asynchronousVerifier: AutoSkipAsyncVerifier?,
+    val attemptValidator: (Point) -> Boolean,
+    val deadlineAt: Long
 )
 
 private data class ClickAttempt(

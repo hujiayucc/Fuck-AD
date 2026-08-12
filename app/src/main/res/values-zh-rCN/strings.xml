@@ -33,6 +33,10 @@
 
     <!-- 权限操作 -->
     <string name="understand_and_grant">理解并授权</string>
+    <string name="root_identity_title">需要 Root 权限</string>
+    <string name="root_identity_message">应用将请求 Root 权限以读取主板序列号并生成设备标识。若未获得 Root 权限或未读取到有效序列号，将使用系统设备 ID。</string>
+    <string name="root_identity_continue">继续并请求 Root</string>
+    <string name="root_identity_fallback">未读取到主板序列号，已使用系统设备 ID</string>
     <string name="description">去他妈的广告</string>
     <string name="open_fuck_ad">打开 Fuck AD</string>
 
@@ -115,11 +119,13 @@
     <string name="auto_skip_service_description">检测跳过按钮并点击其屏幕坐标以关闭广告。</string>
     <string name="auto_skip_accessibility_status_on">无障碍服务：已激活</string>
     <string name="auto_skip_accessibility_status_off">无障碍服务：未激活</string>
+    <string name="auto_skip_accessibility_status_reconnecting">无障碍服务：系统已启用，但服务未连接</string>
     <string name="auto_skip_notification_channel">自动跳过服务</string>
     <string name="auto_skip_notification_title">自动跳过已激活</string>
     <string name="auto_skip_notification_text">无障碍服务：已激活</string>
     <string name="auto_skip_auto_enable_accessibility_success">无障碍服务已激活</string>
     <string name="auto_skip_auto_enable_accessibility_waiting">正在等待 Shizuku 授权</string>
+    <string name="auto_skip_auto_enable_accessibility_settings_busy">正在等待另一项无障碍设置更新完成</string>
     <string name="auto_skip_auto_enable_accessibility_failed">无法自动激活无障碍，请打开无障碍设置手动启用。</string>
     <string name="auto_skip_service_keep_alive">无障碍服务自身保活</string>
     <string name="auto_skip_daemon_keep_alive">Root Daemon 保活</string>
