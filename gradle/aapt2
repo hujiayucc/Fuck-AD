@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -n "${AAPT2_REAL_EXECUTABLE:-}" ]]; then
+    real_aapt2="$AAPT2_REAL_EXECUTABLE"
+else
+    sdk_roots=()
+    [[ -n "${ANDROID_SDK_ROOT:-}" ]] && sdk_roots+=("$ANDROID_SDK_ROOT")
+    [[ -n "${ANDROID_HOME:-}" ]] && sdk_roots+=("$ANDROID_HOME")
+    sdk_roots+=("/root/Android")
+
+    real_aapt2=""
+    shopt -s nullglob
+    for sdk_root in "${sdk_roots[@]}"; do
+        candidates=("$sdk_root"/build-tools/*/aapt2)
+        if (( ${#candidates[@]} > 0 )); then
+            real_aapt2="$(printf '%s\n' "${candidates[@]}" | sort -V | tail -n 1)"
+            break
+        fi
+    done
+fi
+
+if [[ -z "$real_aapt2" || ! -x "$real_aapt2" ]]; then
+    printf 'AAPT2 executable was not found. Set ANDROID_SDK_ROOT or AAPT2_REAL_EXECUTABLE.\n' >&2
+    exit 1
+fi
+
+normalized_args=()
+for arg in "$@"; do
+    case "$arg" in
+        --resource-path-shortening-map=*)
+            normalized_args+=("--resource-path-shortening-map" "${arg#*=}")
+            ;;
+        *)
+            normalized_args+=("$arg")
+            ;;
+    esac
+done
+
+exec "$real_aapt2" "${normalized_args[@]}"

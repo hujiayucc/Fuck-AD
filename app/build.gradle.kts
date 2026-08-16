@@ -160,6 +160,11 @@ abstract class VerifyXposedApkTask : DefaultTask() {
 
         apks.forEach { apk ->
             ZipFile(apk).use { zip ->
+                listOf("AndroidManifest.xml", "resources.arsc").forEach { entryName ->
+                    check(zip.getEntry(entryName)?.size?.let { it > 0L } == true) {
+                        "$apk is missing required Android package entry $entryName"
+                    }
+                }
                 expectedEntries.forEach { (entryName, expectedContent) ->
                     val entries = zip.entries().asSequence()
                         .filter { !it.isDirectory && it.name == entryName }
@@ -207,12 +212,6 @@ android {
             enableV4Signing = true
         }
     }
-    androidResources.additionalParameters += listOf(
-        "--allow-reserved-package-id",
-        "--package-id",
-        "0x64"
-    )
-
 
     defaultConfig {
         applicationId = "com.hujiayucc.hook"
