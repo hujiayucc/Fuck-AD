@@ -42,6 +42,7 @@
 
     <!-- 菜单 -->
     <string name="menu_minimize">最小化</string>
+    <string name="menu_hide_from_recents">从最近任务中隐藏</string>
     <string name="menu_click_info">打印点击事件</string>
     <string name="menu_stack_track">打印点击堆栈</string>
     <string name="menu_logout">退出登录</string>

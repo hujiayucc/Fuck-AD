@@ -2,7 +2,6 @@ package com.hujiayucc.hook.ui.activity
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -306,13 +305,12 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     override fun finish() {
-        excludeFromRecent(true)
+        RecentTaskController.setExcludedFromRecents(this, true)
         super.finish()
     }
 
     override fun onResume() {
         super.onResume()
-        excludeFromRecent(false)
         refreshAutoSkipNotificationIfNeeded()
     }
 
@@ -365,6 +363,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         prefsBridge.getString(LANGUAGE_PREF_KEY, "system")?.let { updateLanguageSelection(menu, it) }
+        menu.findItem(R.id.menu_hide_from_recents)?.isChecked =
+            RecentTaskController.isHideFromRecentsEnabled(this)
         menu.findItem(R.id.menu_click_info)?.isChecked = prefsBridge.getBoolean("clickInfo", false)
         menu.findItem(R.id.menu_stack_track)?.isChecked = prefsBridge.getBoolean("stackTrack", false)
         menu.findItem(R.id.menu_error_log)?.isChecked = prefsBridge.getBoolean("errorLog", false)
@@ -384,7 +384,16 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.menu_minimize -> {
+                RecentTaskController.applyConfiguredState(this)
                 moveTaskToBack(true)
+                true
+            }
+
+            R.id.menu_hide_from_recents -> {
+                val enabled = !item.isChecked
+                RecentTaskController.setHideFromRecentsEnabled(this, enabled)
+                RecentTaskController.setExcludedFromRecents(this, enabled)
+                item.isChecked = enabled
                 true
             }
 
@@ -472,20 +481,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         appListAdapter?.refreshScopeState()
         if (::author.isInitialized) {
             service?.apply { updateFrameworkStatus(frameworkName, apiVersion) }
-        }
-    }
-
-    /** 隐藏最近任务列表视图 */
-    private fun excludeFromRecent(exclude: Boolean) {
-        try {
-            val manager: ActivityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-            for (appTask in manager.appTasks) {
-                if (appTask.taskInfo?.taskId == taskId) {
-                    appTask.setExcludeFromRecents(exclude)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 

@@ -117,6 +117,11 @@ abstract class BaseActivity<T : Any> : AppCompatActivity(), XYApplication.Servic
         XYApplication.addServiceStateListener(this, true)
     }
 
+    override fun onResume() {
+        super.onResume()
+        RecentTaskController.applyConfiguredState(this)
+    }
+
     override fun onStop() {
         XYApplication.removeServiceStateListener(this)
         super.onStop()

@@ -42,6 +42,7 @@
 
     <!-- 選單 -->
     <string name="menu_minimize">最小化</string>
+    <string name="menu_hide_from_recents">從最近使用的應用程式中隱藏</string>
     <string name="menu_click_info">列印點擊事件</string>
     <string name="menu_stack_track">列印點擊堆疊</string>
     <string name="menu_logout">登出</string>

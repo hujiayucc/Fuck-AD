@@ -4,6 +4,10 @@
             android:id="@+id/menu_minimize"
             android:title="@string/menu_minimize" />
     <item
+            android:id="@+id/menu_hide_from_recents"
+            android:title="@string/menu_hide_from_recents"
+            android:checkable="true" />
+    <item
             android:id="@+id/menu_logout"
             android:title="@string/menu_logout" />
     <item

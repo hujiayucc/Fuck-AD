@@ -42,6 +42,7 @@
 
     <!-- Menu -->
     <string name="menu_minimize">Minimize</string>
+    <string name="menu_hide_from_recents">Hide from recent tasks</string>
     <string name="menu_click_info">Print Click Info</string>
     <string name="menu_stack_track">Print click stack track</string>
     <string name="menu_logout">Logout</string>
