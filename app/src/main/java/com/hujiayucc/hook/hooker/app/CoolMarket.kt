@@ -30,6 +30,8 @@ import org.luckypray.dexkit.query.enums.StringMatchType
 )
 object CoolMarket : Hooker() {
     private const val QUERY_REPLY_BIND = "coolapk_reply_bind"
+    private const val COLLECTION_SELECT_ACTIVITY =
+        "com.coolapk.market.view.collectionList.CollectionSelectActivity"
     override val jiaGuMarkerClasses = listOf(
         "com.coolapk.market.view.splash.SplashAdActivity",
         "com.coolapk.market.view.splash.SplashAdFragment",
@@ -241,6 +243,7 @@ object CoolMarket : Hooker() {
         View::class.java.method("onAttachedToWindow").hook {
             after {
                 val view = instance<View>()
+                if (!isFeedDetailView(view)) return@after
                 scheduleReplyCloseIfMatch(view)
                 listOf(180L, 500L, 1_000L).forEach { delay ->
                     runMainDelayed(delay) {
@@ -252,20 +255,48 @@ object CoolMarket : Hooker() {
         View::class.java.method("setVisibility", Int::class.javaPrimitiveType!!).hook {
             after {
                 val view = instance<View>()
-                if (view.visibility == View.VISIBLE) scheduleReplyCloseIfMatch(view)
+                if (view.visibility == View.VISIBLE && isFeedDetailView(view)) {
+                    scheduleReplyCloseIfMatch(view)
+                }
             }
         }
         View::class.java.method("setOnClickListener", View.OnClickListener::class.java).hook {
             after {
-                scheduleReplyCloseIfMatch(instance<View>())
+                val view = instance<View>()
+                if (isFeedDetailView(view)) scheduleReplyCloseIfMatch(view)
             }
         }
         // 详情页根扫描已合并到 hookActivityLifecycle()，此处只保留 View 时序入口。
     }
 
     private fun scheduleReplyCloseIfMatch(view: View) {
+        if (!isFeedDetailView(view)) return
         val adCard = findReplyNativeAdCard(view) ?: return
         collapseFeedItem(adCard)
+    }
+
+    private fun findOwningActivity(view: View): Activity? {
+        var current: View? = view
+        repeat(16) {
+            var context: android.content.Context? = current?.context
+            while (context != null) {
+                if (context is Activity) return context
+                val wrapper = context as? android.content.ContextWrapper ?: break
+                val base = wrapper.baseContext
+                if (base === context) break
+                context = base
+            }
+            current = current?.parent as? View
+        }
+        return null
+    }
+
+    private fun isCollectionSelectView(view: View): Boolean {
+        return findOwningActivity(view)?.javaClass?.name == COLLECTION_SELECT_ACTIVITY
+    }
+
+    private fun isFeedDetailView(view: View): Boolean {
+        return findOwningActivity(view)?.javaClass?.name?.contains("FeedDetailActivity") == true
     }
 
     private fun scanReplyCloseViews(root: View) {
@@ -517,17 +548,15 @@ object CoolMarket : Hooker() {
         Activity::class.java.method("onWindowFocusChanged", Boolean::class.javaPrimitiveType!!).hook {
             after {
                 if (args.firstOrNull() == true) {
-                    val activity = instance<Activity>()
-                    AdViewScanner.scheduleActivity(activity, "window-focus")
-                    scheduleReplyCloseScan(activity)
+                    scheduleReplyCloseScan(instance<Activity>())
                 }
             }
         }
     }
 
     private fun handleActivityResumed(activity: Activity, source: String) {
-        AdViewScanner.scheduleActivity(activity, source)
         if (activity.javaClass.name.contains("SplashAdActivity")) {
+            AdViewScanner.scheduleActivity(activity, source)
             runMainDelayed(260L) {
                 AdViewScanner.scheduleActivity(activity, "splash-observe")
             }
@@ -549,6 +578,7 @@ object CoolMarket : Hooker() {
         ViewGroup::class.java.methods("addView").hook {
             after {
                 val added = args.firstOrNull() as? View ?: return@after
+                if (isCollectionSelectView(added)) return@after
                 if (isAdRelatedView(added)) {
                     AdViewScanner.scheduleView(added, "add-view")
                 }
@@ -557,6 +587,7 @@ object CoolMarket : Hooker() {
         View::class.java.method("setVisibility", Int::class.javaPrimitiveType!!).hook {
             after {
                 val view = instance<View>()
+                if (isCollectionSelectView(view)) return@after
                 if (view.visibility == View.VISIBLE && isAdRelatedView(view)) {
                     AdViewScanner.scheduleView(view, "visibility")
                 }
@@ -565,6 +596,7 @@ object CoolMarket : Hooker() {
         View::class.java.method("setOnClickListener", View.OnClickListener::class.java).hook {
             after {
                 val view = instance<View>()
+                if (isCollectionSelectView(view)) return@after
                 if (AdViewScanner.isKnownCloseCandidate(view)) {
                     AdCloseController.schedule(view, "coolapk-close-listener", 80L)
                 }
